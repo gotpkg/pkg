@@ -1,0 +1,20 @@
+# This project's commit scopes, one per line. Blank lines and # comments are ignored.
+#
+# `workbench commits check` also accepts Workbench's process scopes (agents, ci, decision, deps,
+# docs, guides, policy, proposal, release, rules, skills, templates, treewide, vision) and the
+# name of any proposal file: `proposals/<NNNN>-<slug>.md` is the scope `<NNNN>-<slug>`, so
+# feature work needs no entry here.
+#
+# Add product scopes below as the project grows. Prefer the narrowest scope that accurately
+# describes the change.
+
+# The command registry, discovery commands, help, and the text and JSON output contract.
+cli
+# The package commands: install, remove, list, outdated, upgrade, sync, prune, where, and tap.
+packages
+# Running mise, reading its answers, and editing mise config files.
+mise
+# The Homebrew and App Store catalogs behind search and info.
+catalog
+# The release helper crate: archives and the Homebrew formula.
+xtask

@@ -1,0 +1,109 @@
+//! The commands that keep a machine current: upgrade, sync, prune, and the tap changes.
+
+use crate::support::{Fixture, MAC_CONFIG, status};
+
+#[test]
+fn upgrade_reports_the_versions_that_changed() {
+    let fixture = Fixture::seeded();
+    fixture.mise(&["bootstrap", "packages", "upgrade", "--yes"]).stdout("");
+    fixture.mise(&["upgrade", "--global"]).stdout("");
+    let mut upgraded = status(&[]);
+    upgraded["brew"]["packages"][2]["installed_version"] = "1.25.0_2".into();
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).nth(2).json(&upgraded);
+    let receipt = fixture.json(&["upgrade"]).success();
+    assert_eq!(
+        receipt["upgraded"],
+        serde_json::json!([{ "package": "brew:wget", "from": "1.24.5", "to": "1.25.0_2" }])
+    );
+    let calls = fixture.calls();
+    assert!(calls.contains(&"bootstrap packages upgrade --yes".to_string()), "{calls:?}");
+    assert!(calls.contains(&"upgrade --global".to_string()), "{calls:?}");
+}
+
+#[test]
+fn upgrading_named_packages_runs_only_their_manager() {
+    let fixture = Fixture::seeded();
+    fixture.json(&["upgrade", "brew:wget"]).success();
+    let calls = fixture.calls();
+    assert!(calls.contains(&"bootstrap packages upgrade --yes brew:wget".to_string()), "{calls:?}");
+    assert!(!calls.iter().any(|call| call.starts_with("upgrade")), "{calls:?}");
+    fixture.json(&["upgrade", "brew:nothing"]).assert_failed(3, "NOT_FOUND");
+}
+
+#[test]
+fn an_upgrade_dry_run_lists_what_outdated_lists() {
+    let fixture = Fixture::seeded();
+    let receipt = fixture.json(&["upgrade", "--dry-run"]).success();
+    assert_eq!(receipt["status"], "dry-run");
+    assert_eq!(
+        receipt["upgraded"][0],
+        serde_json::json!({ "package": "brew:wget", "from": "1.24.5", "to": "1.25.0_2" })
+    );
+    assert!(!fixture.calls().iter().any(|call| call.contains("--yes")));
+}
+
+#[test]
+fn sync_installs_only_when_something_is_missing() {
+    let fixture = Fixture::seeded();
+    let receipt = fixture.json(&["sync"]).success();
+    assert_eq!(receipt["installed"], serde_json::json!([]));
+    assert!(!fixture.calls().iter().any(|call| call.contains("apply") || call == "install"));
+
+    let fixture = Fixture::seeded();
+    let missing = status(&[("brew", "tree", None)]);
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).nth(1).json(&missing);
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).nth(2).json(&missing);
+    fixture.mise(&["bootstrap", "packages", "apply", "--yes"]).stdout("");
+    let dry = fixture.json(&["sync", "--dry-run"]).success();
+    assert_eq!(dry["installed"], serde_json::json!(["brew:tree"]));
+    let receipt = fixture.json(&["sync"]).success();
+    assert_eq!(receipt["installed"], serde_json::json!(["brew:tree"]));
+    assert!(fixture.calls().contains(&"bootstrap packages apply --yes".to_string()));
+}
+
+#[test]
+fn prune_previews_then_removes_what_no_config_declares() {
+    let fixture = Fixture::seeded();
+    fixture
+        .mise(&["bootstrap", "packages", "prune", "--dry-run", "--manager", "brew"])
+        .stdout("remove brew:brightness@1.2\n");
+    let preview = fixture.json(&["prune", "--dry-run"]).success();
+    assert_eq!(preview["uninstalled"], serde_json::json!(["brew:brightness@1.2"]));
+    assert!(!fixture.calls().iter().any(|call| call.contains("--yes")));
+
+    let receipt = fixture.json(&["prune"]).success();
+    assert_eq!(receipt["status"], "completed");
+    let calls = fixture.calls();
+    assert!(
+        calls.contains(&"bootstrap packages prune --yes --manager brew".to_string()),
+        "{calls:?}"
+    );
+    assert!(
+        !calls.iter().any(|call| call.contains("--yes --manager brew-cask")),
+        "nothing to prune there: {calls:?}"
+    );
+}
+
+#[test]
+fn tap_add_and_remove_edit_only_the_write_target() {
+    let fixture = Fixture::seeded();
+    let added = fixture
+        .json(&["tap", "add", "acme/tools", "https://github.com/acme/brew-tools.git"])
+        .success();
+    assert_eq!(added["action"], "added");
+    let path = fixture.mac_config_link();
+    assert!(fixture.calls().contains(&format!(
+        "bootstrap packages brew tap -p {path} acme/tools https://github.com/acme/brew-tools.git"
+    )));
+    let removed = fixture.json(&["tap", "remove", "acme/tools"]).success();
+    assert_eq!(removed["url"], "https://github.com/acme/brew-tools.git");
+    let error =
+        fixture.json(&["tap", "remove", "sesh/tap"]).assert_failed(3, "PRECONDITION_FAILED");
+    assert!(error["message"].as_str().unwrap().contains("config.toml"), "{error}");
+    fixture.json(&["tap", "remove", "nobody/tap"]).assert_failed(3, "NOT_FOUND");
+    assert_eq!(
+        fixture.read_dotfile("config.macos.toml"),
+        MAC_CONFIG,
+        "the fake mise wrote nothing"
+    );
+}
