@@ -22,4 +22,4 @@ Proposals are kept after they close. When a later proposal replaces an earlier o
 
 ## Proposal index
 
-- 0001 — First-Machine Setup and Bootstrap.
+- [0001 — First-Machine Setup and Bootstrap](0001-first-machine-bootstrap.md).
