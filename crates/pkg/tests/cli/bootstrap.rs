@@ -9,6 +9,7 @@ use crate::support::{Fixture, INSTALLS_PKG, Outcome, assert_matches_output_schem
 
 const DOTFILES: &str = "https://github.com/example/dotfiles.git";
 const ZSH_BLOCK: &str = "# >>> pkg >>>\nexport PATH=\"$HOME/.local/bin:$PATH\"\n# <<< pkg <<<\n";
+const TEMPLATED_FILE: &str = "[bootstrap.files.\"/etc/motd\"]\ncontent = \"{{ exec(command='hostname') }}\"\ntemplate = true\n";
 
 /// A new Mac with mise, the installer's pkg and PATH block, and nothing else.
 fn new_mac() -> Fixture {
@@ -146,11 +147,7 @@ fn a_bootstrap_dry_run_skips_templated_files_and_changes_nothing() {
     let fixture = new_mac();
     let config = fixture.home().join(".config/mise/config.toml");
     std::fs::create_dir_all(config.parent().unwrap()).unwrap();
-    std::fs::write(
-        &config,
-        "[bootstrap.files.\"/etc/motd\"]\ncontent = \"{{ exec(command='hostname') }}\"\ntemplate = true\n",
-    )
-    .unwrap();
+    std::fs::write(&config, TEMPLATED_FILE).unwrap();
     fixture.mise(&["bootstrap", "--dry-run", "--skip", "files"]).stdout("tools: nothing to do\n");
     let before = fixture.snapshot();
     let receipt = bootstrap(&fixture, &["--dry-run"]).success();
@@ -158,6 +155,46 @@ fn a_bootstrap_dry_run_skips_templated_files_and_changes_nothing() {
     assert!(receipt["notPreviewed"].to_string().contains("files"), "{receipt}");
     assert!(fixture.calls().contains(&"bootstrap --dry-run --skip files".to_string()));
     assert_eq!(fixture.snapshot(), before);
+}
+
+#[test]
+fn a_dry_run_for_an_environment_checks_that_environments_files() {
+    let fixture = new_mac();
+    let work = fixture.home().join(".config/mise/config.work.toml");
+    std::fs::create_dir_all(work.parent().unwrap()).unwrap();
+    std::fs::write(&work, TEMPLATED_FILE).unwrap();
+    let listed = format!(
+        "case \"$MISE_ENV\" in work) printf '[{{\"path\":\"{}\"}}]';; *) printf '[]';; esac\n",
+        work.display()
+    );
+    fixture.mise(&["config", "ls", "--json"]).runs(&listed).stdout("");
+    fixture.mise(&["-E", "work", "bootstrap", "--dry-run", "--skip", "files"]).stdout("");
+    let receipt = bootstrap(&fixture, &["--env", "work", "--dry-run"]).success();
+    assert!(receipt["notPreviewed"].to_string().contains("files"), "{receipt}");
+    let preview = "-E work bootstrap --dry-run --skip files".to_string();
+    assert!(fixture.calls().contains(&preview), "{:?}", fixture.calls());
+}
+
+#[test]
+fn a_bootstrap_without_a_terminal_gives_mise_no_terminal_to_ask_at() {
+    let fixture = new_mac();
+    let probe = r#"[ "$(ps -o pgid= -p "$PPID" | tr -d ' ')" = "$PPID" ] && echo own-session >> "$FAKE_MISE/terminal"
+if (exec 3</dev/tty) 2>/dev/null; then echo has-a-terminal >> "$FAKE_MISE/terminal"; fi
+"#;
+    fixture.mise(&["bootstrap"]).runs(probe);
+    bootstrap(&fixture, &[]).success();
+    let terminal = std::fs::read_to_string(fixture.path("mise/terminal")).unwrap_or_default();
+    assert_eq!(terminal, "own-session\n");
+}
+
+#[test]
+fn bootstrap_accepts_a_config_directory_that_already_links_to_the_checkout() {
+    let fixture = new_mac();
+    std::fs::create_dir_all(dotfiles(&fixture).join("mise")).unwrap();
+    std::fs::create_dir_all(fixture.home().join(".config")).unwrap();
+    std::os::unix::fs::symlink("../.dotfiles/mise", fixture.home().join(".config/mise")).unwrap();
+    fixture.mise(&words(&from_args(&fixture))).stdout("");
+    from_dotfiles(&fixture, &[]).success();
 }
 
 #[test]

@@ -137,6 +137,28 @@ fn no_modify_path_prints_the_line_instead() {
 }
 
 #[test]
+fn a_startup_file_pkg_cannot_read_as_text_is_left_alone() {
+    let fixture = new_machine();
+    let zshenv = fixture.home().join(".zshenv");
+    let latin1 = b"# caf\xe9\nexport EDITOR=vi\n";
+    std::fs::write(&zshenv, latin1).unwrap();
+    let receipt = setup(&fixture, &[]).success();
+    assert_eq!(receipt["path"]["action"], "printed", "{receipt}");
+    assert_eq!(std::fs::read(&zshenv).unwrap(), latin1);
+}
+
+#[test]
+fn a_linked_startup_file_is_left_alone() {
+    let fixture = new_machine();
+    let dotfiles = fixture.home().join("dotfiles-zshenv");
+    std::fs::write(&dotfiles, "export EDITOR=vi\n").unwrap();
+    std::os::unix::fs::symlink(&dotfiles, fixture.home().join(".zshenv")).unwrap();
+    let receipt = setup(&fixture, &[]).success();
+    assert_eq!(receipt["path"]["action"], "printed", "{receipt}");
+    assert_eq!(std::fs::read_to_string(&dotfiles).unwrap(), "export EDITOR=vi\n");
+}
+
+#[test]
 fn setup_reuses_the_mise_it_finds_and_leaves_path_to_an_existing_config() {
     let fixture = Fixture::seeded();
     let receipt = fixture.json(&["setup"]).success();
@@ -173,4 +195,16 @@ fn setup_keeps_a_local_bin_pkg_that_is_not_pkg() {
     assert_eq!(receipt["handoff"]["link"], "kept");
     assert!(receipt["handoff"]["reason"].as_str().is_some(), "{receipt}");
     assert!(std::fs::symlink_metadata(local_pkg(&fixture)).unwrap().is_file());
+}
+
+#[test]
+fn handing_pkg_to_mise_touches_nothing_else_in_local_bin() {
+    let fixture = new_machine();
+    let neighbor = fixture.home().join(".local/bin/.pkg-link");
+    std::fs::write(&neighbor, "mine\n").unwrap();
+    let receipt = setup(&fixture, &[]).success();
+    assert_eq!(receipt["handoff"]["link"], "linked");
+    assert_eq!(std::fs::read_to_string(&neighbor).unwrap(), "mine\n");
+    let entries = std::fs::read_dir(fixture.home().join(".local/bin")).unwrap().count();
+    assert_eq!(entries, 3, "pkg, mise and the neighbor; nothing staged is left behind");
 }

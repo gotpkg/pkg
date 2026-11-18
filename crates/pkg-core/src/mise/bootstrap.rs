@@ -2,7 +2,7 @@
 
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
-use std::process::Stdio;
+use std::process::{Command, Stdio};
 
 use super::{Mise, Output};
 use crate::{Error, Progress};
@@ -32,6 +32,7 @@ impl Mise<'_> {
         let mut command = self.command_in(run.directory, args);
         command.envs(run.env.iter().map(|(key, value)| (OsStr::new(key), value)));
         if !run.terminal {
+            without_terminal(&mut command);
             return self.run_command(command, args, progress).map(Some);
         }
         command.stdin(Stdio::inherit()).stdout(terminal_stdout()?).stderr(Stdio::inherit());
@@ -68,3 +69,23 @@ fn terminal_stdout() -> Result<Stdio, Error> {
         Ok(Stdio::inherit())
     }
 }
+
+/// Starts mise in a session of its own, without a controlling terminal, so nothing it runs (sudo,
+/// git, ssh) can open `/dev/tty` and wait for an answer no one is there to give.
+#[cfg(unix)]
+fn without_terminal(command: &mut Command) {
+    use std::os::unix::process::CommandExt;
+    // SAFETY: the closure runs between fork and exec, and calls only `setsid`, which is
+    // async-signal-safe, and `last_os_error`, which reads errno without allocating.
+    unsafe {
+        command.pre_exec(|| {
+            if libc::setsid() == -1 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
+}
+
+#[cfg(not(unix))]
+fn without_terminal(_command: &mut Command) {}

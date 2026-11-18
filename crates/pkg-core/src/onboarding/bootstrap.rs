@@ -162,7 +162,7 @@ fn preview(
             .not_previewed
             .push("the configuration: mise is not installed yet; preview again once it is".into());
     } else {
-        let skip_files = declares_templated_files(&preview_files(settings, &request.source)?);
+        let skip_files = declares_templated_files(&preview_files(settings, request)?);
         if skip_files {
             receipt.not_previewed.push(
                 "files: mise renders [bootstrap.files] templates even in a dry run, and a \
@@ -241,7 +241,7 @@ fn config_dir_free(settings: &Settings, target: &Path) -> Result<(), Error> {
     let free = match config_dir.symlink_metadata() {
         Err(_) => true,
         Ok(metadata) if metadata.is_symlink() => std::fs::read_link(config_dir)
-            .is_ok_and(|link| link == target || same_place(&link, target)),
+            .is_ok_and(|link| link == target || same_place(config_dir, target)),
         Ok(metadata) if metadata.is_dir() => {
             std::fs::read_dir(config_dir).is_ok_and(|mut entries| entries.next().is_none())
         }
@@ -287,15 +287,20 @@ fn report(source: &BootstrapSource) -> SourceReport {
     report
 }
 
-/// The config files a preview reads for templated `[bootstrap.files]` entries.
-fn preview_files(settings: &Settings, source: &BootstrapSource) -> Result<Vec<PathBuf>, Error> {
-    match source {
+/// The config files a preview reads for templated `[bootstrap.files]` entries, including those
+/// of the requested environments.
+fn preview_files(settings: &Settings, request: &BootstrapRequest) -> Result<Vec<PathBuf>, Error> {
+    let mut settings = settings.clone();
+    if !request.environments.is_empty() {
+        settings.child_env.insert("MISE_ENV".into(), request.environments.join(",").into());
+    }
+    match &request.source {
         BootstrapSource::Repository { directory, config_dir, .. } => {
             Ok(config_directory_files(&directory.join(config_dir)))
         }
-        BootstrapSource::Global => Ok(Machine::load(settings)?.config_files),
+        BootstrapSource::Global => Ok(Machine::load(&settings)?.config_files),
         BootstrapSource::ConfigFile(file) => {
-            let mut files = Machine::load(settings)?.config_files;
+            let mut files = Machine::load(&settings)?.config_files;
             files.push(file.clone());
             Ok(files)
         }

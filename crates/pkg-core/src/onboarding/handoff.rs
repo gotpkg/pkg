@@ -198,16 +198,19 @@ fn pkg_version(executable: &Path, settings: &Settings) -> Option<String> {
     (output.status.success() && !version.is_empty()).then(|| version.to_string())
 }
 
-/// Replaces `path` with a link to `shim`, atomically.
+/// Replaces `path` with a link to `shim`, atomically, through a link staged beside it under this
+/// process's own name. It fails rather than remove anything already there.
 fn link(path: &Path, shim: &Path) -> Result<(), Error> {
-    let staged = path.with_file_name(".pkg-link");
-    let _ = std::fs::remove_file(&staged);
+    let staged = path.with_file_name(format!(".pkg-link-{}", std::process::id()));
     #[cfg(unix)]
     std::os::unix::fs::symlink(shim, &staged).map_err(|error| cannot_write(&staged, &error))?;
     #[cfg(windows)]
     std::os::windows::fs::symlink_file(shim, &staged)
         .map_err(|error| cannot_write(&staged, &error))?;
-    std::fs::rename(&staged, path).map_err(|error| cannot_write(path, &error))
+    std::fs::rename(&staged, path).map_err(|error| {
+        let _ = std::fs::remove_file(&staged);
+        cannot_write(path, &error)
+    })
 }
 
 /// pkg executables on `PATH` other than `~/.local/bin/pkg` and mise's.

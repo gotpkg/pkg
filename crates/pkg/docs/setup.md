@@ -36,7 +36,7 @@ export PATH="$HOME/.local/bin:$PATH"
 # <<< pkg <<<
 ```
 
-In fish the middle line is `set -gx PATH "$HOME/.local/bin" $PATH`. For any other shell, or with `--no-modify-path`, the installer prints the line instead. An installer cannot change the shell that ran it, so it ends with next steps for your shell: first the command that loads the change in the current terminal, such as `source ~/.zshenv`, then `pkg bootstrap` or `pkg setup`. A new terminal needs nothing.
+In fish the middle line is `set -gx PATH "$HOME/.local/bin" $PATH`. For any other shell, with `--no-modify-path`, or when a startup file is a link, such as one your dotfiles deploy, the installer prints the line instead, so it never edits a file in your dotfiles checkout. An installer cannot change the shell that ran it, so it ends with next steps for your shell: first the command that loads the change in the current terminal, such as `source ~/.zshenv`, then `pkg bootstrap` or `pkg setup`. A new terminal needs nothing.
 
 ## Which mise pkg uses
 
@@ -50,8 +50,8 @@ Without any of them, commands that need mise fail with `PRECONDITION_FAILED` and
 
 `pkg setup` gets a machine with no configuration to restore ready for `pkg install`:
 
-1. **mise.** When pkg finds no mise, setup runs mise's own installer (`https://mise.run`) for `~/.local/bin/mise`. That script picks the newest stable release past mise's minimum release age and checks its checksum; pkg runs it as fetched, as `curl https://mise.run | sh` would, and does not verify its GPG signature. Setup then checks that the mise it will use is 2026.11.9 or newer. A mise that is already there is reused as it is.
-2. **Tools on PATH.** When no global mise configuration exists yet, so nothing else will put mise's tools on `PATH`, and mise's shims directory (`$MISE_DATA_DIR/shims`, normally `~/.local/share/mise/shims`) is not on `PATH`, setup adds it after `~/.local/bin` in pkg's block, creating the block if the installer did not. `--no-modify-path` prints the line instead. Setup then prints the command that loads the change in the current terminal.
+1. **mise.** When pkg finds no mise, setup runs mise's own installer (`https://mise.run`, or the URL in `PKG_MISE_INSTALLER`, such as a mirror) for `~/.local/bin/mise`. That script picks the newest stable release past mise's minimum release age and checks its checksum; pkg runs it as fetched, as `curl https://mise.run | sh` would, and does not verify its GPG signature. Setup then checks that the mise it will use is 2026.11.9 or newer. A mise that is already there is reused as it is.
+2. **Tools on PATH.** When no global mise configuration exists yet, so nothing else will put mise's tools on `PATH`, and mise's shims directory (`$MISE_DATA_DIR/shims`, normally `~/.local/share/mise/shims`) is not on `PATH`, setup adds it after `~/.local/bin` in pkg's block, creating the block if the installer did not. `--no-modify-path` prints the line instead, and so does setup when a startup file is a link or cannot be read as UTF-8 text. Setup then prints the command that loads the change in the current terminal.
 3. **pkg itself.** Setup hands pkg to mise, as described below.
 
 `pkg setup --dry-run` reports each step, including the installer it would run and the file it would change, and downloads, runs and writes nothing. Running setup again changes nothing that is already in place.
@@ -78,7 +78,7 @@ When mise is missing, bootstrap installs it first, as setup does. Before mise ap
 
 ### In a terminal and in scripts
 
-With text output in a terminal, mise and the programs it runs can ask you for things directly: passwords for sudo, Git credentials, App Store sign-in, and their own questions. With `--output json`, or without a terminal, nothing waits for an answer: a step that needs one fails, and pkg reports mise's failure and says to run the command in a terminal. Either way mise's progress goes to stderr and the result to stdout.
+With text output in a terminal, mise and the programs it runs can ask you for things directly: passwords for sudo, Git credentials, App Store sign-in, and their own questions. With `--output json`, or without a terminal, nothing waits for an answer: mise runs in a session of its own with no terminal, so a step that needs an answer fails rather than opening `/dev/tty`, and pkg reports mise's failure and says to run the command in a terminal. Either way mise's progress goes to stderr and the result to stdout.
 
 ### What bootstrap reports
 

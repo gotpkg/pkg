@@ -288,6 +288,31 @@ fn fish_gets_its_own_file_in_conf_d() {
 }
 
 #[test]
+fn a_linked_startup_file_gets_the_line_to_add_instead() {
+    let fixture = Fixture::new();
+    let dotfiles = fixture.home().join("dotfiles-zshenv");
+    fs::write(&dotfiles, "export EDITOR=vi\n").unwrap();
+    symlink(&dotfiles, fixture.home().join(".zshenv")).unwrap();
+
+    let stdout = succeed(&mut fixture.installer("zsh"));
+
+    assert_eq!(read(&dotfiles), "export EDITOR=vi\n");
+    assert!(stdout.contains("    export PATH=\"$HOME/.local/bin:$PATH\"\n"), "{stdout}");
+    assert!(!stdout.contains("source"), "{stdout}");
+}
+
+#[test]
+fn a_start_marker_without_its_end_still_gets_a_block() {
+    let fixture = Fixture::new();
+    let stray = "# >>> pkg >>>\nexport EDITOR=vi\n";
+    fs::write(fixture.home().join(".zshenv"), stray).unwrap();
+
+    succeed(&mut fixture.installer("zsh"));
+
+    assert_eq!(read(&fixture.home().join(".zshenv")), format!("{stray}{POSIX_BLOCK}"));
+}
+
+#[test]
 fn no_modify_path_writes_no_startup_file_and_prints_the_line() {
     let fixture = Fixture::new();
 

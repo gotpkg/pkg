@@ -81,15 +81,15 @@ pub(crate) fn put_on_path(
     let files = shell.files(home, &settings.child_env);
     let linked =
         files.iter().any(|file| file.symlink_metadata().is_ok_and(|meta| meta.is_symlink()));
-    if !modify_path || linked {
+    let readable = if modify_path && !linked { texts(&files) } else { None };
+    let Some(texts) = readable else {
         return Ok(Some(printed(shell)));
-    }
+    };
     let block = shell.block(&directories, home);
     let mut changed = false;
-    for file in &files {
-        let contents = std::fs::read_to_string(file).unwrap_or_default();
-        let updated = startup::with_block(&contents, &block);
-        if updated == contents {
+    for (file, contents) in files.iter().zip(&texts) {
+        let updated = startup::with_block(contents, &block);
+        if updated == *contents {
             continue;
         }
         changed = true;
@@ -104,6 +104,19 @@ pub(crate) fn put_on_path(
         files,
         line: shell.path_line(&directories, home),
     }))
+}
+
+/// Each file's text, empty for a missing file; `None` when one cannot be read as text, so that
+/// pkg changes none of them.
+fn texts(files: &[PathBuf]) -> Option<Vec<String>> {
+    files
+        .iter()
+        .map(|file| match std::fs::read_to_string(file) {
+            Ok(text) => Some(text),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Some(String::new()),
+            Err(_) => None,
+        })
+        .collect()
 }
 
 fn on_path(settings: &Settings, directory: &Path) -> bool {

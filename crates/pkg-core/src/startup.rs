@@ -119,7 +119,7 @@ fn split_block(contents: &str) -> Option<(&str, &str)> {
     let mut begin = None;
     for (at, line) in start {
         match (begin, line.trim_end()) {
-            (None, BEGIN) => begin = Some(at),
+            (_, BEGIN) => begin = Some(at),
             (Some(from), END) => {
                 let end = (at + line.len() + 1).min(contents.len());
                 return Some((&contents[..from], &contents[end..]));
@@ -173,6 +173,16 @@ mod tests {
         assert_eq!(with_block(&file, &new), format!("export EDITOR=vi\n{new}alias ll='ls -l'\n"));
         assert_eq!(with_block("export EDITOR=vi", &new), format!("export EDITOR=vi\n{new}"));
         assert_eq!(with_block("", &new), new);
+    }
+
+    #[test]
+    fn a_stray_start_marker_keeps_the_lines_after_it() {
+        let old = Shell::Zsh.block(&[home().join(".local/bin")], &home());
+        let new = Shell::Zsh.block(&[home().join(".local/bin"), home().join("shims")], &home());
+        let stray = format!("{BEGIN}\nexport EDITOR=vi\n");
+        assert_eq!(with_block(&stray, &new), format!("{stray}{new}"));
+        assert_eq!(with_block(&format!("{stray}{old}"), &new), format!("{stray}{new}"));
+        assert!(!is_only_block(&format!("{stray}{old}")));
     }
 
     #[test]

@@ -198,7 +198,7 @@ choose_path_setup() {
     case :${PATH:-}: in
         *:"$bin_dir":* | *:"$bin_dir"/:*) path_setup=ready ;;
         *)
-            if [ "$modify_path" = true ] && [ -n "$load_file" ]; then
+            if [ "$modify_path" = true ] && [ -n "$load_file" ] && ! linked_startup_file; then
                 path_setup=files
             else
                 path_setup=manual
@@ -219,8 +219,30 @@ each_startup_file() {
     fi
 }
 
+# Whether a startup file is a link, such as one a dotfiles checkout deploys: the installer leaves
+# the file it points to alone and prints the line instead.
+linked_startup_file() {
+    linked=false
+    each_startup_file note_link
+    [ "$linked" = true ]
+}
+
+note_link() {
+    if [ -L "$1" ]; then
+        linked=true
+    fi
+}
+
+# Whether $1 holds pkg's whole block: its start line and, after it, its end line.
+has_path_block() {
+    [ -f "$1" ] && awk -v start="$block_start" -v end="$block_end" '
+        $0 == start { open = 1 }
+        open && $0 == end { found = 1 }
+        END { exit !found }' "$1"
+}
+
 add_path_block() {
-    if [ -f "$1" ] && grep -qxF "$block_start" "$1"; then
+    if has_path_block "$1"; then
         say "$1 already puts ~/.local/bin on PATH"
         return 0
     fi
