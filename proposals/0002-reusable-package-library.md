@@ -2,7 +2,7 @@
 id: proposal.0002
 title: Reusable Package Library
 authors: [Mark]
-status: draft
+status: awaiting-implementation
 pull-request: https://github.com/markmals/pkg/pull/1
 issues: []
 supersedes: []
@@ -178,4 +178,4 @@ A separate UniFFI adapter could export a deliberate app-facing subset without im
 
 ## Open questions
 
-None for this draft's selected extraction scope. The human still owns approval and may revise the API direction during review; `draft` does not authorize implementation.
+None. The human approved this proposal for implementation on 2026-11-17.
