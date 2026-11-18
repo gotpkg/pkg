@@ -171,7 +171,7 @@ pub const RESOURCES: &[(&str, &str, Audience)] = &[
     ("search", "Find packages in Homebrew, mise's registry, and the App Store", Audience::People),
     ("info", "Describe one package and whether it is installed", Audience::People),
     ("outdated", "List installed packages that have a newer version", Audience::People),
-    ("upgrade", "Upgrade installed packages to their newest versions", Audience::People),
+    ("update", "Update installed packages to their newest versions", Audience::People),
     ("sync", "Install everything your mise config declares that is missing", Audience::People),
     ("prune", "Uninstall Homebrew packages no config declares", Audience::People),
     ("where", "Print where a formula or tool is installed", Audience::People),

@@ -1,18 +1,18 @@
-//! The commands that keep a machine current: upgrade, sync, prune, and the tap changes.
+//! The commands that keep a machine current: update, sync, prune, and the tap changes.
 
 use crate::support::{Fixture, MAC_CONFIG, status};
 
 #[test]
-fn upgrade_reports_the_versions_that_changed() {
+fn update_reports_the_versions_that_changed() {
     let fixture = Fixture::seeded();
     fixture.mise(&["bootstrap", "packages", "upgrade", "--yes"]).stdout("");
     fixture.mise(&["upgrade", "--global"]).stdout("");
-    let mut upgraded = status(&[]);
-    upgraded["brew"]["packages"][2]["installed_version"] = "1.25.0_2".into();
-    fixture.mise(&["bootstrap", "packages", "status", "--json"]).nth(2).json(&upgraded);
-    let receipt = fixture.json(&["upgrade"]).success();
+    let mut updated = status(&[]);
+    updated["brew"]["packages"][2]["installed_version"] = "1.25.0_2".into();
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).nth(2).json(&updated);
+    let receipt = fixture.json(&["update"]).success();
     assert_eq!(
-        receipt["upgraded"],
+        receipt["updated"],
         serde_json::json!([{ "package": "brew:wget", "from": "1.24.5", "to": "1.25.0_2" }])
     );
     let calls = fixture.calls();
@@ -21,25 +21,30 @@ fn upgrade_reports_the_versions_that_changed() {
 }
 
 #[test]
-fn upgrading_named_packages_runs_only_their_manager() {
+fn updating_named_packages_runs_only_their_manager() {
     let fixture = Fixture::seeded();
-    fixture.json(&["upgrade", "brew:wget"]).success();
+    fixture.json(&["update", "brew:wget"]).success();
     let calls = fixture.calls();
     assert!(calls.contains(&"bootstrap packages upgrade --yes brew:wget".to_string()), "{calls:?}");
     assert!(!calls.iter().any(|call| call.starts_with("upgrade")), "{calls:?}");
-    fixture.json(&["upgrade", "brew:nothing"]).assert_failed(3, "NOT_FOUND");
+    fixture.json(&["update", "brew:nothing"]).assert_failed(3, "NOT_FOUND");
 }
 
 #[test]
-fn an_upgrade_dry_run_lists_what_outdated_lists() {
+fn an_update_dry_run_lists_what_outdated_lists() {
     let fixture = Fixture::seeded();
-    let receipt = fixture.json(&["upgrade", "--dry-run"]).success();
+    let receipt = fixture.json(&["update", "--dry-run"]).success();
     assert_eq!(receipt["status"], "dry-run");
     assert_eq!(
-        receipt["upgraded"][0],
+        receipt["updated"][0],
         serde_json::json!({ "package": "brew:wget", "from": "1.24.5", "to": "1.25.0_2" })
     );
     assert!(!fixture.calls().iter().any(|call| call.contains("--yes")));
+}
+
+#[test]
+fn the_upgrade_command_is_gone() {
+    Fixture::seeded().json(&["upgrade"]).assert_failed(2, "INVALID_ARGUMENT");
 }
 
 #[test]

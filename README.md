@@ -23,7 +23,7 @@ pkg install brew:wget brew-cask:iina  # install and record both
 pkg install ripgrep npm:prettier      # tools from mise's registry and its backends
 pkg list                              # everything your config declares, with versions
 pkg outdated                          # what has a newer version
-pkg upgrade                           # upgrade everything
+pkg update                            # update everything
 pkg remove brew:wget                  # uninstall and take it out of your config
 pkg sync                              # install whatever the config declares that is missing
 ```
@@ -76,7 +76,7 @@ The tests never run the real mise or reach the network: they run the binary agai
 ```text
 crates/pkg/
   src/registry.rs       the command contract every interface is generated from
-  src/commands/         each command: install, remove, list, search, info, outdated, upgrade,
+  src/commands/         each command: install, remove, list, search, info, outdated, update,
                         sync, prune, where, tap, and the discovery commands
   docs/                 Markdown built into the binary for `docs search`
   tests/cli/            tests that run the binary

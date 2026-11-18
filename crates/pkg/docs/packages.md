@@ -49,8 +49,8 @@ A formula that a declared package still depends on stays installed and is listed
 
 ## Keeping up to date
 
-- `pkg outdated` lists what has a newer version: Homebrew formulae and casks from mise's upgrade plan, App Store apps compared with the App Store, and tools from `mise outdated`. Casks mise will not upgrade, such as apps that update themselves, appear under `skipped`.
-- `pkg upgrade` upgrades everything, or the packages you name, and lists each version that changed.
+- `pkg outdated` lists what has a newer version: Homebrew formulae and casks from mise's upgrade plan, App Store apps compared with the App Store, and tools from `mise outdated`. Casks mise will not update, such as apps that update themselves, appear under `skipped`.
+- `pkg update` updates everything, or the packages you name, and lists each version that changed.
 - `pkg sync` installs whatever the config declares that is missing, for example after pulling config changes made on another machine. Unlike `mise bootstrap`, it leaves dotfiles, services and settings alone.
 - `pkg prune` uninstalls Homebrew packages no config declares. `--force` also removes casks mise cannot prove are unchanged.
 - `pkg where brew:<formula>` prints a formula's `opt` directory, which keg-only formulae need on `PATH`; `pkg where <tool>` prints a tool's install directory.

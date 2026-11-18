@@ -760,7 +760,7 @@ List installed packages that have a newer version.
 
 List installed packages that have a newer version.
 
-Lists every installed package and tool that `pkg upgrade` would update, with the installed and the newest version. Homebrew formulae and casks come from `mise bootstrap packages upgrade --dry-run`, which refreshes Homebrew's metadata; App Store apps are compared with the App Store's current version; tools come from `mise outdated --global`. Casks mise will not upgrade, such as apps that update themselves, are listed under `skipped` with mise's reason. The whole list is returned at once. Never changes anything.
+Lists every installed package and tool that `pkg update` would update, with the installed and the newest version. Homebrew formulae and casks come from `mise bootstrap packages upgrade --dry-run`, which refreshes Homebrew's metadata; App Store apps are compared with the App Store's current version; tools come from `mise outdated --global`. Casks mise will not update, such as apps that update themselves, are listed under `skipped` with mise's reason. The whole list is returned at once. Never changes anything.
 
 - **Effect:** reads only
 - **Requires:** `mise`, `network`
@@ -771,7 +771,7 @@ Lists every installed package and tool that `pkg upgrade` would update, with the
 Examples:
 
 ```sh
-# See what upgrade would update
+# See what update would update
 pkg outdated
 ```
 
@@ -792,7 +792,7 @@ Result schema:
       "items": {
         "$ref": "#/$defs/Skipped"
       },
-      "description": "Packages mise will not upgrade, with its reason."
+      "description": "Packages mise will not update, with its reason."
     }
   },
   "required": [
@@ -843,15 +843,15 @@ Result schema:
 }
 ```
 
-### `upgrade`
+### `update`
 
-Upgrade installed packages to their newest versions.
+Update installed packages to their newest versions.
 
-#### `pkg upgrade`
+#### `pkg update`
 
-Upgrade installed packages to their newest versions.
+Update installed packages to their newest versions.
 
-Upgrades the named packages, or with none every installed package and global tool: `mise bootstrap packages upgrade` for Homebrew, the App Store, and the other package managers, and `mise upgrade --global` for tools. Packages that are declared but not installed are left to `pkg sync`. The receipt lists each package whose installed version changed. --dry-run lists what would be upgraded, as `pkg outdated` does, and changes nothing. mise's progress goes to stderr.
+Updates the named packages, or with none every installed package and global tool: `mise bootstrap packages upgrade` for Homebrew, the App Store, and the other package managers, and `mise upgrade --global` for tools. Packages that are declared but not installed are left to `pkg sync`. The receipt lists each package whose installed version changed. --dry-run lists what would be updated, as `pkg outdated` does, and changes nothing. mise's progress goes to stderr.
 
 - **Effect:** modifies installed software
 - **Requires:** `mise`, `network`
@@ -867,10 +867,10 @@ Upgrades the named packages, or with none every installed package and global too
 Examples:
 
 ```sh
-# Preview upgrading everything
-pkg upgrade --dry-run
-# Upgrade one formula
-pkg upgrade brew:wget
+# Preview updating everything
+pkg update --dry-run
+# Update one formula
+pkg update brew:wget
 ```
 
 Result schema:
@@ -882,10 +882,10 @@ Result schema:
     "status": {
       "$ref": "#/$defs/ReceiptStatus"
     },
-    "upgraded": {
+    "updated": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/Upgraded"
+        "$ref": "#/$defs/Updated"
       },
       "description": "Packages whose version changed (for `dry-run`: would change)."
     },
@@ -894,16 +894,16 @@ Result schema:
       "items": {
         "$ref": "#/$defs/Skipped"
       },
-      "description": "For `dry-run`, packages mise will not upgrade, with its reason; empty otherwise."
+      "description": "For `dry-run`, packages mise will not update, with its reason; empty otherwise."
     }
   },
   "required": [
     "status",
-    "upgraded",
+    "updated",
     "skipped"
   ],
-  "description": "The outcome of `pkg upgrade`.",
-  "title": "UpgradeReceipt",
+  "description": "The outcome of `pkg update`.",
+  "title": "UpdateReceipt",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "ReceiptStatus": {
@@ -921,7 +921,7 @@ Result schema:
       ],
       "description": "Whether a modifying command made its change."
     },
-    "Upgraded": {
+    "Updated": {
       "type": "object",
       "properties": {
         "package": {

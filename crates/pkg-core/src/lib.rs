@@ -20,11 +20,11 @@
 //!
 //! # Operations
 //!
-//! `Client` exposes `install`, `remove`, `list`, `search`, `info`, `outdated`, `upgrade`, `sync`,
+//! `Client` exposes `install`, `remove`, `list`, `search`, `info`, `outdated`, `update`, `sync`,
 //! `prune`, `locate`, `tap_list`, `tap_add`, `tap_remove`, and `context`. Requests are typed and
 //! validated before I/O: package names use mise syntax; install/remove need at least one name;
 //! pagination limits must be positive; search accepts the four catalog source variants and
-//! at most 50 results. Empty upgrade selection means every declared package/tool.
+//! at most 50 results. Empty update selection means every declared package/tool.
 //! Construct search requests with `SearchRequest::new`, which validates and tokenizes the
 //! query before context resolution. Package/tap operands cannot begin with an option prefix.
 //!
@@ -84,7 +84,7 @@ mod search;
 mod settings;
 mod sync;
 mod tap;
-mod upgrade;
+mod update;
 
 pub use client::Client;
 pub use common::ReceiptStatus;
@@ -101,10 +101,10 @@ pub use prune::PruneReceipt;
 pub use remove::{LeftInstalled, RemoveReceipt, Removed};
 pub use requests::{
     InfoRequest, InstallRequest, ListRequest, LocateRequest, Mode, PruneRequest, RemoveRequest,
-    SearchRequest, SearchSource, SyncRequest, TapAddRequest, TapRemoveRequest, UpgradeRequest,
+    SearchRequest, SearchSource, SyncRequest, TapAddRequest, TapRemoveRequest, UpdateRequest,
 };
 pub use search::Found;
 pub use settings::{DEFAULT_APP_STORE_API, DEFAULT_HOMEBREW_API, Settings};
 pub use sync::SyncReceipt;
 pub use tap::{TapEntry, TapList, TapReceipt};
-pub use upgrade::{UpgradeReceipt, Upgraded};
+pub use update::{UpdateReceipt, Updated};

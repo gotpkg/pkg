@@ -17,7 +17,7 @@ pub mod schema;
 pub mod search;
 pub mod sync;
 pub mod tap;
-pub mod upgrade;
+pub mod update;
 
 /// The registry, by resource, in the order discovery lists them.
 pub static GROUPS: &[&[CommandSpec]] = &[
@@ -27,7 +27,7 @@ pub static GROUPS: &[&[CommandSpec]] = &[
     search::COMMANDS,
     info::COMMANDS,
     outdated::COMMANDS,
-    upgrade::COMMANDS,
+    update::COMMANDS,
     sync::COMMANDS,
     prune::COMMANDS,
     locate::COMMANDS,

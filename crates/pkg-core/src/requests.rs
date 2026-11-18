@@ -25,7 +25,7 @@ pub struct RemoveRequest {
 }
 
 #[derive(Debug)]
-pub struct UpgradeRequest {
+pub struct UpdateRequest {
     /// Empty means every declared package and tool.
     pub packages: Vec<String>,
     pub mode: Mode,

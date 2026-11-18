@@ -1,4 +1,4 @@
-//! Installed packages and tools with a newer version, which `upgrade` installs.
+//! Installed packages and tools with a newer version, which `update` installs.
 
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -14,7 +14,7 @@ use crate::{Client, Error, Outcome, Progress};
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct OutdatedReport {
     pub items: Vec<OutdatedPackage>,
-    /// Packages mise will not upgrade, with its reason.
+    /// Packages mise will not update, with its reason.
     pub skipped: Vec<Skipped>,
 }
 
@@ -32,8 +32,8 @@ pub struct Skipped {
 }
 
 impl Client {
-    /// Lists every installed package and tool that `upgrade` would update, with the installed
-    /// and the newest version, and the casks mise will not upgrade. Homebrew's metadata is
+    /// Lists every installed package and tool that `update` would update, with the installed
+    /// and the newest version, and the casks mise will not update. Homebrew's metadata is
     /// refreshed; nothing is installed or written. App Store apps the store cannot be asked about
     /// are left out with a warning.
     ///

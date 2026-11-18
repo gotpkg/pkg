@@ -1,4 +1,4 @@
-//! `pkg outdated`: installed packages and tools with a newer version, which `upgrade` installs.
+//! `pkg outdated`: installed packages and tools with a newer version, which `update` installs.
 
 use pkg_core::OutdatedReport;
 use schemars::schema_for;
@@ -15,11 +15,11 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     path: &["outdated"],
     aliases: &[],
     summary: "List installed packages that have a newer version",
-    description: "Lists every installed package and tool that `pkg upgrade` would update, with \
+    description: "Lists every installed package and tool that `pkg update` would update, with \
         the installed and the newest version. Homebrew formulae and casks come from \
         `mise bootstrap packages upgrade --dry-run`, which refreshes Homebrew's metadata; App \
         Store apps are compared with the App Store's current version; tools come from \
-        `mise outdated --global`. Casks mise will not upgrade, such as apps that update \
+        `mise outdated --global`. Casks mise will not update, such as apps that update \
         themselves, are listed under `skipped` with mise's reason. The whole list is returned at \
         once. Never changes anything.",
     arguments: &[],
@@ -28,7 +28,7 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     dry_run: false,
     idempotent: true,
     errors: &[ErrorCode::PreconditionFailed, ErrorCode::MiseFailed],
-    examples: &[Example { summary: "See what upgrade would update", args: &["outdated"] }],
+    examples: &[Example { summary: "See what update would update", args: &["outdated"] }],
     synonyms: &["old", "stale", "newer", "updates", "behind", "upgradable", "available"],
     output_schema: || schema_for!(OutdatedReport),
     run: outdated,
@@ -47,7 +47,7 @@ impl RenderOutput for OutdatedReport {
                     vec![item.package.clone(), format!("{installed} -> {}", item.latest)]
                 })
                 .collect();
-            format!("{}Upgrade with `{NAME} upgrade`.\n", table(&rows))
+            format!("{}Update with `{NAME} update`.\n", table(&rows))
         };
         if !self.skipped.is_empty() {
             text.push_str("\nmise leaves these alone:\n");
@@ -73,7 +73,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn text_shows_each_upgrade_and_what_mise_skips() {
+    fn text_shows_each_update_and_what_mise_skips() {
         let report = OutdatedReport {
             items: vec![OutdatedPackage {
                 package: "brew:wget".into(),
@@ -87,7 +87,7 @@ mod tests {
         };
         assert_eq!(
             report.render_text(),
-            "  brew:wget  1.24.5 -> 1.25.0\nUpgrade with `pkg upgrade`.\n\nmise leaves these alone:\n  brew-cask:1password  updates itself\n"
+            "  brew:wget  1.24.5 -> 1.25.0\nUpdate with `pkg update`.\n\nmise leaves these alone:\n  brew-cask:1password  updates itself\n"
         );
     }
 }

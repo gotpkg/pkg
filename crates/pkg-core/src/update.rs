@@ -7,27 +7,27 @@ use crate::common::{Machine, ReceiptStatus};
 use crate::outdated::{self, Skipped};
 use crate::package::Package;
 use crate::requests::validate_packages;
-use crate::{Client, Error, ErrorDetails, Outcome, Progress, Recovery, UpgradeRequest};
+use crate::{Client, Error, ErrorDetails, Outcome, Progress, Recovery, UpdateRequest};
 
-/// The outcome of `pkg upgrade`.
+/// The outcome of `pkg update`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
-pub struct UpgradeReceipt {
+pub struct UpdateReceipt {
     pub status: ReceiptStatus,
     /// Packages whose version changed (for `dry-run`: would change).
-    pub upgraded: Vec<Upgraded>,
-    /// For `dry-run`, packages mise will not upgrade, with its reason; empty otherwise.
+    pub updated: Vec<Updated>,
+    /// For `dry-run`, packages mise will not update, with its reason; empty otherwise.
     pub skipped: Vec<Skipped>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
-pub struct Upgraded {
+pub struct Updated {
     pub package: String,
     pub from: Option<String>,
     pub to: Option<String>,
 }
 
 impl Client {
-    /// Upgrades the named packages, or with none every installed package and global tool:
+    /// Updates the named packages, or with none every installed package and global tool:
     /// `mise bootstrap packages upgrade` for bootstrap packages and `mise upgrade --global` for
     /// tools. Declared packages that are not installed are left to `sync`. The receipt lists
     /// each package whose installed version changed; a preview lists what `outdated` reports.
@@ -37,11 +37,11 @@ impl Client {
     /// `InvalidArgument` when a name is not mise syntax, `NotFound` when no config declares a
     /// named package, `PreconditionFailed` when mise cannot start or a config cannot be read, and
     /// `MiseFailed` when mise fails.
-    pub fn upgrade(
+    pub fn update(
         &mut self,
-        request: UpgradeRequest,
+        request: UpdateRequest,
         progress: &mut dyn FnMut(Progress<'_>),
-    ) -> Result<Outcome<UpgradeReceipt>, Error> {
+    ) -> Result<Outcome<UpdateReceipt>, Error> {
         validate_packages(&request.packages, false)?;
         let machine = Machine::load(&self.settings)?;
         let packages = machine.packages(&request.packages);
@@ -58,17 +58,17 @@ impl Client {
 
         if request.mode.is_dry_run() {
             let (report, warnings) = outdated::find(&machine, &packages)?;
-            let upgraded = report
+            let updated = report
                 .items
                 .into_iter()
-                .map(|item| Upgraded {
+                .map(|item| Updated {
                     package: item.package,
                     from: item.installed,
                     to: Some(item.latest),
                 })
                 .collect();
             let receipt =
-                UpgradeReceipt { status: ReceiptStatus::DryRun, upgraded, skipped: report.skipped };
+                UpdateReceipt { status: ReceiptStatus::DryRun, updated, skipped: report.skipped };
             return Ok(Outcome::with_warnings(receipt, warnings, progress));
         }
 
@@ -95,7 +95,7 @@ impl Client {
             mise.run(&args, progress)?;
         }
         let after = versions(&machine)?;
-        let upgraded = after
+        let updated = after
             .into_iter()
             .filter_map(|(key, to)| {
                 let from = before
@@ -106,12 +106,12 @@ impl Client {
                     && from != to
                     && (packages.is_empty()
                         || packages.iter().any(|package: &Package| package.key == key)))
-                .then_some(Upgraded { package: key, from, to })
+                .then_some(Updated { package: key, from, to })
             })
             .collect();
-        Ok(Outcome::new(UpgradeReceipt {
+        Ok(Outcome::new(UpdateReceipt {
             status: ReceiptStatus::Completed,
-            upgraded,
+            updated,
             skipped: Vec::new(),
         }))
     }
