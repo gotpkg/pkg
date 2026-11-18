@@ -6,20 +6,17 @@
 //! from it.
 
 pub mod app;
-pub mod catalog;
 pub mod commands;
-pub mod declarations;
+mod core_failure;
 pub mod docs;
-pub mod environment;
+mod environment;
+mod error_details;
 pub mod failure;
 pub mod invocation;
-pub mod mise;
-pub mod package;
 pub mod parser;
 pub mod reference;
 pub mod registry;
 pub mod response;
-pub mod search;
 
 /// The executable's name, as commands and suggestions spell it.
 pub const NAME: &str = env!("CARGO_PKG_NAME");

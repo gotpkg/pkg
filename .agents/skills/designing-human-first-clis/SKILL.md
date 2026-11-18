@@ -11,7 +11,7 @@ A person typing at a terminal is the main user. They should get from intent to r
 
 Declare every command once, in the registry: arguments and defaults, constraints, effects, requirements, dry-run and idempotency, errors, examples, synonyms, and the result schema. The parser, `--help`, `schema`, `cli search` and the reference are generated from it, so the text a person reads and the contract an agent reads cannot drift. Never hand-write a Clap argument.
 
-Every result is one value with two renderings: `RenderText` for people (the default) and the JSON its schema describes (`--output json`). Both come from the same value, so they never disagree about what happened.
+Every result is one value with two renderings through the CLI's `RenderOutput`: text for people (the default) and the JSON its schema describes (`--output json`). Both come from the same value, so they never disagree about what happened. Core keeps native paths; the CLI formats them for text or JSON.
 
 ## For people (the default)
 

@@ -9,7 +9,7 @@ use std::fmt;
 
 /// A package as written on the command line, with its version split off where mise reads one.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Package {
+pub(crate) struct Package {
     /// The config key: `brew:postgresql@17`, `apt:curl`, `npm:@vue/language-server`, `ripgrep`.
     pub key: String,
     /// The requested version, when the command line names one: `20` in `node@20`. Homebrew keeps
@@ -19,7 +19,7 @@ pub struct Package {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Kind {
+pub(crate) enum Kind {
     /// A `[bootstrap.packages]` entry, installed by `manager`.
     Bootstrap { manager: String },
     /// A `[tools]` entry; `backend` is `None` for a registry name such as `ripgrep`.
@@ -47,7 +47,7 @@ fn is_prefix(prefix: &str) -> bool {
 impl Package {
     /// Reads `value`, which the parser has checked with [`is_package`]. `tool_backends` is mise's
     /// list of tool backends; any other prefix is a bootstrap package manager.
-    pub fn parse(value: &str, tool_backends: &[String]) -> Package {
+    pub(crate) fn parse(value: &str, tool_backends: &[String]) -> Package {
         let (prefix, rest) = match value.split_once(':') {
             Some((prefix, rest)) => (Some(prefix), rest),
             None => (None, value),
@@ -72,12 +72,12 @@ impl Package {
         Package { key, version: version.filter(|version| !version.is_empty()), kind }
     }
 
-    pub fn is_tool(&self) -> bool {
+    pub(crate) fn is_tool(&self) -> bool {
         matches!(self.kind, Kind::Tool { .. })
     }
 
     /// The bootstrap package manager, such as `brew`; `None` for a tool.
-    pub fn manager(&self) -> Option<&str> {
+    pub(crate) fn manager(&self) -> Option<&str> {
         match &self.kind {
             Kind::Bootstrap { manager } => Some(manager),
             Kind::Tool { .. } => None,
@@ -85,13 +85,13 @@ impl Package {
     }
 
     /// The name after the prefix: `wget` for `brew:wget`, `ripgrep` for `ripgrep`.
-    pub fn name(&self) -> &str {
+    pub(crate) fn name(&self) -> &str {
         self.key.split_once(':').map_or(self.key.as_str(), |(_, name)| name)
     }
 
     /// The argument mise takes to install it: the key with its version, `@latest` for a tool
     /// without one, so the config records `"latest"`.
-    pub fn install_argument(&self) -> String {
+    pub(crate) fn install_argument(&self) -> String {
         match (&self.version, self.is_tool()) {
             (Some(version), _) => format!("{}@{version}", self.key),
             (None, true) => format!("{}@latest", self.key),

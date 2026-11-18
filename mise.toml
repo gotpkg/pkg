@@ -88,12 +88,12 @@ run = "workbench beads close --output text"
 
 [tasks.build]
 alias = "b"
-description = "Build the CLI and the release helper"
+description = "Build the CLI, reusable library, and release helper"
 run = "cargo build --workspace --locked"
 
 [tasks.test]
 alias = "t"
-description = "Run the unit tests and the tests that run the binary"
+description = "Run library tests and tests that run the CLI binary"
 run = "cargo test --workspace --locked"
 
 [tasks.lint]
@@ -122,6 +122,11 @@ run = "cargo test --package pkg --test cli reference"
 description = "Build the release archive for one target into artifacts/ (default: this machine)"
 usage = 'arg "[target]" help="A Rust target triple, such as aarch64-apple-darwin"'
 run = "cargo xtask package {{usage.target}}"
+
+[tasks.preview]
+description = "Build a local CLI archive and a source archive for a private library preview"
+depends = ["package"]
+run = "git archive --format=tar.gz --prefix=pkg-source/ --output=artifacts/pkg-core-source.tar.gz HEAD"
 
 [tasks."release:formula"]
 description = "Write the Homebrew formula for the archives in artifacts/ to artifacts/pkg.rb"

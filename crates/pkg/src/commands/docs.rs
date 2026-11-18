@@ -10,8 +10,8 @@ use crate::docs::{self, DOCUMENTS, Document};
 use crate::failure::{ErrorCode, Failure};
 use crate::invocation::Invocation;
 use crate::registry::{ArgumentKind, ArgumentSpec, CommandSpec, Effect, Example, ValueKind};
-use crate::response::{RenderText, Response};
-use crate::search::{self, Page};
+use crate::response::{RenderOutput, Response};
+use pkg_core::matching::{self as search, Page};
 
 pub static COMMANDS: &[CommandSpec] = &[
     CommandSpec {
@@ -97,7 +97,7 @@ pub struct SectionMatch {
     pub score: f64,
 }
 
-impl RenderText for Page<SectionMatch> {
+impl RenderOutput for Page<SectionMatch> {
     fn render_text(&self) -> String {
         if self.items.is_empty() {
             return "No documentation matches.".into();
@@ -125,7 +125,7 @@ pub struct DocumentContent {
     pub markdown: String,
 }
 
-impl RenderText for DocumentContent {
+impl RenderOutput for DocumentContent {
     fn render_text(&self) -> String {
         self.markdown.clone()
     }
@@ -138,7 +138,7 @@ fn search_documents(invocation: &Invocation) -> Result<Response, Failure> {
     ranked.sort_by(|left, right| right.score.total_cmp(&left.score));
     let limit = invocation.integer("limit").unwrap_or(5);
     let page = search::page(ranked, invocation.string("cursor").as_deref(), limit)?;
-    Ok(Response::new(&page))
+    Ok(Response::new(&page, invocation.output))
 }
 
 fn score_sections(document: &Document, terms: &[String]) -> Vec<SectionMatch> {
@@ -248,11 +248,14 @@ fn show_document(invocation: &Invocation) -> Result<Response, Failure> {
             }))
             .suggest(format!("{NAME} docs search \"<topic>\""))
     })?;
-    Ok(Response::new(&DocumentContent {
-        path: document.path.to_string(),
-        title: document.title().to_string(),
-        markdown: document.source.to_string(),
-    }))
+    Ok(Response::new(
+        &DocumentContent {
+            path: document.path.to_string(),
+            title: document.title().to_string(),
+            markdown: document.source.to_string(),
+        },
+        invocation.output,
+    ))
 }
 
 #[cfg(test)]

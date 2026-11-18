@@ -1,16 +1,15 @@
 //! `pkg prune`: uninstall Homebrew packages that no config declares.
 
-use schemars::{JsonSchema, schema_for};
-use serde::Serialize;
+use pkg_core::{PruneReceipt, PruneRequest, ReceiptStatus};
+use schemars::schema_for;
 
-use super::common::{MISE_ERRORS, Machine, ReceiptStatus, join_words};
+use super::common::{MISE_ERRORS, execute, join_words};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::mise::removals;
 use crate::registry::{
     ArgumentKind, ArgumentSpec, CommandSpec, DRY_RUN, Effect, Example, Requirement, ValueKind,
 };
-use crate::response::{RenderText, Response};
+use crate::response::{RenderOutput, Response};
 
 pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     id: "prune",
@@ -50,15 +49,7 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     run: prune,
 }];
 
-/// The outcome of `pkg prune`.
-#[derive(Serialize, JsonSchema)]
-pub struct PruneReceipt {
-    pub status: ReceiptStatus,
-    /// What was uninstalled (for `dry-run`: would be), as `manager:name@version`.
-    pub uninstalled: Vec<String>,
-}
-
-impl RenderText for PruneReceipt {
+impl RenderOutput for PruneReceipt {
     fn render_text(&self) -> String {
         match (self.status, self.uninstalled.is_empty()) {
             (_, true) => "Nothing to prune: every installed package is declared.\n".to_string(),
@@ -76,27 +67,6 @@ impl RenderText for PruneReceipt {
 }
 
 fn prune(invocation: &Invocation) -> Result<Response, Failure> {
-    let machine = Machine::load(invocation)?;
-    let mise = &machine.environment.mise;
-    let force = invocation.flag("force");
-    let mut uninstalled = Vec::new();
-    for manager in ["brew", "brew-cask"] {
-        let mut selection = vec!["--manager", manager];
-        if force && manager == "brew-cask" {
-            selection.push("--force");
-        }
-        let mut args = vec!["bootstrap", "packages", "prune", "--dry-run"];
-        args.extend(&selection);
-        let plan = removals(&mise.query(&args)?.combined());
-        if !plan.is_empty() && !invocation.dry_run() {
-            args[3] = "--yes";
-            mise.run(&args)?;
-        }
-        uninstalled.extend(plan.into_iter().map(|(key, version)| {
-            version.map_or(key.clone(), |version| format!("{key}@{version}"))
-        }));
-    }
-    let status =
-        if invocation.dry_run() { ReceiptStatus::DryRun } else { ReceiptStatus::Completed };
-    Ok(Response::new(&PruneReceipt { status, uninstalled }))
+    let request = PruneRequest { mode: invocation.mode(), force: invocation.flag("force") };
+    execute(invocation, |client, progress| client.prune(request, progress))
 }

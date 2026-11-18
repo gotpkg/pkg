@@ -22,4 +22,5 @@ Proposals are kept after they close. When a later proposal replaces an earlier o
 
 ## Proposal index
 
+- [0001 — Reusable Package Library](0001-reusable-package-library.md).
 - [0003 — Progress Display for Package Changes](0003-progress-display.md).
