@@ -381,7 +381,7 @@ fn a_link_mise_manages_is_refused_and_left_alone() {
     let stderr = fail(&mut fixture.installer("zsh"));
 
     assert!(stderr.contains("mise manages pkg"), "{stderr}");
-    assert!(stderr.contains("pkg update github:markmals/pkg"), "{stderr}");
+    assert!(stderr.contains("pkg update github:gotpkg/pkg"), "{stderr}");
     assert_eq!(snapshot(&fixture.home()), before);
 }
 

@@ -11,9 +11,9 @@
 #
 # Trust: SHA256SUMS comes from the same release as the archive, so the check detects a corrupted
 # download, not a compromised release. Verify an archive independently with
-# `gh attestation verify <archive> --repo markmals/pkg`.
+# `gh attestation verify <archive> --repo gotpkg/pkg`.
 #
-# PKG_RELEASES_URL replaces https://github.com/markmals/pkg/releases, for a mirror.
+# PKG_RELEASES_URL replaces https://github.com/gotpkg/pkg/releases, for a mirror.
 #
 # Nothing runs until `main` on the last line, so a download cut short does nothing.
 
@@ -23,7 +23,7 @@ release_version="@PKG_RELEASE_VERSION@"
 
 set -u
 
-releases_url=${PKG_RELEASES_URL:-https://github.com/markmals/pkg/releases}
+releases_url=${PKG_RELEASES_URL:-https://github.com/gotpkg/pkg/releases}
 block_start='# >>> pkg >>>'
 block_end='# <<< pkg <<<'
 
@@ -129,7 +129,7 @@ detect_target() {
         Darwin) platform=apple-darwin ;;
         Linux) platform=unknown-linux-musl ;;
         *) fail "the installer supports macOS and Linux, not $system" \
-            "on Windows, download pkg-x86_64-pc-windows-msvc.zip from https://github.com/markmals/pkg/releases" ;;
+            "on Windows, download pkg-x86_64-pc-windows-msvc.zip from https://github.com/gotpkg/pkg/releases" ;;
     esac
     case $machine in
         arm64 | aarch64) cpu=aarch64 ;;
@@ -157,7 +157,7 @@ inspect_destination() {
     if [ -L "$destination" ]; then
         if [ -e "$destination" ]; then
             fail "$destination is a link, so mise manages pkg on this machine" \
-                "update pkg with: pkg update github:markmals/pkg"
+                "update pkg with: pkg update github:gotpkg/pkg"
         fi
         broken_link=true
         return 0
@@ -274,7 +274,7 @@ install_pkg() {
     progress "Downloading pkg $version for $target from $release_url"
     download "$release_url/$archive" "$work/$archive" ||
         fail "cannot download $release_url/$archive" \
-            "check that pkg $version is released: https://github.com/markmals/pkg/releases"
+            "check that pkg $version is released: https://github.com/gotpkg/pkg/releases"
     download "$release_url/SHA256SUMS" "$work/SHA256SUMS" ||
         fail "cannot download $release_url/SHA256SUMS"
     verify_archive

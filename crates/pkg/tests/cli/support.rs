@@ -19,7 +19,7 @@ use tempfile::TempDir;
 /// The only directories on `PATH` when pkg runs: enough for the fake mise's shell script.
 pub(crate) const SYSTEM_PATH: &str = "/usr/bin:/bin:/usr/sbin:/sbin";
 
-/// What `mise use -g github:markmals/pkg@latest` leaves behind: mise's shim for pkg, which runs a
+/// What `mise use -g github:gotpkg/pkg@latest` leaves behind: mise's shim for pkg, which runs a
 /// pkg that reports the version pkg itself was built as.
 pub(crate) const INSTALLS_PKG: &str = r#"shims="$HOME/.local/share/mise/shims"
 mkdir -p "$shims"
@@ -240,7 +240,11 @@ impl Fixture {
                 .declares(package);
         }
         fixture.mise(&["use", "-g", "ripgrep@latest"]).stdout("mise ripgrep@15.2.0 installed\n");
-        fixture.mise(&["use", "-g", "github:markmals/pkg@latest"]).runs(INSTALLS_PKG);
+        fixture.mise(&["use", "-g", "github:gotpkg/pkg@latest"]).runs(INSTALLS_PKG);
+        fixture.mise(&["bootstrap", "--dry-run"]).stdout("mise bootstrap: tools: nothing to do\n");
+        fixture
+            .mise(&["bootstrap"])
+            .stdout("bootstrap: follow-up\n  - start a new login session for the login shell\n");
         fixture
             .mise(&["bootstrap", "packages", "prune", "--dry-run", "--manager", "brew"])
             .nth(2)
@@ -326,8 +330,14 @@ impl Fixture {
 
     /// The answer the fake mise gives to `mise -C <home> <args>`.
     pub(crate) fn mise(&self, args: &[&str]) -> Answer {
+        self.mise_in(&self.home(), args)
+    }
+
+    /// The answer the fake mise gives to `mise -C <directory> <args>`.
+    pub(crate) fn mise_in(&self, directory: &Path, args: &[&str]) -> Answer {
         let home = self.home().display().to_string();
-        let mut words = vec!["-C", home.as_str()];
+        let directory = directory.display().to_string();
+        let mut words = vec!["-C", directory.as_str()];
         words.extend_from_slice(args);
         let key: String = words
             .join(" ")

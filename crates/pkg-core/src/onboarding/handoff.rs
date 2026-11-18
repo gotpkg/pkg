@@ -1,4 +1,4 @@
-//! Handing pkg to mise: declaring `github:markmals/pkg` like any tool and replacing the installer's
+//! Handing pkg to mise: declaring `github:gotpkg/pkg` like any tool and replacing the installer's
 //! copy in `~/.local/bin` with a link to mise's shim, so mise updates pkg from then on.
 
 use std::path::{Path, PathBuf};
@@ -13,12 +13,12 @@ use crate::outdated::is_newer;
 use crate::{Client, Error, InstallAction, InstallRequest, Mode, Progress, Settings, find_on_path};
 
 /// The tool mise installs pkg as.
-pub(crate) const PKG_TOOL: &str = "github:markmals/pkg";
+pub(crate) const PKG_TOOL: &str = "github:gotpkg/pkg";
 
 /// What happened when pkg was handed to mise.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct Handoff {
-    /// `added` when pkg declared `github:markmals/pkg`, `existing` when a config already did.
+    /// `added` when pkg declared `github:gotpkg/pkg`, `existing` when a config already did.
     pub declaration: Declaration,
     /// The config file that declares it; null in a dry run that would add it.
     pub config: Option<PathBuf>,
@@ -247,7 +247,7 @@ mod tests {
     fn the_owner_follows_where_the_executable_lives() {
         let home = tempfile::TempDir::new().unwrap();
         let settings = Settings::new(home.path().to_path_buf(), "mise".into());
-        let installed = settings.mise_data_dir().join("installs/github-markmals-pkg/1.0.0/pkg");
+        let installed = settings.mise_data_dir().join("installs/github-gotpkg-pkg/1.0.0/pkg");
         let copy = settings.local_bin().join("pkg");
         for file in [&installed, &copy] {
             std::fs::create_dir_all(file.parent().unwrap()).unwrap();

@@ -39,7 +39,7 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
         of your login shell (`~/.zshenv`, `~/.bashrc` and `~/.profile`, or fish's \
         `conf.d/pkg.fish`) and prints the command that loads it now; --no-modify-path prints \
         the line instead. Then it hands pkg to mise: it declares and installs \
-        `github:markmals/pkg` as `pkg install` would, unless a config declares it, and replaces \
+        `github:gotpkg/pkg` as `pkg install` would, unless a config declares it, and replaces \
         the installer's `~/.local/bin/pkg` with a link to mise's shim, never with an older \
         release. Its declaration creates a global config on a machine without one, which \
         `pkg bootstrap --from` then refuses to link over. Running it again changes nothing \
@@ -106,8 +106,8 @@ fn path_lines(path: &PathChange, dry: bool) -> String {
 pub fn handoff_lines(handoff: &Handoff, dry: bool) -> String {
     let declared = match (handoff.declaration, dry) {
         (Declaration::Existing, _) => "already declared".to_string(),
-        (Declaration::Added, true) => "would declare github:markmals/pkg".to_string(),
-        (Declaration::Added, false) => "declared github:markmals/pkg".to_string(),
+        (Declaration::Added, true) => "would declare github:gotpkg/pkg".to_string(),
+        (Declaration::Added, false) => "declared github:gotpkg/pkg".to_string(),
     };
     let config = handoff.config.as_ref().map(|config| format!(" in {}", for_people(config)));
     let mut text =

@@ -18,9 +18,9 @@ The installer puts `pkg` at `~/.local/bin/pkg` and, when `~/.local/bin` is not o
 | `--no-modify-path`    | Leave startup files alone and print the line to add                                 |
 | `--dry-run`           | Report the version, platform, destination and files it would change; change nothing |
 
-Downloading `https://gotpkg.dev/install.sh`, reading it, and running it with `sh install.sh` is the same installation. The installer checks the archive against the release's `SHA256SUMS`, which catches a corrupted download but not a compromised release, because both come from that release; verify an archive independently with `gh attestation verify <archive> --repo markmals/pkg`.
+Downloading `https://gotpkg.dev/install.sh`, reading it, and running it with `sh install.sh` is the same installation. The installer checks the archive against the release's `SHA256SUMS`, which catches a corrupted download but not a compromised release, because both come from that release; verify an archive independently with `gh attestation verify <archive> --repo gotpkg/pkg`.
 
-The installer supports macOS and Linux only. Release archives for macOS (Apple silicon and Intel), Linux (arm64 and x64, static musl builds) and Windows (x64) are attached to every [GitHub release](https://github.com/markmals/pkg/releases), each with a build attestation; on Windows, unpack `pkg-x86_64-pc-windows-msvc.zip` from there. pkg also installs with mise (`mise use -g github:markmals/pkg`) or Homebrew (`brew install markmals/tap/pkg`).
+The installer supports macOS and Linux only. Release archives for macOS (Apple silicon and Intel), Linux (arm64 and x64, static musl builds) and Windows (x64) are attached to every [GitHub release](https://github.com/gotpkg/pkg/releases), each with a build attestation; on Windows, unpack `pkg-x86_64-pc-windows-msvc.zip` from there. pkg also installs with mise (`mise use -g github:gotpkg/pkg`) or Homebrew (`brew install markmals/tap/pkg`).
 
 From a checkout:
 

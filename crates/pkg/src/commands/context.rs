@@ -79,7 +79,7 @@ pub struct PkgContext {
     /// Who put it there: `installer` (rerun the installer to update it), `mise` (`pkg update`
     /// updates it), or `other`.
     pub owner: PkgOwner,
-    /// pkg as a mise tool, when a config declares `github:markmals/pkg`.
+    /// pkg as a mise tool, when a config declares `github:gotpkg/pkg`.
     pub tool: Option<PkgTool>,
 }
 

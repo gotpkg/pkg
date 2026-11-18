@@ -26,7 +26,7 @@ pub struct Context {
     pub tools_config: ConfigContext,
     /// Every global config file mise loads, symlinks resolved.
     pub config_files: Vec<PathBuf>,
-    /// pkg itself as a mise tool (`github:markmals/pkg`), when a config declares it.
+    /// pkg itself as a mise tool (`github:gotpkg/pkg`), when a config declares it.
     pub pkg_tool: Option<PkgTool>,
     pub catalogs: Catalogs,
 }

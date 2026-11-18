@@ -1408,7 +1408,7 @@ Install mise and get pkg ready on a machine with nothing to restore.
 
 Install mise and get pkg ready on a machine with nothing to restore.
 
-Gets a new Mac or Linux machine ready for `pkg install` when there is no configuration to restore (use `pkg bootstrap --from` for that). When pkg finds no mise (`PKG_MISE`, `mise` on PATH, `~/.local/bin/mise`), it runs mise's own installer (https://mise.run, or `PKG_MISE_INSTALLER`) for `~/.local/bin/mise`, and it refuses a mise older than 2026.11.9. When no global mise config exists, so nothing else will put mise's tools on PATH, it adds mise's shims directory to pkg's block in the startup file of your login shell (`~/.zshenv`, `~/.bashrc` and `~/.profile`, or fish's `conf.d/pkg.fish`) and prints the command that loads it now; --no-modify-path prints the line instead. Then it hands pkg to mise: it declares and installs `github:markmals/pkg` as `pkg install` would, unless a config declares it, and replaces the installer's `~/.local/bin/pkg` with a link to mise's shim, never with an older release. Its declaration creates a global config on a machine without one, which `pkg bootstrap --from` then refuses to link over. Running it again changes nothing already in place. Fails on Windows.
+Gets a new Mac or Linux machine ready for `pkg install` when there is no configuration to restore (use `pkg bootstrap --from` for that). When pkg finds no mise (`PKG_MISE`, `mise` on PATH, `~/.local/bin/mise`), it runs mise's own installer (https://mise.run, or `PKG_MISE_INSTALLER`) for `~/.local/bin/mise`, and it refuses a mise older than 2026.11.9. When no global mise config exists, so nothing else will put mise's tools on PATH, it adds mise's shims directory to pkg's block in the startup file of your login shell (`~/.zshenv`, `~/.bashrc` and `~/.profile`, or fish's `conf.d/pkg.fish`) and prints the command that loads it now; --no-modify-path prints the line instead. Then it hands pkg to mise: it declares and installs `github:gotpkg/pkg` as `pkg install` would, unless a config declares it, and replaces the installer's `~/.local/bin/pkg` with a link to mise's shim, never with an older release. Its declaration creates a global config on a machine without one, which `pkg bootstrap --from` then refuses to link over. Running it again changes nothing already in place. Fails on Windows.
 
 - **Effect:** modifies mise, shell startup files, and pkg's own installation
 - **Requires:** `network`
@@ -1564,7 +1564,7 @@ Result schema:
       "properties": {
         "declaration": {
           "$ref": "#/$defs/Declaration",
-          "description": "`added` when pkg declared `github:markmals/pkg`, `existing` when a config already did."
+          "description": "`added` when pkg declared `github:gotpkg/pkg`, `existing` when a config already did."
         },
         "config": {
           "type": [
@@ -2290,7 +2290,7 @@ Result schema:
               "type": "null"
             }
           ],
-          "description": "pkg as a mise tool, when a config declares `github:markmals/pkg`."
+          "description": "pkg as a mise tool, when a config declares `github:gotpkg/pkg`."
         }
       },
       "required": [

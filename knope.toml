@@ -43,7 +43,7 @@ change_templates = [
 ]
 
 [github]
-owner = "markmals"
+owner = "gotpkg"
 repo = "pkg"
 
 # `.github/workflows/prepare-release.yml` runs this on every push to `main`: it keeps one release

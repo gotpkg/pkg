@@ -16,7 +16,7 @@ curl -fsSL https://gotpkg.dev | sh
 | `--no-modify-path`    | Leave startup files alone and print the line to add                                 |
 | `--dry-run`           | Report the version, platform, destination and files it would change; change nothing |
 
-The script installs `pkg` at `~/.local/bin/pkg` after checking the archive against `SHA256SUMS`, and replaces an older copy only once the new one is downloaded and checked, so a failed download leaves the old one working. It never runs as root, uses sudo, installs mise or restores a configuration. It refuses to replace anything at `~/.local/bin/pkg` that is not pkg, and refuses to replace the link mise manages once pkg has been handed to mise (see below); `pkg update github:markmals/pkg` updates that one. The checksum guards against a corrupted download, not against a compromised release: verify an archive independently with `gh attestation verify <archive> --repo markmals/pkg`.
+The script installs `pkg` at `~/.local/bin/pkg` after checking the archive against `SHA256SUMS`, and replaces an older copy only once the new one is downloaded and checked, so a failed download leaves the old one working. It never runs as root, uses sudo, installs mise or restores a configuration. It refuses to replace anything at `~/.local/bin/pkg` that is not pkg, and refuses to replace the link mise manages once pkg has been handed to mise (see below); `pkg update github:gotpkg/pkg` updates that one. The checksum guards against a corrupted download, not against a compromised release: verify an archive independently with `gh attestation verify <archive> --repo gotpkg/pkg`.
 
 ### PATH
 
@@ -92,8 +92,8 @@ The receipt names the mise it used and whether pkg installed it, the source and 
 
 pkg does not update itself. Once mise is present, a successful `pkg setup` or `pkg bootstrap` makes pkg a tool mise manages, like any other:
 
-- **Declaring it.** When no configuration declares `github:markmals/pkg`, pkg installs it exactly as `pkg install github:markmals/pkg` would, recording it as `latest` in your tools write target. A configuration that already declares it, such as your dotfiles after the first machine, is left as it is.
+- **Declaring it.** When no configuration declares `github:gotpkg/pkg`, pkg installs it exactly as `pkg install github:gotpkg/pkg` would, recording it as `latest` in your tools write target. A configuration that already declares it, such as your dotfiles after the first machine, is left as it is.
 - **Retiring the installer's copy.** Once mise's pkg runs, pkg replaces the installer's `~/.local/bin/pkg` with a link to mise's `pkg` shim, so the `PATH` entry the installer made keeps working whether or not your shell activates mise, and runs the version mise selects. pkg replaces only a file there that is pkg, including one you built with `cargo install --root ~/.local`. It never replaces the running pkg with an older release: when mise has an older one, for example because of its minimum release age, the installer's copy stays and pkg says why. A pkg installed some other way, such as with Homebrew, is reported, not changed.
 - **Updating it.** `pkg outdated` and `pkg update` cover pkg from then on; mise checks the release's digest and attestation. Before the handoff, run the installer again to update pkg.
 
-`pkg context show` reports which pkg is running and who owns it: the installer, mise, or something else. `pkg remove github:markmals/pkg` removes pkg as it removes any tool.
+`pkg context show` reports which pkg is running and who owns it: the installer, mise, or something else. `pkg remove github:gotpkg/pkg` removes pkg as it removes any tool.

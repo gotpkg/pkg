@@ -9,7 +9,7 @@ use crate::support::{
     FAKE_MISE_INSTALLER, Fixture, INSTALLS_PKG, Outcome, assert_matches_output_schema, mise_version,
 };
 
-const PKG_TOOL: [&str; 3] = ["use", "-g", "github:markmals/pkg@latest"];
+const PKG_TOOL: [&str; 3] = ["use", "-g", "github:gotpkg/pkg@latest"];
 
 /// A new Mac: no mise, no mise config, and the installer's pkg in `~/.local/bin`.
 fn new_machine() -> Fixture {
@@ -26,13 +26,13 @@ fn new_machine() -> Fixture {
     }
     fixture.mise(&["ls", "--global", "--json"]).json(&json!({}));
     let config = fixture.home().join(".config/mise/config.toml");
-    let declared = json!({ "github:markmals/pkg": [{
+    let declared = json!({ "github:gotpkg/pkg": [{
         "version": "0.0.0", "requested_version": "latest", "installed": true, "active": true,
         "source": { "type": "mise.toml", "path": config },
     }]});
     fixture.mise(&["ls", "--global", "--json"]).nth(2).json(&declared);
     fixture.mise(&PKG_TOOL).runs(&format!(
-        "{INSTALLS_PKG}mkdir -p \"$HOME/.config/mise\"\nprintf '[tools]\\n\"github:markmals/pkg\" = \"latest\"\\n' > \"$HOME/.config/mise/config.toml\"\n"
+        "{INSTALLS_PKG}mkdir -p \"$HOME/.config/mise\"\nprintf '[tools]\\n\"github:gotpkg/pkg\" = \"latest\"\\n' > \"$HOME/.config/mise/config.toml\"\n"
     ));
     installer_copy(&fixture, "echo 'pkg 0.0.0'");
     fixture
@@ -97,7 +97,7 @@ fn setup_again_changes_nothing() {
     setup(&fixture, &[]).success();
     let config = fixture.home().join(".config/mise/config.toml");
     fixture.mise(&["config", "ls", "--json"]).json(&json!([{ "path": config, "tools": [] }]));
-    fixture.mise(&["ls", "--global", "--json"]).nth(3).json(&json!({ "github:markmals/pkg": [{
+    fixture.mise(&["ls", "--global", "--json"]).nth(3).json(&json!({ "github:gotpkg/pkg": [{
         "version": "0.0.0", "requested_version": "latest", "installed": true, "active": true,
         "source": { "type": "mise.toml", "path": config },
     }]}));
