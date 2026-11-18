@@ -1,9 +1,11 @@
 .parcel {
     background: var(--yellow);
+    color: var(--ink);
+    --focus: #336ad6;
     border-radius: 12px;
     padding: 24px;
     transform: rotate(2deg);
-    box-shadow: 8px 12px 0 #dedcd2;
+    box-shadow: 8px 12px 0 var(--parcel-shadow);
     animation: parcel-arrive 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .parcel-top {
@@ -156,11 +158,11 @@
 @keyframes parcel-arrive {
     from {
         transform: translateY(16px) rotate(0);
-        box-shadow: 0 0 0 #dedcd2;
+        box-shadow: 0 0 0 var(--parcel-shadow);
     }
     to {
         transform: translateY(0) rotate(2deg);
-        box-shadow: 8px 12px 0 #dedcd2;
+        box-shadow: 8px 12px 0 var(--parcel-shadow);
     }
 }
 @media (max-width: 1100px) {

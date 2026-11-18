@@ -6,6 +6,9 @@ colors:
     ink: "#161619"
     paper: "#f7f5ed"
     white: "#ffffff"
+    dark-bg: "#161619"
+    dark-muted: "#b8b8b2"
+    dark-border: "#3a3a3d"
 typography:
     display:
         fontFamily: "Barlow, Arial, sans-serif"
@@ -32,11 +35,11 @@ spacing:
 
 ## Overview
 
-The supplied identity becomes a software packing list: oversized, tightly set lettering; a yellow parcel label; selectable package names; and dark command strips. A developer opening this site during a workday gets a light, high-contrast reading surface. The supplied school poster adds campaign humor without becoming product evidence.
+The supplied identity becomes a software packing list: oversized, tightly set lettering; a yellow parcel label; selectable package names; and dark command strips. The landing page follows the visitor's system color preference, with a light or dark override. The supplied school poster adds campaign humor without becoming product evidence.
 
 ## Colors
 
-Yellow owns the package demonstration and the closing installation section. Ink carries type, terminal examples, and the poster section. Paper supports longer reading. The logo's actual yellow takes precedence over the approximate yellow in the reference image.
+Yellow owns the package demonstration and the closing installation section in both themes. Light mode uses paper with ink text; dark mode uses charcoal with paper text and muted warm gray supporting copy. Yellow panels retain dark text, and code examples retain light text on dark surfaces. The header and footer switch to the supplied reverse logo in dark mode. The logo's actual yellow takes precedence over the approximate yellow in the reference image.
 
 ## Typography
 
@@ -57,6 +60,8 @@ Rounded rectangles belong to actions and the package label. Broad rectangular co
 ## Components
 
 Package choices are real buttons with an announced selected state. Choosing one changes an illustrative command without installing anything. Copy buttons announce success or actionable failure. Navigation is visible at mobile sizes. Starlight supplies search, theme selection, table of contents, and mobile navigation.
+
+The header's native theme picker offers Auto, Light, and Dark. It shares Starlight's saved preference so the landing page and docs agree. Auto follows changes to the system setting; without JavaScript the page follows the system theme and the picker is disabled. An explicit choice is applied before first paint, and blocked browser storage does not prevent changing the theme for the current page.
 
 Code blocks use the `pkg-dark` and `pkg-light` Expressive Code themes in `site/code-themes.ts`. Charcoal and paper replace the default editor surfaces. Yellow commands, wheat strings, amber constants, and warm gray comments keep syntax within the brand; the light theme uses darker mustard and olive equivalents for readable contrast. Theme selection follows Starlight's light/dark control.
 

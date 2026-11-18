@@ -6,6 +6,8 @@ import movingBox from "../assets/moving-box.webp";
 import reverseLogo from "../assets/pkg-logo-dark-mode.svg";
 import logo from "../assets/pkg-logo-light-mode.svg";
 import PackageDemo from "../components/PackageDemo.tsx";
+import initializeTheme from "../components/theme/initialize.js?raw";
+import ThemeControl from "../components/theme/ThemeControl.astro";
 import Workflow from "../components/Workflow.astro";
 
 import "../styles/global.css";
@@ -27,6 +29,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             name="description"
         />
         <meta content="#f7f5ed" name="theme-color" />
+        <script is:inline set:html={initializeTheme} />
         <meta content="pkg: The unified system package manager" property="og:title" />
         <meta
             content="Apps, system packages, and developer tools, all in one place. Familiar commands that just work."
@@ -39,9 +42,10 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
     <body>
         <a class="skip-link" href="#main">Skip to content</a>
         <header class="site-header wrap">
-            <a aria-label="pkg home" class="brand" href="/"
-                ><img alt="pkg" height="48" src={logo.src} width="76"
-            /></a>
+            <a aria-label="pkg home" class="brand" href="/">
+                <img alt="pkg" class="logo-light" height="48" src={logo.src} width="76" />
+                <img alt="pkg" class="logo-dark" height="48" src={reverseLogo.src} width="76" />
+            </a>
             <span class="header-note">Your software.<br />One package manager.</span>
             <nav aria-label="Main navigation">
                 <a href="#how-it-works">How it works</a>
@@ -49,6 +53,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                 <a class="github-link" href="https://github.com/gotpkg/pkg"
                     >GitHub <span aria-hidden="true">↗</span></a
                 >
+                <ThemeControl />
             </nav>
         </header>
         <main id="main">
@@ -194,9 +199,10 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             </section>
         </main>
         <footer class="site-footer wrap">
-            <a aria-label="pkg home" href="/"
-                ><img alt="pkg" height="36" src={logo.src} width="56"
-            /></a>
+            <a aria-label="pkg home" href="/">
+                <img alt="pkg" class="logo-light" height="36" src={logo.src} width="56" />
+                <img alt="pkg" class="logo-dark" height="36" src={reverseLogo.src} width="56" />
+            </a>
             <p>The unified system package manager.</p>
             <nav aria-label="Footer navigation">
                 <a href="/docs">Documentation</a

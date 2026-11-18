@@ -37,7 +37,7 @@ h1 em::after {
     left: 0;
     width: 100%;
     height: 15px;
-    background: var(--yellow);
+    background: var(--display-underline);
     z-index: -1;
     transform: rotate(-2deg);
 }
