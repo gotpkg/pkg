@@ -1,5 +1,5 @@
 ---
-id: proposal.0001
+id: proposal.0002
 title: First-Machine Setup and Bootstrap
 authors: [Mark]
 status: draft
