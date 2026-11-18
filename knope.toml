@@ -2,7 +2,14 @@
 # source of version bumps: Scoped Commits subjects are not Conventional Commits.
 
 [package]
-versioned_files = ["crates/pkg/Cargo.toml", "crates/pkg-core/Cargo.toml", "Cargo.lock"]
+# A bare "Cargo.lock" updates only the first manifest's package (pkg); the `dependency` entry
+# updates pkg-core's, so `--locked` builds still pass on the release pull request.
+versioned_files = [
+    "crates/pkg/Cargo.toml",
+    "crates/pkg-core/Cargo.toml",
+    "Cargo.lock",
+    { path = "Cargo.lock", dependency = "pkg-core" },
+]
 changelog = "CHANGELOG.md"
 
 # The archives `mise run package -- <target>` builds; release.yml builds all five before
