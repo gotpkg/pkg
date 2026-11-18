@@ -1,19 +1,16 @@
-//! What the package commands share: their arguments, receipts, and a view of the machine.
+//! CLI argument declarations, operation adapters, and text formatting.
 
-use std::path::{Path, PathBuf};
+use std::io::Write;
+use std::path::Path;
 
-use schemars::JsonSchema;
+use pkg_core::{Client, Outcome, Progress};
 use serde::Serialize;
-use serde_json::json;
 
-use crate::NAME;
-use crate::declarations::{Declarations, same_file};
-use crate::environment::{Environment, real_path};
+use crate::environment::real_path;
 use crate::failure::{ErrorCode, Failure};
 use crate::invocation::Invocation;
-use crate::mise::ConfigTarget;
-use crate::package::Package;
 use crate::registry::{ArgumentKind, ArgumentSpec, ValueKind};
+use crate::response::{RenderOutput, Response};
 
 /// The packages a command acts on.
 pub const PACKAGES: ArgumentSpec = ArgumentSpec {
@@ -43,123 +40,40 @@ pub const PACKAGE: ArgumentSpec = ArgumentSpec {
 pub const MISE_ERRORS: &[ErrorCode] =
     &[ErrorCode::InvalidArgument, ErrorCode::PreconditionFailed, ErrorCode::MiseFailed];
 
-/// Whether a modifying command made its change.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum ReceiptStatus {
-    /// The change is made.
-    Completed,
-    /// Nothing changed; the receipt shows what running without --dry-run would do.
-    DryRun,
-}
-
-/// The machine as pkg sees it: where things are, mise's tool backends, and every declaration in
-/// the global config.
-pub struct Machine {
-    pub environment: Environment,
-    pub backends: Vec<String>,
-    pub config_files: Vec<PathBuf>,
-    pub declarations: Declarations,
-}
-
-impl Machine {
-    /// # Errors
-    ///
-    /// `PRECONDITION_FAILED` without a home directory, mise, or readable config files, and
-    /// `MISE_FAILED` when mise cannot answer.
-    pub fn load(invocation: &Invocation) -> Result<Machine, Failure> {
-        let environment = invocation.environment()?;
-        let backends = environment.mise.tool_backends()?;
-        let config_files = environment.mise.config_files()?;
-        let declarations = Declarations::load(&config_files)?;
-        Ok(Machine { environment, backends, config_files, declarations })
-    }
-
-    pub fn package(&self, value: &str) -> Package {
-        Package::parse(value, &self.backends)
-    }
-
-    /// The command's packages, each once, in the order given.
-    pub fn packages(&self, invocation: &Invocation, argument: &str) -> Vec<Package> {
-        let mut packages: Vec<Package> = Vec::new();
-        for value in invocation.strings(argument) {
-            let package = self.package(&value);
-            if !packages.iter().any(|seen| seen.key == package.key) {
-                packages.push(package);
-            }
+/// Runs the typed operation and renders only the requested representation.
+///
+/// # Errors
+/// Reports context construction or operation failures using the CLI error contract.
+pub fn execute<T: Serialize + RenderOutput>(
+    invocation: &Invocation,
+    run: impl FnOnce(&mut Client, &mut dyn FnMut(Progress<'_>)) -> Result<Outcome<T>, pkg_core::Error>,
+) -> Result<Response, Failure> {
+    let mut client = Client::new(invocation.environment()?)?;
+    let stderr = std::io::stderr();
+    let mut stderr = stderr.lock();
+    let mut forwarded_output = false;
+    let mut progress = |event: Progress<'_>| {
+        if let Progress::Output { text, .. } = event {
+            forwarded_output = true;
+            let _ = stderr.write_all(text.as_bytes());
+            let _ = stderr.flush();
         }
-        packages
-    }
-
-    /// The config file that declares `package`, if any does.
-    pub fn declared_in(&self, package: &Package) -> Option<&Path> {
-        if package.is_tool() {
-            self.declarations.tool_file(&package.key)
-        } else {
-            self.declarations.package_file(&package.key)
+    };
+    let outcome = run(&mut client, &mut progress).map_err(|mut error| {
+        if forwarded_output && error.details.output_streamed {
+            error.details.output = Some(Vec::new());
         }
-    }
-
-    /// The file mise writes `package`'s kind of declaration to.
-    ///
-    /// # Errors
-    ///
-    /// `MISE_FAILED` when mise cannot read its settings.
-    pub fn target(&self, tool: bool) -> Result<ConfigTarget, Failure> {
-        let setting = if tool { "tools" } else { "packages" };
-        self.environment.mise.write_target(setting, &self.environment.global_config)
-    }
-
-    /// The file pkg edits to remove `package`: the one that declares it, when that is mise's
-    /// write target.
-    ///
-    /// # Errors
-    ///
-    /// `NOT_FOUND` when no config declares it, and `PRECONDITION_FAILED` when another file than
-    /// the write target does.
-    pub fn editable_declaration(&self, package: &Package) -> Result<ConfigTarget, Failure> {
-        let target = self.target(package.is_tool())?;
-        let Some(declared) = self.declared_in(package) else {
-            return Err(Failure::not_found(format!("{package} is not in your mise config"))
-                .with_details(json!({
-                    "package": package.key,
-                    "configs": self.config_files.iter().map(|path| path.display().to_string()).collect::<Vec<_>>(),
-                }))
-                .suggest(format!("{NAME} list")));
-        };
-        if !same_file(declared, &target.path) {
-            let declared_display = self.environment.tilde(&real_path(declared));
-            let target_display = self.environment.tilde(&target.real_path);
-            return Err(Failure::precondition(format!(
-                "{package} is declared in {declared_display}, and pkg only edits {target_display}"
-            ))
-            .with_details(json!({
-                "package": package.key,
-                "config": real_path(declared).display().to_string(),
-                "editableConfig": target.real_path.display().to_string(),
-            }))
-            .suggest(format!(
-                "Remove `{}` from {declared_display} by hand; it may be shared with other machines",
-                package.key
-            )));
-        }
-        Ok(target)
-    }
-
-    /// `path` for people, symlinks resolved: `~/.dotfiles/mise/config.macos.toml`.
-    pub fn show(&self, path: &Path) -> String {
-        self.environment.tilde(&real_path(path))
-    }
-}
-
-/// An absolute path with symlinks resolved, for JSON results.
-pub fn absolute(path: &Path) -> String {
-    real_path(path).display().to_string()
+        Failure::from(error)
+    })?;
+    let mut response = Response::new(&outcome.result, invocation.output);
+    response.warnings = outcome.warnings;
+    Ok(response)
 }
 
 /// An absolute path from a result, for text: under the home directory, written as mise resolved
 /// it or with its symlinks resolved, it starts with `~`.
-pub fn for_people(path: &str) -> String {
+pub fn for_people(path: impl AsRef<Path>) -> String {
+    let path = path.as_ref().display().to_string();
     let home =
         std::env::var(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).unwrap_or_default();
     if home.is_empty() {

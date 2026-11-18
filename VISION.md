@@ -20,6 +20,8 @@ pkg is a package manager front end for one person's machines. mise already insta
 
 On a Mac set up with Mise Bootstrap, `pkg install <manager>:<name>` installs any bootstrap package or tool and declares it in the file mise writes to; `pkg remove` takes it out and uninstalls it without touching anything else; `pkg search` and `pkg info` find and describe packages from Homebrew, mise's registry and the App Store; `pkg list`, `pkg outdated`, `pkg upgrade` and `pkg sync` keep the machine current. Each has readable text output and an equivalent JSON contract.
 
+The same package operations are available through the unpublished `pkg-core` Rust library. Other frontends can share the CLI's behavior through typed requests, results, errors, and progress without invoking the executable; native apps and foreign-language bindings are not part of the current product.
+
 ## Design principles
 
 - **Human-first, agent-complete** — text is the default and `--help` shows only the everyday commands; the JSON contract and the discovery commands are complete but opt-in.
@@ -43,6 +45,7 @@ When principles conflict, safety of the config and of installed software comes b
 
 ## Revision history
 
-| Date       | Change               | Related proposal |
-| ---------- | -------------------- | ---------------- |
-| 2026-11-17 | Created this vision. | N/A              |
+| Date       | Change                               | Related proposal                                            |
+| ---------- | ------------------------------------ | ----------------------------------------------------------- |
+| 2026-11-17 | Created this vision.                 | N/A                                                         |
+| 2026-11-17 | Added the reusable Rust package API. | [proposal.0001](proposals/0001-reusable-package-library.md) |

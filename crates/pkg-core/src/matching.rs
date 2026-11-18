@@ -1,10 +1,9 @@
-//! What `cli search` and `docs search` share: query words and bounded, resumable pages.
+//! Shared word matching and pagination for package catalogs and CLI discovery.
 
 use schemars::JsonSchema;
 use serde::Serialize;
-use serde_json::json;
 
-use crate::failure::Failure;
+use crate::error::{Error as Failure, ErrorDetails, Recovery};
 
 const STOP_WORDS: &[&str] = &[
     "a", "an", "and", "are", "as", "at", "be", "by", "can", "do", "does", "for", "from", "how",
@@ -81,8 +80,12 @@ pub fn page<T>(ranked: Vec<T>, cursor: Option<&str>, limit: u64) -> Result<Page<
                 Failure::invalid_argument(format!(
                     "--cursor `{cursor}` is not a cursor this command returned"
                 ))
-                .with_details(json!({ "argument": "cursor", "value": cursor }))
-                .suggest("Pass the nextCursor value from the previous page, or omit --cursor")
+                .with_details(ErrorDetails {
+                    argument: Some("cursor".into()),
+                    value: Some(cursor.into()),
+                    ..Default::default()
+                })
+                .recover(Recovery::Cursor)
             })?
         }
     };
@@ -126,14 +129,14 @@ mod tests {
     #[test]
     fn rejects_a_cursor_it_did_not_issue() {
         let failure = page(vec![1], Some("abc"), 3).err().unwrap();
-        assert_eq!(failure.code, crate::failure::ErrorCode::InvalidArgument);
+        assert_eq!(failure.kind, crate::ErrorKind::InvalidArgument);
     }
 
     #[test]
     fn rejects_a_cursor_past_the_last_item() {
         for cursor in ["7", "1000"] {
             let failure = page((0..7).collect::<Vec<_>>(), Some(cursor), 3).err().unwrap();
-            assert_eq!(failure.code, crate::failure::ErrorCode::InvalidArgument, "{cursor}");
+            assert_eq!(failure.kind, crate::ErrorKind::InvalidArgument, "{cursor}");
         }
     }
 }

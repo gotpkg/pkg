@@ -1,17 +1,18 @@
 //! `pkg context show`: which mise, which config files, and which catalogs pkg uses.
 
+use std::path::PathBuf;
+
+use pkg_core::{ConfigContext, Outcome};
 use schemars::{JsonSchema, schema_for};
 use serde::Serialize;
+use serde_json::{Value, json};
 
-use super::common::{MISE_ERRORS, Machine, absolute, for_people, table};
-use crate::catalog::Client;
-use crate::catalog::homebrew::Homebrew;
+use super::common::{MISE_ERRORS, execute, for_people, table};
 use crate::environment::{APP_STORE_API_VARIABLE, HOMEBREW_API_VARIABLE, MISE_VARIABLE};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::mise::ConfigTarget;
 use crate::registry::{CommandSpec, Effect, Example, Requirement};
-use crate::response::{RenderText, Response};
+use crate::response::{RenderOutput, Response};
 
 pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     id: "context.show",
@@ -56,13 +57,13 @@ pub struct Context {
     pub version: String,
     pub mise: MiseContext,
     /// The home directory pkg runs mise in.
-    pub home: String,
+    pub home: PathBuf,
     /// Where `pkg install` declares bootstrap packages.
     pub packages_config: ConfigContext,
     /// Where `pkg install` declares tools.
     pub tools_config: ConfigContext,
     /// Every global config file mise loads, symlinks resolved.
-    pub config_files: Vec<String>,
+    pub config_files: Vec<PathBuf>,
     pub catalogs: Catalogs,
 }
 
@@ -70,22 +71,11 @@ pub struct Context {
 #[serde(rename_all = "camelCase")]
 pub struct MiseContext {
     /// The executable pkg runs.
-    pub program: String,
+    pub program: PathBuf,
     /// The environment variable that overrides it.
     pub environment_variable: String,
     /// What `mise version` prints.
     pub version: String,
-}
-
-#[derive(Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ConfigContext {
-    /// mise's `write_targets` setting as written; null when unset, which means the global config.
-    pub setting: Option<String>,
-    /// The file as mise loads it.
-    pub path: String,
-    /// The file with symlinks resolved: the checkout new declarations land in.
-    pub real_path: String,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -96,25 +86,55 @@ pub struct Catalogs {
     pub app_store_api: String,
     pub app_store_api_variable: String,
     /// The cached Homebrew search index.
-    pub homebrew_index: String,
+    pub homebrew_index: PathBuf,
     /// When the cached index was downloaded, in seconds since the Unix epoch; null when there is
     /// none yet.
     pub homebrew_index_fetched_at: Option<u64>,
 }
 
-impl RenderText for Context {
+impl From<pkg_core::Context> for Context {
+    /// Adds the CLI's version and the environment variables that select mise and the catalogs.
+    fn from(context: pkg_core::Context) -> Context {
+        let catalogs = context.catalogs;
+        Context {
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            mise: MiseContext {
+                program: context.mise.program,
+                environment_variable: MISE_VARIABLE.to_string(),
+                version: context.mise.version,
+            },
+            home: context.home,
+            packages_config: context.packages_config,
+            tools_config: context.tools_config,
+            config_files: context.config_files,
+            catalogs: Catalogs {
+                homebrew_api: catalogs.homebrew_api,
+                homebrew_api_variable: HOMEBREW_API_VARIABLE.to_string(),
+                app_store_api: catalogs.app_store_api,
+                app_store_api_variable: APP_STORE_API_VARIABLE.to_string(),
+                homebrew_index: catalogs.homebrew_index,
+                homebrew_index_fetched_at: catalogs.homebrew_index_fetched_at,
+            },
+        }
+    }
+}
+
+impl RenderOutput for Context {
     fn render_text(&self) -> String {
         let config = |context: &ConfigContext| {
-            if context.path == context.real_path {
+            if context.path.as_os_str() == context.real_path.as_os_str() {
                 for_people(&context.path)
             } else {
                 format!("{} -> {}", for_people(&context.path), for_people(&context.real_path))
             }
         };
-        let files: Vec<String> = self.config_files.iter().map(|file| for_people(file)).collect();
+        let files: Vec<String> = self.config_files.iter().map(for_people).collect();
         let rows = vec![
             vec!["pkg".to_string(), self.version.clone()],
-            vec!["mise".to_string(), format!("{} {}", self.mise.program, self.mise.version)],
+            vec![
+                "mise".to_string(),
+                format!("{} {}", self.mise.program.display(), self.mise.version),
+            ],
             vec!["packages go to".to_string(), config(&self.packages_config)],
             vec!["tools go to".to_string(), config(&self.tools_config)],
             vec!["config files".to_string(), files.join(", ")],
@@ -130,37 +150,44 @@ impl RenderText for Context {
         ];
         table(&rows).lines().map(|line| format!("{}\n", line.trim_start())).collect()
     }
+
+    fn render_json(&self) -> Value {
+        let config_files: Vec<_> =
+            self.config_files.iter().map(|file| file.to_string_lossy()).collect();
+        json!({
+            "version": self.version,
+            "mise": {
+                "program": self.mise.program.to_string_lossy(),
+                "environmentVariable": self.mise.environment_variable,
+                "version": self.mise.version,
+            },
+            "home": self.home.to_string_lossy(),
+            "packagesConfig": config_json(&self.packages_config),
+            "toolsConfig": config_json(&self.tools_config),
+            "configFiles": config_files,
+            "catalogs": {
+                "homebrewApi": self.catalogs.homebrew_api,
+                "homebrewApiVariable": self.catalogs.homebrew_api_variable,
+                "appStoreApi": self.catalogs.app_store_api,
+                "appStoreApiVariable": self.catalogs.app_store_api_variable,
+                "homebrewIndex": self.catalogs.homebrew_index.to_string_lossy(),
+                "homebrewIndexFetchedAt": self.catalogs.homebrew_index_fetched_at,
+            },
+        })
+    }
+}
+
+fn config_json(config: &ConfigContext) -> Value {
+    json!({
+        "setting": config.setting,
+        "path": config.path.to_string_lossy(),
+        "realPath": config.real_path.to_string_lossy(),
+    })
 }
 
 fn show_context(invocation: &Invocation) -> Result<Response, Failure> {
-    let machine = Machine::load(invocation)?;
-    let environment = &machine.environment;
-    let mise_version = environment.mise.read(&["version"])?.trim().to_string();
-    let client = Client::default();
-    let homebrew = Homebrew::new(&client, &environment.homebrew_api, &environment.cache_dir);
-    let describe = |target: ConfigTarget| ConfigContext {
-        setting: target.setting,
-        path: target.path.display().to_string(),
-        real_path: target.real_path.display().to_string(),
-    };
-    Ok(Response::new(&Context {
-        version: env!("CARGO_PKG_VERSION").to_string(),
-        mise: MiseContext {
-            program: environment.mise.program(),
-            environment_variable: MISE_VARIABLE.to_string(),
-            version: mise_version,
-        },
-        home: environment.home.display().to_string(),
-        packages_config: describe(machine.target(false)?),
-        tools_config: describe(machine.target(true)?),
-        config_files: machine.config_files.iter().map(|path| absolute(path)).collect(),
-        catalogs: Catalogs {
-            homebrew_api: environment.homebrew_api.clone(),
-            homebrew_api_variable: HOMEBREW_API_VARIABLE.to_string(),
-            app_store_api: environment.app_store_api.clone(),
-            app_store_api_variable: APP_STORE_API_VARIABLE.to_string(),
-            homebrew_index: homebrew.index_path().display().to_string(),
-            homebrew_index_fetched_at: homebrew.cached_index().map(|index| index.fetched_at),
-        },
-    }))
+    execute(invocation, |client, progress| {
+        let outcome = client.context(progress)?;
+        Ok(Outcome { result: Context::from(outcome.result), warnings: outcome.warnings })
+    })
 }

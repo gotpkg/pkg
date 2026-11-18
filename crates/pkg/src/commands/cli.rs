@@ -7,8 +7,8 @@ use crate::NAME;
 use crate::failure::{ErrorCode, Failure};
 use crate::invocation::Invocation;
 use crate::registry::{self, ArgumentKind, ArgumentSpec, CommandSpec, Effect, Example, ValueKind};
-use crate::response::{RenderText, Response};
-use crate::search::{self, Page};
+use crate::response::{RenderOutput, Response};
+use pkg_core::matching::{self as search, Page};
 
 pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     id: "cli.search",
@@ -89,7 +89,7 @@ pub struct CommandMatch {
     pub score: f64,
 }
 
-impl RenderText for Page<CommandMatch> {
+impl RenderOutput for Page<CommandMatch> {
     fn render_text(&self) -> String {
         if self.items.is_empty() {
             return format!(
@@ -112,7 +112,7 @@ fn search_commands(invocation: &Invocation) -> Result<Response, Failure> {
     let query = invocation.strings("query").join(" ");
     let limit = invocation.integer("limit").unwrap_or(5);
     let page = search::page(rank(&query), invocation.string("cursor").as_deref(), limit)?;
-    Ok(Response::new(&page))
+    Ok(Response::new(&page, invocation.output))
 }
 
 /// Every command with a positive score for `query`, best first, ties in registry order.

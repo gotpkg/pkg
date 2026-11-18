@@ -45,6 +45,10 @@ Any package manager mise bootstrap knows (`brew`, `brew-cask`, `mas`, `apt`, `fl
 
 Add `--output json` to any command for JSON results on stdout and structured errors on stderr with stable exit statuses. `pkg cli search "<task>"`, `pkg schema <command>`, `pkg docs search "<topic>"` and `pkg context show` describe every command from the binary. The [CLI reference](crates/pkg/docs/cli.md) is generated from the command registry.
 
+### From Rust
+
+Use `pkg-core` through a Git or path dependency for typed package operations without invoking the CLI. See [Use pkg From Rust](guides/rust-library.md) and the [API contract](crates/pkg-core/src/lib.rs). The library is unpublished; the previous `pkg` implementation-module API is replaced rather than retained as aliases. CLI users need no migration.
+
 ## Develop
 
 Prerequisites: [Mise](https://mise.jdx.dev) 2026.11.9 or newer. It installs Rust, Workbench, hk, Beads, dprint, Knope and the other tools `mise.toml` pins.
@@ -74,12 +78,15 @@ crates/pkg/
   src/registry.rs       the command contract every interface is generated from
   src/commands/         each command: install, remove, list, search, info, outdated, upgrade,
                         sync, prune, where, tap, and the discovery commands
-  src/package.rs        package names, and whether one is a bootstrap package or a tool
-  src/mise/             running mise and reading its answers
-  src/declarations.rs   reading mise config files and removing an entry from one
-  src/catalog/          Homebrew's API and the App Store
   docs/                 Markdown built into the binary for `docs search`
   tests/cli/            tests that run the binary
+crates/pkg-core/
+  src/lib.rs            public Rust API and execution contract
+  src/                  typed operations, settings, errors, and progress
+  src/mise/             running mise with an explicit child environment
+  src/declarations.rs   reading config and removing an entry from its write target
+  src/catalog/          Homebrew's API and the App Store
+  tests/                direct library isolation and progress tests
 xtask/                  release helper: archives and the Homebrew formula
 ```
 

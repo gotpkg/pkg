@@ -1,14 +1,14 @@
 //! `pkg sync`: install everything the config declares that is missing, as `mise bootstrap` does
 //! for packages and tools alone.
 
-use schemars::{JsonSchema, schema_for};
-use serde::Serialize;
+use pkg_core::{ReceiptStatus, SyncReceipt, SyncRequest};
+use schemars::schema_for;
 
-use super::common::{MISE_ERRORS, Machine, ReceiptStatus, join_words};
+use super::common::{MISE_ERRORS, execute, join_words};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::registry::{CommandSpec, DRY_RUN, Effect, Example, Requirement};
-use crate::response::{RenderText, Response};
+use crate::response::{RenderOutput, Response};
 
 pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     id: "sync",
@@ -38,17 +38,7 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     run: sync,
 }];
 
-/// The outcome of `pkg sync`.
-#[derive(Serialize, JsonSchema)]
-pub struct SyncReceipt {
-    pub status: ReceiptStatus,
-    /// Packages and tools that were missing and are now installed (for `dry-run`: are missing).
-    pub installed: Vec<String>,
-    /// Packages still missing after the run; empty for `dry-run`.
-    pub missing: Vec<String>,
-}
-
-impl RenderText for SyncReceipt {
+impl RenderOutput for SyncReceipt {
     fn render_text(&self) -> String {
         let mut text = match (self.status, self.installed.is_empty()) {
             (_, true) if self.missing.is_empty() => {
@@ -73,43 +63,6 @@ impl RenderText for SyncReceipt {
 }
 
 fn sync(invocation: &Invocation) -> Result<Response, Failure> {
-    let machine = Machine::load(invocation)?;
-    let mise = &machine.environment.mise;
-    let (packages, tools) = missing(&machine)?;
-    let before: Vec<String> = packages.iter().chain(&tools).cloned().collect();
-    if invocation.dry_run() {
-        return Ok(Response::new(&SyncReceipt {
-            status: ReceiptStatus::DryRun,
-            installed: before,
-            missing: Vec::new(),
-        }));
-    }
-    if !packages.is_empty() {
-        mise.run(&["bootstrap", "packages", "apply", "--yes"])?;
-    }
-    if !tools.is_empty() {
-        mise.run(&["install"])?;
-    }
-    let (packages, tools) = missing(&machine)?;
-    let still: Vec<String> = packages.into_iter().chain(tools).collect();
-    let installed = before.into_iter().filter(|key| !still.contains(key)).collect();
-    Ok(Response::new(&SyncReceipt { status: ReceiptStatus::Completed, installed, missing: still }))
-}
-
-/// The declared packages and global tools that are not installed, on managers this machine has.
-fn missing(machine: &Machine) -> Result<(Vec<String>, Vec<String>), Failure> {
-    let mise = &machine.environment.mise;
-    let packages = mise
-        .package_states()?
-        .into_iter()
-        .filter(|state| state.available && state.desired == "present" && state.state != "installed")
-        .map(|state| state.key)
-        .collect();
-    let tools = mise
-        .tool_states()?
-        .into_iter()
-        .filter(|tool| !tool.installed)
-        .map(|tool| tool.key)
-        .collect();
-    Ok((packages, tools))
+    let request = SyncRequest { mode: invocation.mode() };
+    execute(invocation, |client, progress| client.sync(request, progress))
 }

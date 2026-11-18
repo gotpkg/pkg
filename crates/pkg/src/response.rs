@@ -3,9 +3,17 @@
 use serde::Serialize;
 use serde_json::Value;
 
-/// A rendering of a result for `--output text`.
-pub trait RenderText {
+use crate::invocation::OutputFormat;
+
+/// CLI representations of a typed result; path-bearing results use lossy display paths in JSON.
+pub trait RenderOutput: Serialize {
     fn render_text(&self) -> String;
+
+    /// # Panics
+    /// A custom serializer that rejects its own data violates the renderer contract.
+    fn render_json(&self) -> Value {
+        serde_json::to_value(self).expect("CLI result fields serialize to JSON")
+    }
 }
 
 /// A successful command's outcome. The result goes to stdout; warnings go to stderr.
@@ -20,19 +28,12 @@ pub struct Response {
 impl Response {
     /// # Panics
     ///
-    /// When `result` fails to serialize, which the derived `Serialize` of this crate's result
-    /// types never does.
-    pub fn new<T: Serialize + RenderText>(result: &T) -> Response {
+    /// When a custom renderer violates the serializable-result contract.
+    pub fn new<T: RenderOutput>(result: &T, output: OutputFormat) -> Response {
         Response {
-            result: serde_json::to_value(result).expect("command results serialize to JSON"),
-            text: result.render_text(),
+            result: if output == OutputFormat::Json { result.render_json() } else { Value::Null },
+            text: if output == OutputFormat::Text { result.render_text() } else { String::new() },
             warnings: Vec::new(),
         }
-    }
-
-    #[must_use]
-    pub fn warn(mut self, warning: impl Into<String>) -> Response {
-        self.warnings.push(warning.into());
-        self
     }
 }

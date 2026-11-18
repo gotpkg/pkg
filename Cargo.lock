@@ -727,6 +727,17 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "jsonschema",
+ "pkg-core",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "pkg-core"
+version = "0.0.0"
+dependencies = [
  "schemars",
  "serde",
  "serde_json",
