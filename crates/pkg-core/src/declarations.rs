@@ -10,10 +10,10 @@ use serde_json::{Map, Value, json};
 use toml_edit::{DocumentMut, Item, Table};
 
 use crate::environment::real_path;
-use crate::failure::Failure;
+use crate::error::{Error as Failure, ErrorDetails, Recovery};
 
 /// The declarations of every global config file mise loads.
-pub struct Declarations {
+pub(crate) struct Declarations {
     files: Vec<DeclaredFile>,
 }
 
@@ -25,7 +25,7 @@ struct DeclaredFile {
 }
 
 /// A `[bootstrap.brew.taps]` entry.
-pub struct Tap {
+pub(crate) struct Tap {
     pub name: String,
     pub url: String,
     pub config: PathBuf,
@@ -37,7 +37,7 @@ impl Declarations {
     /// # Errors
     ///
     /// `PRECONDITION_FAILED` when a file cannot be read or is not valid TOML.
-    pub fn load(paths: &[PathBuf]) -> Result<Declarations, Failure> {
+    pub(crate) fn load(paths: &[PathBuf]) -> Result<Declarations, Failure> {
         let mut files = Vec::new();
         for path in paths {
             let text = match std::fs::read_to_string(path) {
@@ -77,7 +77,7 @@ impl Declarations {
     }
 
     /// The first file that declares the bootstrap package `key`.
-    pub fn package_file(&self, key: &str) -> Option<&Path> {
+    pub(crate) fn package_file(&self, key: &str) -> Option<&Path> {
         self.files
             .iter()
             .find(|file| file.packages.iter().any(|package| package == key))
@@ -85,14 +85,14 @@ impl Declarations {
     }
 
     /// The first file that declares the tool `key`.
-    pub fn tool_file(&self, key: &str) -> Option<&Path> {
+    pub(crate) fn tool_file(&self, key: &str) -> Option<&Path> {
         self.files
             .iter()
             .find(|file| file.tools.iter().any(|tool| tool == key))
             .map(|file| file.path.as_path())
     }
 
-    pub fn taps(&self) -> Vec<Tap> {
+    pub(crate) fn taps(&self) -> Vec<Tap> {
         self.files
             .iter()
             .flat_map(|file| {
@@ -107,18 +107,18 @@ impl Declarations {
 }
 
 /// Whether two paths name the same file once symlinks are resolved.
-pub fn same_file(left: &Path, right: &Path) -> bool {
+pub(crate) fn same_file(left: &Path, right: &Path) -> bool {
     real_path(left) == real_path(right)
 }
 
 fn unreadable(path: &Path, problem: &str) -> Failure {
     Failure::precondition(format!("cannot read {}: {problem}", path.display()))
-        .with_details(json!({ "config": path.display().to_string() }))
+        .with_details(ErrorDetails { config: Some(path.to_path_buf()), ..Default::default() })
 }
 
 /// Whether the file at `path` declares the `[bootstrap.packages]` entry `key`; `false` when it
 /// cannot be read.
-pub fn declares_package(path: &Path, key: &str) -> bool {
+pub(crate) fn declares_package(path: &Path, key: &str) -> bool {
     Declarations::load(&[path.to_path_buf()])
         .is_ok_and(|declarations| declarations.package_file(key).is_some())
 }
@@ -129,17 +129,25 @@ pub fn declares_package(path: &Path, key: &str) -> bool {
 ///
 /// `PRECONDITION_FAILED` when the file cannot be read or written, or the entry is not in a form
 /// pkg can remove without touching anything else.
-pub fn remove_package(path: &Path, key: &str) -> Result<(), Failure> {
+pub(crate) fn remove_package(path: &Path, key: &str) -> Result<(), Failure> {
     let text =
         std::fs::read_to_string(path).map_err(|error| unreadable(path, &error.to_string()))?;
     let edited = without_package(&text, key).map_err(|problem| {
         Failure::precondition(format!("cannot take {key} out of {}: {problem}", path.display()))
-            .with_details(json!({ "package": key, "config": path.display().to_string() }))
-            .suggest(format!("Delete the `\"{key}\"` entry from {} by hand", path.display()))
+            .with_details(ErrorDetails {
+                package: Some(key.to_string()),
+                config: Some(path.to_path_buf()),
+                ..Default::default()
+            })
+            .recover(Recovery::RemoveDeclaration {
+                package: key.to_string(),
+                config: path.to_path_buf(),
+                shared: false,
+            })
     })?;
     std::fs::write(path, edited).map_err(|error| {
         Failure::precondition(format!("cannot write {}: {error}", path.display()))
-            .with_details(json!({ "config": path.display().to_string() }))
+            .with_details(ErrorDetails { config: Some(path.to_path_buf()), ..Default::default() })
     })
 }
 
@@ -150,7 +158,7 @@ pub fn remove_package(path: &Path, key: &str) -> Result<(), Failure> {
 ///
 /// A sentence saying why, when the entry is missing, written in another form, or the edit would
 /// change anything besides the entry.
-pub fn without_package(text: &str, key: &str) -> Result<String, String> {
+pub(crate) fn without_package(text: &str, key: &str) -> Result<String, String> {
     let original: DocumentMut = text
         .parse()
         .map_err(|error: toml_edit::TomlError| format!("it is not valid TOML: {error}"))?;

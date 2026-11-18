@@ -1,18 +1,16 @@
 //! `pkg tap`: Homebrew tap URLs for taps that do not live at `github.com/<owner>/homebrew-<tap>`.
 
-use schemars::{JsonSchema, schema_for};
-use serde::Serialize;
-use serde_json::json;
+use pkg_core::{ReceiptStatus, TapAddRequest, TapList, TapReceipt, TapRemoveRequest};
+use schemars::schema_for;
+use serde_json::{Value, json};
 
-use super::common::{MISE_ERRORS, Machine, ReceiptStatus, absolute, for_people, table};
-use crate::NAME;
-use crate::declarations::same_file;
+use super::common::{MISE_ERRORS, execute, for_people, table};
 use crate::failure::{ErrorCode, Failure};
 use crate::invocation::Invocation;
 use crate::registry::{
     ArgumentKind, ArgumentSpec, CommandSpec, DRY_RUN, Effect, Example, Requirement, ValueKind,
 };
-use crate::response::{RenderText, Response};
+use crate::response::{RenderOutput, Response};
 
 const TAP: ArgumentSpec = ArgumentSpec {
     name: "tap",
@@ -123,33 +121,7 @@ pub static COMMANDS: &[CommandSpec] = &[
     },
 ];
 
-/// Every declared tap URL.
-#[derive(Serialize, JsonSchema)]
-pub struct TapList {
-    pub items: Vec<TapEntry>,
-}
-
-#[derive(Serialize, JsonSchema)]
-pub struct TapEntry {
-    pub tap: String,
-    pub url: String,
-    /// The config file that declares it, symlinks resolved.
-    pub config: String,
-}
-
-/// The outcome of `pkg tap add` and `pkg tap remove`.
-#[derive(Serialize, JsonSchema)]
-pub struct TapReceipt {
-    pub status: ReceiptStatus,
-    /// `added` or `removed`; for `dry-run`, what would happen.
-    pub action: String,
-    pub tap: String,
-    pub url: Option<String>,
-    /// The config file changed, symlinks resolved.
-    pub config: String,
-}
-
-impl RenderText for TapList {
+impl RenderOutput for TapList {
     fn render_text(&self) -> String {
         if self.items.is_empty() {
             return "No tap URLs; mise finds GitHub taps at github.com/<owner>/homebrew-<name>."
@@ -162,9 +134,20 @@ impl RenderText for TapList {
             .collect();
         table(&rows)
     }
+
+    fn render_json(&self) -> Value {
+        let items: Vec<Value> = self
+            .items
+            .iter()
+            .map(|tap| {
+                json!({ "tap": tap.tap, "url": tap.url, "config": tap.config.to_string_lossy() })
+            })
+            .collect();
+        json!({ "items": items })
+    }
 }
 
-impl RenderText for TapReceipt {
+impl RenderOutput for TapReceipt {
     fn render_text(&self) -> String {
         let config = for_people(&self.config);
         let line = match (self.status, self.action.as_str()) {
@@ -175,75 +158,66 @@ impl RenderText for TapReceipt {
         };
         format!("{line}\n")
     }
+
+    fn render_json(&self) -> Value {
+        json!({
+            "status": self.status,
+            "action": self.action,
+            "tap": self.tap,
+            "url": self.url,
+            "config": self.config.to_string_lossy(),
+        })
+    }
 }
 
 fn list(invocation: &Invocation) -> Result<Response, Failure> {
-    let machine = Machine::load(invocation)?;
-    let items = machine
-        .declarations
-        .taps()
-        .into_iter()
-        .map(|tap| TapEntry { tap: tap.name, url: tap.url, config: absolute(&tap.config) })
-        .collect();
-    Ok(Response::new(&TapList { items }))
+    execute(invocation, |client, progress| client.tap_list(progress))
 }
 
 fn add(invocation: &Invocation) -> Result<Response, Failure> {
-    let machine = Machine::load(invocation)?;
-    let tap = invocation.string("tap").unwrap_or_default();
-    let url = invocation.string("url").unwrap_or_default();
-    let target = machine.target(false)?;
-    let path = target.path.display().to_string();
-    let mut args = vec!["bootstrap", "packages", "brew", "tap", "-p", &path];
-    if invocation.dry_run() {
-        args.push("--dry-run");
-    }
-    args.extend([tap.as_str(), url.as_str()]);
-    machine.environment.mise.query(&args)?;
-    Ok(Response::new(&TapReceipt {
-        status: status(invocation),
-        action: "added".into(),
-        tap,
-        url: Some(url),
-        config: absolute(&target.path),
-    }))
+    let request = TapAddRequest {
+        tap: invocation.string("tap").unwrap_or_default(),
+        url: invocation.string("url").unwrap_or_default(),
+        mode: invocation.mode(),
+    };
+    execute(invocation, |client, _| client.tap_add(request, &mut |_| {}))
 }
 
 fn remove(invocation: &Invocation) -> Result<Response, Failure> {
-    let machine = Machine::load(invocation)?;
-    let tap = invocation.string("tap").unwrap_or_default();
-    let target = machine.target(false)?;
-    let declared = machine.declarations.taps().into_iter().find(|entry| entry.name == tap);
-    let Some(declared) = declared else {
-        return Err(Failure::not_found(format!("no config declares a URL for the tap {tap}"))
-            .with_details(json!({ "tap": tap }))
-            .suggest(format!("{NAME} tap list")));
+    let request = TapRemoveRequest {
+        tap: invocation.string("tap").unwrap_or_default(),
+        mode: invocation.mode(),
     };
-    if !same_file(&declared.config, &target.path) {
-        return Err(Failure::precondition(format!(
-            "{tap} is declared in {}, and pkg only edits {}",
-            machine.show(&declared.config),
-            machine.show(&target.path)
-        ))
-        .with_details(json!({ "tap": tap, "config": absolute(&declared.config) }))
-        .suggest(format!("Remove `{tap}` from {} by hand", machine.show(&declared.config))));
-    }
-    let path = target.path.display().to_string();
-    let mut args = vec!["bootstrap", "packages", "brew", "untap", "-p", &path];
-    if invocation.dry_run() {
-        args.push("--dry-run");
-    }
-    args.push(&tap);
-    machine.environment.mise.query(&args)?;
-    Ok(Response::new(&TapReceipt {
-        status: status(invocation),
-        action: "removed".into(),
-        url: Some(declared.url),
-        tap,
-        config: absolute(&target.path),
-    }))
+    execute(invocation, |client, _| client.tap_remove(request, &mut |_| {}))
 }
 
-fn status(invocation: &Invocation) -> ReceiptStatus {
-    if invocation.dry_run() { ReceiptStatus::DryRun } else { ReceiptStatus::Completed }
+#[cfg(test)]
+mod tests {
+    use pkg_core::TapEntry;
+
+    use super::*;
+
+    #[test]
+    fn list_json_matches_the_entry_fields_in_order() {
+        let list = TapList {
+            items: vec![TapEntry {
+                tap: "acme/tools".into(),
+                url: "https://git.example.com/acme/tools.git".into(),
+                config: "/x/config.toml".into(),
+            }],
+        };
+        assert_eq!(list.render_json().to_string(), serde_json::to_string(&list).unwrap());
+    }
+
+    #[test]
+    fn receipt_json_matches_the_receipt_fields_in_order() {
+        let receipt = TapReceipt {
+            status: ReceiptStatus::DryRun,
+            action: "removed".into(),
+            tap: "acme/tools".into(),
+            url: None,
+            config: "/x/config.toml".into(),
+        };
+        assert_eq!(receipt.render_json().to_string(), serde_json::to_string(&receipt).unwrap());
+    }
 }

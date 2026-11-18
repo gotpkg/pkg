@@ -4,7 +4,7 @@
 //! in a later release is ignored rather than misread.
 
 /// The packages a prune removes, from its `remove brew:pkgconf@3.0.10` lines, as `(key, version)`.
-pub fn removals(output: &str) -> Vec<(String, Option<String>)> {
+pub(crate) fn removals(output: &str) -> Vec<(String, Option<String>)> {
     output
         .lines()
         .filter_map(|line| line.trim().strip_prefix("remove "))
@@ -23,14 +23,14 @@ pub fn removals(output: &str) -> Vec<(String, Option<String>)> {
 
 /// What `mise bootstrap packages upgrade --dry-run` would do to Homebrew packages.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct UpgradePlan {
+pub(crate) struct UpgradePlan {
     pub upgrades: Vec<PlannedUpgrade>,
     /// Casks mise leaves alone, such as apps that update themselves, with mise's reason.
     pub skipped: Vec<(String, String)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct PlannedUpgrade {
+pub(crate) struct PlannedUpgrade {
     /// `brew` or `brew-cask`.
     pub manager: &'static str,
     /// The formula's short name (`tg` for `alyraffauf/tap/tg`) or the cask's token.
@@ -42,7 +42,7 @@ pub struct PlannedUpgrade {
 /// `build <name>/<version> from source (requested, ...)`; dependencies say `(dependency)` and are
 /// not upgrades of a declared package. Casks appear as `install cask <token>/<version>` and
 /// `mise brew-cask:<token>: skipped: <reason>`.
-pub fn upgrade_plan(output: &str) -> UpgradePlan {
+pub(crate) fn upgrade_plan(output: &str) -> UpgradePlan {
     let mut plan = UpgradePlan::default();
     for line in output.lines().map(str::trim) {
         if let Some(rest) = line.strip_prefix("install cask ") {

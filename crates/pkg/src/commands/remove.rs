@@ -1,23 +1,14 @@
 //! `pkg remove`: take packages out of the mise config and uninstall them.
-//!
-//! mise has no command that uninstalls one Homebrew package. `mise bootstrap packages prune`
-//! uninstalls every package no config declares, so pkg removes the declarations and prunes, but
-//! only when the prune would remove nothing else: it checks with a dry run before touching the
-//! config, and refuses when other undeclared packages are already waiting to be pruned.
 
-use schemars::{JsonSchema, schema_for};
-use serde::Serialize;
-use serde_json::json;
+use pkg_core::{ReceiptStatus, RemoveReceipt, RemoveRequest};
+use schemars::schema_for;
+use serde_json::{Value, json};
 
-use super::common::{Machine, PACKAGES, ReceiptStatus, absolute, for_people, join_words};
-use crate::NAME;
-use crate::declarations::remove_package;
+use super::common::{PACKAGES, execute, for_people, join_words};
 use crate::failure::{ErrorCode, Failure};
 use crate::invocation::Invocation;
-use crate::mise::{ConfigTarget, Mise, removals};
-use crate::package::Package;
 use crate::registry::{CommandSpec, DRY_RUN, Effect, Example, Requirement};
-use crate::response::{RenderText, Response};
+use crate::response::{RenderOutput, Response};
 
 pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     id: "remove",
@@ -58,35 +49,7 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     run: remove,
 }];
 
-/// The outcome of `pkg remove`.
-#[derive(Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoveReceipt {
-    pub status: ReceiptStatus,
-    /// The declarations taken out of the config (for `dry-run`: that would be).
-    pub removed: Vec<Removed>,
-    /// Homebrew packages uninstalled, dependencies included, as `manager:name@version`; for
-    /// `dry-run`, the packages you named, since their dependencies are known only after the
-    /// config changes.
-    pub uninstalled: Vec<String>,
-    /// Packages that stay installed, with the reason.
-    pub left_installed: Vec<LeftInstalled>,
-}
-
-#[derive(Serialize, JsonSchema)]
-pub struct Removed {
-    pub package: String,
-    /// The config file it was declared in, symlinks resolved.
-    pub config: String,
-}
-
-#[derive(Serialize, JsonSchema)]
-pub struct LeftInstalled {
-    pub package: String,
-    pub reason: String,
-}
-
-impl RenderText for RemoveReceipt {
+impl RenderOutput for RemoveReceipt {
     fn render_text(&self) -> String {
         let dry = self.status == ReceiptStatus::DryRun;
         let mut text = String::new();
@@ -110,149 +73,34 @@ impl RenderText for RemoveReceipt {
         }
         text
     }
-}
 
-/// The managers whose packages a prune uninstalls, with the arguments that select them. Casks
-/// that update themselves cannot be proven unchanged, so their prune is forced, as
-/// `brew uninstall` would be.
-const PRUNABLE: &[(&str, &[&str])] =
-    &[("brew", &["--manager", "brew"]), ("brew-cask", &["--manager", "brew-cask", "--force"])];
+    fn render_json(&self) -> Value {
+        let removed: Vec<Value> = self
+            .removed
+            .iter()
+            .map(|removed| {
+                json!({ "package": removed.package, "config": removed.config.to_string_lossy() })
+            })
+            .collect();
+        json!({
+            "status": self.status,
+            "removed": removed,
+            "uninstalled": self.uninstalled,
+            "leftInstalled": self.left_installed,
+        })
+    }
+}
 
 fn remove(invocation: &Invocation) -> Result<Response, Failure> {
-    let machine = Machine::load(invocation)?;
-    let packages = machine.packages(invocation, "packages");
-    let mut targets: Vec<(Package, ConfigTarget)> = Vec::new();
-    for package in packages {
-        let target = machine.editable_declaration(&package)?;
-        targets.push((package, target));
-    }
-    let mise = &machine.environment.mise;
-    let managers: Vec<(&str, &[&str])> = PRUNABLE
-        .iter()
-        .filter(|(manager, _)| {
-            targets.iter().any(|(package, _)| package.manager() == Some(*manager))
-        })
-        .copied()
-        .collect();
-    refuse_unrelated_prunes(mise, &managers, &targets)?;
-
-    let removed: Vec<Removed> = targets
-        .iter()
-        .map(|(package, target)| Removed {
-            package: package.key.clone(),
-            config: absolute(&target.path),
-        })
-        .collect();
-    let mut left_installed: Vec<LeftInstalled> = targets
-        .iter()
-        .filter_map(|(package, _)| {
-            unprunable(package).map(|manager| LeftInstalled {
-                package: package.key.clone(),
-                reason: format!("mise cannot uninstall {manager}: packages; remove it yourself"),
-            })
-        })
-        .collect();
-
-    if invocation.dry_run() {
-        let uninstalled = targets
-            .iter()
-            .filter(|(package, _)| package.is_tool() || unprunable(package).is_none())
-            .map(|(package, _)| package.key.clone())
-            .collect();
-        return Ok(Response::new(&RemoveReceipt {
-            status: ReceiptStatus::DryRun,
-            removed,
-            uninstalled,
-            left_installed,
-        }));
-    }
-
-    for (package, target) in &targets {
-        if package.is_tool() {
-            let path = target.path.display().to_string();
-            mise.run(&["unuse", "-p", &path, &package.key])?;
-        } else {
-            remove_package(&target.path, &package.key)?;
-        }
-    }
-    let mut uninstalled: Vec<(String, Option<String>)> = Vec::new();
-    for (_, selection) in &managers {
-        let plan = removals(&mise.query(&prune_args("--dry-run", selection))?.combined());
-        if !plan.is_empty() {
-            mise.run(&prune_args("--yes", selection))?;
-        }
-        uninstalled.extend(plan);
-    }
-    for (package, _) in &targets {
-        let pruned = uninstalled.iter().any(|(key, _)| *key == package.key);
-        if !package.is_tool() && unprunable(package).is_none() && !pruned {
-            left_installed.push(LeftInstalled {
-                package: package.key.clone(),
-                reason: "a package your config declares depends on it".into(),
-            });
-        }
-    }
-    let mut uninstalled: Vec<String> = uninstalled
-        .into_iter()
-        .map(|(key, version)| version.map_or(key.clone(), |version| format!("{key}@{version}")))
-        .collect();
-    uninstalled.extend(
-        targets
-            .iter()
-            .filter(|(package, _)| package.is_tool())
-            .map(|(package, _)| package.key.clone()),
-    );
-    Ok(Response::new(&RemoveReceipt {
-        status: ReceiptStatus::Completed,
-        removed,
-        uninstalled,
-        left_installed,
-    }))
-}
-
-/// The manager of a bootstrap package mise cannot uninstall; `None` for tools and Homebrew.
-fn unprunable(package: &Package) -> Option<&str> {
-    package.manager().filter(|manager| !PRUNABLE.iter().any(|(prunable, _)| prunable == manager))
-}
-
-fn prune_args<'a>(mode: &'a str, selection: &[&'a str]) -> Vec<&'a str> {
-    let mut args = vec!["bootstrap", "packages", "prune", mode];
-    args.extend_from_slice(selection);
-    args
-}
-
-/// Fails when a prune would already remove packages before any declaration changes: removing
-/// these packages would uninstall those too.
-fn refuse_unrelated_prunes(
-    mise: &Mise,
-    managers: &[(&str, &[&str])],
-    targets: &[(Package, ConfigTarget)],
-) -> Result<(), Failure> {
-    let mut undeclared: Vec<String> = Vec::new();
-    for (_, selection) in managers {
-        let output = mise.query(&prune_args("--dry-run", selection))?;
-        undeclared.extend(removals(&output.combined()).into_iter().map(|(key, _)| key));
-    }
-    if undeclared.is_empty() {
-        return Ok(());
-    }
-    let named: Vec<String> = targets.iter().map(|(package, _)| package.key.clone()).collect();
-    let mut failure = Failure::precondition(format!(
-        "removing {} would also uninstall {}, which no config declares",
-        join_words(&named),
-        join_words(&undeclared)
-    ))
-    .with_details(json!({ "packages": named, "undeclared": undeclared }))
-    .suggest(format!("See what a prune removes: {NAME} prune --dry-run"))
-    .suggest(format!("Uninstall them first: {NAME} prune"));
-    for package in undeclared.iter().take(3) {
-        failure = failure.suggest(format!("Or keep {package}: {NAME} install {package}"));
-    }
-    Err(failure)
+    let request =
+        RemoveRequest { packages: invocation.strings("packages"), mode: invocation.mode() };
+    execute(invocation, |client, progress| client.remove(request, progress))
 }
 
 #[cfg(test)]
 mod tests {
+    use pkg_core::{LeftInstalled, Removed};
+
     use super::*;
 
     #[test]
@@ -270,5 +118,16 @@ mod tests {
             receipt.render_text(),
             "Removed brew:wget from /x/config.toml\nRemoved mas:1 from /x/config.toml\nUninstalled brew:wget@1.25.0 and brew:libidn2@2.3.8\nmas:1 stays installed: why\n"
         );
+    }
+
+    #[test]
+    fn json_matches_the_receipt_fields_in_order() {
+        let receipt = RemoveReceipt {
+            status: ReceiptStatus::DryRun,
+            removed: vec![Removed { package: "mas:1".into(), config: "/x/config.toml".into() }],
+            uninstalled: Vec::new(),
+            left_installed: vec![LeftInstalled { package: "mas:1".into(), reason: "why".into() }],
+        };
+        assert_eq!(receipt.render_json().to_string(), serde_json::to_string(&receipt).unwrap());
     }
 }

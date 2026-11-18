@@ -156,7 +156,7 @@ Extract every existing package operation, introduce the typed caller boundary, m
 ## Preview
 
 - Repository shape: library plus its CLI consumer.
-- Artifact: private prerelease source/package archive for `pkg-core` and the installable pkg executable built from the same revision. Use an authenticated CI artifact linked from the review report, not a public registry release.
+- Artifact: private local prerelease source archive for `pkg-core` and the installable pkg executable built from the same revision, with exact filesystem paths in the review report. The human selected local delivery after discovery that this repository is public; do not upload previews to its Actions artifacts or publish a registry release.
 - Exercise: an external Rust consumer builds without depending on the CLI, performs a typed read and dry-run mutation against a fake mise/isolated home, collects progress without terminal output, and inspects a typed failure. Two distinct contexts prove isolation; a chatty fake child exercises both pipes and callback lifetime. The normal CLI fixture suite proves the same package semantics and JSON/text contracts.
 - Real-machine validation: use the built CLI for reads and dry runs only, in both output formats, including a failure. Do not install/remove real software just to demonstrate extraction.
 - Cleanup: remove throwaway consumers and fixture homes after evidence is recorded; keep the documented public usage example. A native app mockup would not exercise the library contract and is not a substitute.

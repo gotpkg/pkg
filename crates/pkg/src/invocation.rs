@@ -2,9 +2,9 @@
 
 use clap::ArgMatches;
 
-use crate::environment::Environment;
 use crate::failure::Failure;
 use crate::registry::CommandSpec;
+use pkg_core::{Mode, Settings};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputFormat {
@@ -55,7 +55,11 @@ impl<'a> Invocation<'a> {
     /// # Errors
     ///
     /// `PRECONDITION_FAILED` when no home directory is set.
-    pub fn environment(&self) -> Result<Environment, Failure> {
-        Environment::from_process()
+    pub fn environment(&self) -> Result<Settings, Failure> {
+        crate::environment::from_process()
+    }
+
+    pub fn mode(&self) -> Mode {
+        if self.dry_run() { Mode::DryRun } else { Mode::Apply }
     }
 }

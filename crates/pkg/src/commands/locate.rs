@@ -1,14 +1,14 @@
 //! `pkg where`: the directory an installed formula or tool lives in.
 
-use schemars::{JsonSchema, schema_for};
-use serde::Serialize;
-use serde_json::json;
+use pkg_core::{LocateRequest, Location};
+use schemars::schema_for;
+use serde_json::{Value, json};
 
-use super::common::{MISE_ERRORS, Machine, PACKAGE};
+use super::common::{MISE_ERRORS, PACKAGE, execute};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::registry::{CommandSpec, Effect, Example, Requirement};
-use crate::response::{RenderText, Response};
+use crate::response::{RenderOutput, Response};
 
 pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     id: "where",
@@ -35,29 +35,17 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     run: locate,
 }];
 
-#[derive(Serialize, JsonSchema)]
-pub struct Location {
-    pub package: String,
-    /// The absolute directory.
-    pub path: String,
-}
-
-impl RenderText for Location {
+impl RenderOutput for Location {
     fn render_text(&self) -> String {
-        format!("{}\n", self.path)
+        format!("{}\n", self.path.display())
+    }
+
+    fn render_json(&self) -> Value {
+        json!({ "package": self.package, "path": self.path.to_string_lossy() })
     }
 }
 
 fn locate(invocation: &Invocation) -> Result<Response, Failure> {
-    let machine = Machine::load(invocation)?;
-    let package = machine.package(&invocation.string("package").unwrap_or_default());
-    if !package.is_tool() && package.manager() != Some("brew") {
-        return Err(Failure::invalid_argument(format!(
-            "{package} has no install directory to show; `where` takes a Homebrew formula \
-             (`brew:`) or a mise tool"
-        ))
-        .with_details(json!({ "package": package.key })));
-    }
-    let path = machine.environment.mise.location(&package.key, package.is_tool())?;
-    Ok(Response::new(&Location { package: package.key, path: path.display().to_string() }))
+    let request = LocateRequest { package: invocation.string("package").unwrap_or_default() };
+    execute(invocation, |client, progress| client.locate(request, progress))
 }
