@@ -6,7 +6,9 @@ use serde::Serialize;
 use crate::catalog;
 use crate::catalog::app_store::AppStore;
 use crate::common::Machine;
-use crate::mise::{OutdatedTool, Output, PackageState, upgrade_plan};
+use crate::mise::{
+    MISE, MiseRelease, OutdatedTool, Output, PACKAGE_MANAGER_REASON, PackageState, upgrade_plan,
+};
 use crate::package::Package;
 use crate::{Client, Error, Outcome, Progress};
 
@@ -51,7 +53,8 @@ impl Client {
     }
 }
 
-/// What is outdated, limited to `only` when it names packages, and any warnings.
+/// What is outdated, limited to `only` when it names packages, and any warnings. With no names,
+/// mise itself comes first.
 pub(crate) fn find(
     machine: &Machine<'_>,
     only: &[Package],
@@ -60,7 +63,7 @@ pub(crate) fn find(
     let wants = |key: &str| only.is_empty() || only.iter().any(|package| package.key == key);
     let wants_packages = only.is_empty() || only.iter().any(|package| !package.is_tool());
     let wants_tools = only.is_empty() || only.iter().any(Package::is_tool);
-    let (plan, tools, states) = std::thread::scope(|scope| {
+    let (plan, tools, states, release) = std::thread::scope(|scope| {
         let plan = scope.spawn(|| -> Result<Option<Output>, Error> {
             wants_packages
                 .then(|| mise.query(&["bootstrap", "packages", "upgrade", "--dry-run"]))
@@ -72,9 +75,12 @@ pub(crate) fn find(
         let states = scope.spawn(|| -> Result<Vec<PackageState>, Error> {
             if wants_packages { mise.package_states() } else { Ok(Vec::new()) }
         });
-        (joined(plan.join()), joined(tools.join()), joined(states.join()))
+        let release = scope.spawn(|| -> Result<Option<MiseRelease>, Error> {
+            only.is_empty().then(|| mise.release()).transpose()
+        });
+        (joined(plan.join()), joined(tools.join()), joined(states.join()), joined(release.join()))
     });
-    let (plan, tools, states) = (plan?, tools?, states?);
+    let (plan, tools, states, release) = (plan?, tools?, states?, release?);
     let mut report = OutdatedReport::default();
     let mut warnings = Vec::new();
 
@@ -150,6 +156,21 @@ pub(crate) fn find(
             latest: tool.latest,
         });
     }
+    if let Some(latest) = release.as_ref().and_then(MiseRelease::newer_available) {
+        if mise.updates_itself() {
+            report.items.insert(
+                0,
+                OutdatedPackage {
+                    package: MISE.into(),
+                    installed: release.as_ref().map(|release| release.version.clone()),
+                    latest: latest.into(),
+                },
+            );
+        } else {
+            let reason = PACKAGE_MANAGER_REASON.into();
+            report.skipped.insert(0, Skipped { package: MISE.into(), reason });
+        }
+    }
     Ok((report, warnings))
 }
 
@@ -159,7 +180,7 @@ fn joined<T>(result: std::thread::Result<Result<T, Error>>) -> Result<T, Error> 
 
 /// Whether the dotted version `latest` is above `installed`: `3.2` and `3.2.0` are the same, and
 /// numeric parts compare as numbers.
-fn is_newer(latest: &str, installed: &str) -> bool {
+pub(crate) fn is_newer(latest: &str, installed: &str) -> bool {
     let parts = |version: &str| -> Vec<String> {
         let mut parts: Vec<String> = version.split('.').map(str::to_string).collect();
         while parts.last().is_some_and(|part| part == "0") {

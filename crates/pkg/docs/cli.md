@@ -760,7 +760,7 @@ List installed packages that have a newer version.
 
 List installed packages that have a newer version.
 
-Lists every installed package and tool that `pkg update` would update, with the installed and the newest version. Homebrew formulae and casks come from `mise bootstrap packages upgrade --dry-run`, which refreshes Homebrew's metadata; App Store apps are compared with the App Store's current version; tools come from `mise outdated --global`. Casks mise will not update, such as apps that update themselves, are listed under `skipped` with mise's reason. The whole list is returned at once. Never changes anything.
+Lists every installed package and tool that `pkg update` would update, with the installed and the newest version, mise itself first. Homebrew formulae and casks come from `mise bootstrap packages upgrade --dry-run`, which refreshes Homebrew's metadata; App Store apps are compared with the App Store's current version; tools come from `mise outdated --global`; mise's newest release comes from `mise version`, before mise's minimum release age, so `pkg update` can leave a very new mise release for later. Casks mise will not update, such as apps that update themselves, and a newer mise that a package manager installed are listed under `skipped` with the reason. The whole list is returned at once. Never changes anything.
 
 - **Effect:** reads only
 - **Requires:** `mise`, `network`
@@ -851,7 +851,7 @@ Update installed packages to their newest versions.
 
 Update installed packages to their newest versions.
 
-Updates the named packages, or with none every installed package and global tool: `mise bootstrap packages upgrade` for Homebrew, the App Store, and the other package managers, and `mise upgrade --global` for tools. Packages that are declared but not installed are left to `pkg sync`. The receipt lists each package whose installed version changed. --dry-run lists what would be updated, as `pkg outdated` does, and changes nothing. mise's progress goes to stderr.
+Updates the named packages, or with none mise itself and then every installed package and global tool: `mise self-update`, then `mise bootstrap packages upgrade` for Homebrew, the App Store, and the other package managers, and `mise upgrade --global` for tools, which include pkg once pkg is handed to mise. A mise that a package manager installed is left to it and listed under `skipped`; when `mise self-update` fails, nothing else changes. Packages that are declared but not installed are left to `pkg sync`. The receipt lists each package whose installed version changed, mise first. --dry-run lists what would be updated, as `pkg outdated` does, and changes nothing. mise's progress goes to stderr.
 
 - **Effect:** modifies installed software
 - **Requires:** `mise`, `network`
@@ -887,14 +887,14 @@ Result schema:
       "items": {
         "$ref": "#/$defs/Updated"
       },
-      "description": "Packages whose version changed (for `dry-run`: would change)."
+      "description": "Packages whose version changed (for `dry-run`: would change), mise first."
     },
     "skipped": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/Skipped"
       },
-      "description": "For `dry-run`, packages mise will not update, with its reason; empty otherwise."
+      "description": "What is left alone, with the reason: mise when a package manager installed it, and for\n`dry-run` the packages mise will not update."
     }
   },
   "required": [
@@ -1971,10 +1971,10 @@ Show the mise config and catalogs pkg uses.
 
 Show the mise config files, mise, and catalogs pkg uses.
 
-Reports where pkg takes effect: the mise executable and version, the home directory pkg runs mise in, the file new `[bootstrap.packages]` entries go to (mise's `write_targets.packages` setting, else its global config) and the file new `[tools]` entries go to (`write_targets.tools`), each with symlinks resolved to the checkout it lands in, every global config file mise loads, the Homebrew and App Store catalog URLs, and the cached Homebrew search index. Never changes anything.
+Reports where pkg takes effect: the mise executable (`PKG_MISE`, else `mise` on PATH, else `~/.local/bin/mise`), its version, and whether `pkg update` updates it (not when a package manager installed it), the home directory pkg runs mise in, the file new `[bootstrap.packages]` entries go to (mise's `write_targets.packages` setting, else its global config) and the file new `[tools]` entries go to (`write_targets.tools`), each with symlinks resolved to the checkout it lands in, every global config file mise loads, the Homebrew and App Store catalog URLs, and the cached Homebrew search index. Without mise it says so and reports the global config. Never changes anything.
 
 - **Effect:** reads only
-- **Requires:** `mise`
+- **Requires:** nothing beyond `pkg`
 - **Dry run:** no
 - **Idempotent:** yes
 - **Errors:** `INVALID_ARGUMENT`, `PRECONDITION_FAILED`, `MISE_FAILED`, `INTERNAL`
@@ -2046,15 +2046,27 @@ Result schema:
           "type": "string",
           "description": "The environment variable that overrides it."
         },
+        "found": {
+          "type": "boolean",
+          "description": "Whether that executable exists and runs."
+        },
         "version": {
-          "type": "string",
-          "description": "What `mise version` prints."
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "What `mise version` prints; null when mise is not found."
+        },
+        "selfUpdates": {
+          "type": "boolean",
+          "description": "Whether `pkg update` updates mise with `mise self-update`; false for a mise a package\nmanager installed."
         }
       },
       "required": [
         "program",
         "environmentVariable",
-        "version"
+        "found",
+        "selfUpdates"
       ]
     },
     "ConfigContext": {

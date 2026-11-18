@@ -228,6 +228,8 @@ fn context_show_resolves_the_config_link_to_the_dotfiles_checkout() {
     let real = fixture.dotfile("config.macos.toml").canonicalize().unwrap();
     assert_eq!(context["packagesConfig"]["realPath"], real.display().to_string());
     assert_eq!(context["mise"]["version"], "2026.11.9 macos-arm64 (2026-11-16)");
+    assert_eq!(context["mise"]["found"], true);
+    assert_eq!(context["mise"]["selfUpdates"], true);
     assert!(context["catalogs"]["homebrewIndexFetchedAt"].is_null());
     assert_matches_output_schema(&["context", "show"], &context);
 
@@ -259,4 +261,31 @@ fn a_missing_mise_is_a_precondition_failure_that_says_how_to_install_it() {
     std::fs::remove_file(fixture.path("bin/mise")).unwrap();
     let error = fixture.json(&["list"]).assert_failed(3, "PRECONDITION_FAILED");
     assert!(error["suggestions"].to_string().contains("mise.run"), "{error}");
+}
+
+#[cfg(unix)]
+#[test]
+fn without_pkg_mise_or_mise_on_path_pkg_uses_the_one_in_local_bin() {
+    let fixture = Fixture::seeded();
+    let installed = fixture.home().join(".local/bin/mise");
+    std::fs::create_dir_all(installed.parent().unwrap()).unwrap();
+    std::fs::copy(fixture.path("bin/mise"), &installed).unwrap();
+    let context = fixture.run_with(&["context", "show", "--output", "json"], &[("PKG_MISE", None)]);
+    let context = context.success();
+    assert_eq!(context["mise"]["program"], installed.display().to_string());
+    assert_eq!(context["mise"]["found"], true);
+}
+
+#[cfg(unix)]
+#[test]
+fn context_show_works_without_mise() {
+    let fixture = Fixture::new();
+    let context = fixture.run_with(&["context", "show", "--output", "json"], &[("PKG_MISE", None)]);
+    let context = context.success();
+    assert_eq!(context["mise"]["found"], false);
+    assert!(context["mise"]["version"].is_null());
+    assert!(context["configFiles"].as_array().unwrap().is_empty());
+    assert_matches_output_schema(&["context", "show"], &context);
+    let text = fixture.run_with(&["context", "show"], &[("PKG_MISE", None)]);
+    assert!(text.text().contains("not found"), "{}", text.stdout);
 }

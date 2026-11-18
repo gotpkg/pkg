@@ -8,8 +8,9 @@ use serde::Serialize;
 use crate::catalog;
 use crate::catalog::homebrew::Homebrew;
 use crate::common::{Machine, absolute};
-use crate::mise::ConfigTarget;
-use crate::{Client, Error, Outcome, Progress};
+use crate::environment::real_path;
+use crate::mise::{ConfigTarget, Mise};
+use crate::{Client, Error, Outcome, Progress, Recovery};
 
 /// Where the client's operations take effect.
 #[derive(Clone, Debug, Serialize, JsonSchema)]
@@ -32,8 +33,13 @@ pub struct Context {
 pub struct MiseContext {
     /// The executable the client runs.
     pub program: PathBuf,
-    /// What `mise version` prints.
-    pub version: String,
+    /// Whether that executable exists and runs.
+    pub found: bool,
+    /// What `mise version` prints; null when mise is not found.
+    pub version: Option<String>,
+    /// Whether mise can replace itself, which `update` has it do; false for a mise a package
+    /// manager installed.
+    pub self_updates: bool,
 }
 
 #[derive(Clone, Debug, Serialize, JsonSchema)]
@@ -63,38 +69,61 @@ impl Client {
     /// Reports the mise executable and version, the home directory mise runs in, the files new
     /// bootstrap-package and tool declarations go to (mise's `write_targets` settings, else the
     /// global configuration) with symlinks resolved, every global configuration file mise loads,
-    /// the catalog URLs, and the cached Homebrew search index.
+    /// the catalog URLs, and the cached Homebrew search index. Without mise, it reports mise as
+    /// not found, the global configuration as both targets, and no configuration files.
     ///
     /// # Errors
     ///
-    /// `PreconditionFailed` when mise cannot run or a configuration file cannot be read, and
-    /// `MiseFailed` when mise cannot report its version, files, or settings.
+    /// `PreconditionFailed` when mise exists but cannot run or a configuration file cannot be
+    /// read, and `MiseFailed` when mise cannot report its version, files, or settings.
     pub fn context(
         &mut self,
         _progress: &mut dyn FnMut(Progress<'_>),
     ) -> Result<Outcome<Context>, Error> {
-        let machine = Machine::load(&self.settings)?;
-        let environment = &machine.environment;
-        let mise_version = environment.mise.read(&["version"])?.trim().to_string();
+        let mise = Mise::new(&self.settings);
+        let release = match mise.release() {
+            Ok(release) => Some(release),
+            Err(error) if error.recovery.contains(&Recovery::InstallMise) => None,
+            Err(error) => return Err(error),
+        };
         let client = catalog::Client::new(&self.settings.child_env)?;
-        let homebrew = Homebrew::new(&client, environment.homebrew_api, environment.cache_dir);
+        let homebrew =
+            Homebrew::new(&client, &self.settings.homebrew_api, &self.settings.cache_dir);
         let describe = |target: ConfigTarget| ConfigContext {
             setting: target.setting,
             path: target.path,
             real_path: target.real_path,
         };
+        let (packages_config, tools_config, config_files) = if release.is_some() {
+            let machine = Machine::load(&self.settings)?;
+            (
+                describe(machine.target(false)?),
+                describe(machine.target(true)?),
+                machine.config_files.iter().map(|path| absolute(path)).collect(),
+            )
+        } else {
+            let global = self.settings.global_config();
+            let target = || ConfigContext {
+                setting: None,
+                real_path: real_path(&global),
+                path: global.clone(),
+            };
+            (target(), target(), Vec::new())
+        };
         Ok(Outcome::new(Context {
             mise: MiseContext {
-                program: PathBuf::from(&self.settings.mise),
-                version: mise_version,
+                program: mise.executable().unwrap_or_else(|| PathBuf::from(&self.settings.mise)),
+                found: release.is_some(),
+                self_updates: release.is_some() && mise.updates_itself(),
+                version: release.map(|release| release.description),
             },
-            home: environment.home.to_path_buf(),
-            packages_config: describe(machine.target(false)?),
-            tools_config: describe(machine.target(true)?),
-            config_files: machine.config_files.iter().map(|path| absolute(path)).collect(),
+            home: self.settings.home.clone(),
+            packages_config,
+            tools_config,
+            config_files,
             catalogs: Catalogs {
-                homebrew_api: environment.homebrew_api.to_string(),
-                app_store_api: environment.app_store_api.to_string(),
+                homebrew_api: self.settings.homebrew_api.clone(),
+                app_store_api: self.settings.app_store_api.clone(),
                 homebrew_index: homebrew.index_path(),
                 homebrew_index_fetched_at: homebrew.cached_index().map(|index| index.fetched_at),
             },

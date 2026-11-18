@@ -2,6 +2,7 @@
 
 mod plans;
 mod queries;
+mod release;
 mod streams;
 
 use std::ffi::OsStr;
@@ -13,6 +14,7 @@ use crate::{Error, ErrorDetails, ErrorKind, Progress, Recovery, Settings};
 
 pub(crate) use plans::{removals, upgrade_plan};
 pub(crate) use queries::{ConfigTarget, OutdatedTool, PackageState, ToolState};
+pub(crate) use release::{MISE, MiseRelease, PACKAGE_MANAGER_REASON};
 
 pub(crate) struct Mise<'a> {
     settings: &'a Settings,

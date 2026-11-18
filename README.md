@@ -23,7 +23,7 @@ pkg install brew:wget brew-cask:iina  # install and record both
 pkg install ripgrep npm:prettier      # tools from mise's registry and its backends
 pkg list                              # everything your config declares, with versions
 pkg outdated                          # what has a newer version
-pkg update                            # update everything
+pkg update                            # update everything, mise itself first
 pkg remove brew:wget                  # uninstall and take it out of your config
 pkg sync                              # install whatever the config declares that is missing
 ```

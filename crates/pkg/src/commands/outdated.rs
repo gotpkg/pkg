@@ -16,12 +16,14 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     aliases: &[],
     summary: "List installed packages that have a newer version",
     description: "Lists every installed package and tool that `pkg update` would update, with \
-        the installed and the newest version. Homebrew formulae and casks come from \
-        `mise bootstrap packages upgrade --dry-run`, which refreshes Homebrew's metadata; App \
-        Store apps are compared with the App Store's current version; tools come from \
-        `mise outdated --global`. Casks mise will not update, such as apps that update \
-        themselves, are listed under `skipped` with mise's reason. The whole list is returned at \
-        once. Never changes anything.",
+        the installed and the newest version, mise itself first. Homebrew formulae and casks \
+        come from `mise bootstrap packages upgrade --dry-run`, which refreshes Homebrew's \
+        metadata; App Store apps are compared with the App Store's current version; tools come \
+        from `mise outdated --global`; mise's newest release comes from `mise version`, before \
+        mise's minimum release age, so `pkg update` can leave a very new mise release for \
+        later. Casks mise will not update, such as apps that update themselves, and a newer \
+        mise that a package manager installed are listed under `skipped` with the reason. The \
+        whole list is returned at once. Never changes anything.",
     arguments: &[],
     effect: Effect::Reads,
     requires: &[Requirement::Mise, Requirement::Network],

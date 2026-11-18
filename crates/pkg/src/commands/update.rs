@@ -16,12 +16,15 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     path: &["update"],
     aliases: &["up"],
     summary: "Update installed packages to their newest versions",
-    description: "Updates the named packages, or with none every installed package and global \
-        tool: `mise bootstrap packages upgrade` for Homebrew, the App Store, and the other \
-        package managers, and `mise upgrade --global` for tools. Packages that are declared but \
-        not installed are left to `pkg sync`. The receipt lists each package whose installed \
-        version changed. --dry-run lists what would be updated, as `pkg outdated` does, and \
-        changes nothing. mise's progress goes to stderr.",
+    description: "Updates the named packages, or with none mise itself and then every installed \
+        package and global tool: `mise self-update`, then `mise bootstrap packages upgrade` for \
+        Homebrew, the App Store, and the other package managers, and `mise upgrade --global` for \
+        tools, which include pkg once pkg is handed to mise. A mise that a package manager \
+        installed is left to it and listed under `skipped`; when `mise self-update` fails, \
+        nothing else changes. Packages that are declared but not installed are left to \
+        `pkg sync`. The receipt lists each package whose installed version changed, mise first. \
+        --dry-run lists what would be updated, as `pkg outdated` does, and changes nothing. \
+        mise's progress goes to stderr.",
     arguments: &[
         ArgumentSpec {
             name: "packages",
@@ -48,7 +51,7 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
         Example { summary: "Preview updating everything", args: &["update", "--dry-run"] },
         Example { summary: "Update one formula", args: &["update", "brew:wget"] },
     ],
-    synonyms: &["upgrade", "newest", "latest", "bump", "refresh", "outdated"],
+    synonyms: &["upgrade", "newest", "latest", "bump", "refresh", "outdated", "self-update"],
     output_schema: || schema_for!(UpdateReceipt),
     run: update,
 }];

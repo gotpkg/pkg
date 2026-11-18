@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::Error;
 
@@ -9,6 +9,7 @@ pub const DEFAULT_HOMEBREW_API: &str = "https://formulae.brew.sh/api";
 pub const DEFAULT_APP_STORE_API: &str = "https://itunes.apple.com";
 
 /// Locations and child environment supplied by the host, never reread from global state.
+#[derive(Clone)]
 pub struct Settings {
     pub home: PathBuf,
     pub mise: OsString,
@@ -77,5 +78,28 @@ impl fmt::Debug for Settings {
             .field("global_config_override", &self.global_config_override)
             .field("cache_dir", &self.cache_dir)
             .finish_non_exhaustive()
+    }
+}
+
+/// The first executable file named `name` in the directories of a `PATH`-style list.
+pub fn find_on_path(name: &OsStr, path: &OsStr) -> Option<PathBuf> {
+    std::env::split_paths(path)
+        .filter(|directory| directory.is_absolute())
+        .map(|directory| directory.join(name))
+        .find(|candidate| is_executable(candidate))
+}
+
+pub(crate) fn is_executable(path: &Path) -> bool {
+    let Ok(metadata) = std::fs::metadata(path) else {
+        return false;
+    };
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
+    }
+    #[cfg(not(unix))]
+    {
+        metadata.is_file()
     }
 }

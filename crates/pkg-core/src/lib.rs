@@ -104,7 +104,7 @@ pub use requests::{
     SearchRequest, SearchSource, SyncRequest, TapAddRequest, TapRemoveRequest, UpdateRequest,
 };
 pub use search::Found;
-pub use settings::{DEFAULT_APP_STORE_API, DEFAULT_HOMEBREW_API, Settings};
+pub use settings::{DEFAULT_APP_STORE_API, DEFAULT_HOMEBREW_API, Settings, find_on_path};
 pub use sync::SyncReceipt;
 pub use tap::{TapEntry, TapList, TapReceipt};
 pub use update::{UpdateReceipt, Updated};

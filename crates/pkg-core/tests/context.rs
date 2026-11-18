@@ -34,7 +34,7 @@ shift 2
 case "$*" in
     'backends ls') printf 'npm';;
     'config ls --json') printf '[]';;
-    'version') printf '2026.11.9';;
+    'version --json') printf '{"version":"2026.11.9 macos-arm64 (2026-11-16)","latest":null}';;
     'settings get write_targets.'*)
         if [ -n "$MISE_GLOBAL_CONFIG_FILE" ]; then
             printf 'is not set' >&2

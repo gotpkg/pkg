@@ -1,15 +1,15 @@
 //! Resolves process defaults once at the CLI edge.
 
 use std::collections::BTreeMap;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
-use pkg_core::Settings;
+use pkg_core::{Settings, find_on_path};
 use serde_json::json;
 
 use crate::failure::Failure;
 
-/// The mise executable pkg runs; unset means `mise` on PATH.
+/// The mise executable pkg runs; unset means `mise` on PATH, else `~/.local/bin/mise`.
 pub(crate) const MISE_VARIABLE: &str = "PKG_MISE";
 /// The Homebrew API's base URL; unset means [`DEFAULT_HOMEBREW_API`].
 pub(crate) const HOMEBREW_API_VARIABLE: &str = "PKG_HOMEBREW_API";
@@ -56,7 +56,8 @@ fn resolve(variable: impl Fn(&str) -> Option<OsString>) -> Result<Settings, Fail
             .unwrap_or_else(|| default.to_string())
     };
     Ok(Settings {
-        mise: variable(MISE_VARIABLE).unwrap_or_else(|| "mise".into()),
+        mise: variable(MISE_VARIABLE)
+            .unwrap_or_else(|| select_mise(variable("PATH").as_deref(), &home)),
         child_env: BTreeMap::new(),
         homebrew_api: text(HOMEBREW_API_VARIABLE, DEFAULT_HOMEBREW_API),
         app_store_api: text(APP_STORE_API_VARIABLE, DEFAULT_APP_STORE_API),
@@ -65,6 +66,15 @@ fn resolve(variable: impl Fn(&str) -> Option<OsString>) -> Result<Settings, Fail
         cache_dir,
         home,
     })
+}
+
+/// mise on `PATH`, else the one mise's own installer puts in `~/.local/bin`, which a shell may not
+/// have on `PATH` yet; without either, the bare name, which reports mise as missing when run.
+fn select_mise(path: Option<&OsStr>, home: &Path) -> OsString {
+    let name = OsStr::new(if cfg!(windows) { "mise.exe" } else { "mise" });
+    path.and_then(|path| find_on_path(name, path))
+        .or_else(|| find_on_path(name, home.join(".local/bin").as_os_str()))
+        .map_or_else(|| OsString::from("mise"), PathBuf::into_os_string)
 }
 
 /// `path` with every symlink resolved, so `~/.config/mise/config.toml` reads as the dotfiles

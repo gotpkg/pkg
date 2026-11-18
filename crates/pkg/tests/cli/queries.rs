@@ -1,6 +1,6 @@
 //! The commands that only read: list, search, info, outdated, where, and tap list.
 
-use crate::support::{Fixture, assert_matches_output_schema};
+use crate::support::{Fixture, assert_matches_output_schema, mise_version};
 
 #[test]
 fn list_groups_packages_by_manager_then_tools() {
@@ -148,6 +148,27 @@ fn outdated_combines_homebrew_the_app_store_and_tools() {
     );
     assert_eq!(report["skipped"][0]["package"], "brew-cask:firefox");
     assert_matches_output_schema(&["outdated"], &report);
+}
+
+#[test]
+fn outdated_lists_a_newer_mise_first_unless_a_package_manager_owns_it() {
+    let fixture = Fixture::seeded();
+    fixture.mise(&["version", "--json"]).json(&mise_version("2026.11.9", "2026.11.10"));
+    let report = fixture.json(&["outdated"]).success();
+    assert_eq!(
+        report["items"][0],
+        serde_json::json!({ "package": "mise", "installed": "2026.11.9", "latest": "2026.11.10" })
+    );
+    let preview = fixture.json(&["update", "--dry-run"]).success();
+    assert_eq!(preview["updated"][0]["package"], "mise");
+
+    fixture.disable_mise_self_update();
+    let report = fixture.json(&["outdated"]).success();
+    assert!(report["items"].as_array().unwrap().iter().all(|item| item["package"] != "mise"));
+    assert!(
+        report["skipped"].as_array().unwrap().iter().any(|item| item["package"] == "mise"),
+        "{report}"
+    );
 }
 
 #[test]

@@ -8,10 +8,11 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::common::{MISE_ERRORS, execute, for_people, table};
+use crate::NAME;
 use crate::environment::{APP_STORE_API_VARIABLE, HOMEBREW_API_VARIABLE, MISE_VARIABLE};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::registry::{CommandSpec, Effect, Example, Requirement};
+use crate::registry::{CommandSpec, Effect, Example};
 use crate::response::{RenderOutput, Response};
 
 pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
@@ -19,15 +20,17 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     path: &["context", "show"],
     aliases: &[],
     summary: "Show the mise config files, mise, and catalogs pkg uses",
-    description: "Reports where pkg takes effect: the mise executable and version, the home \
-        directory pkg runs mise in, the file new `[bootstrap.packages]` entries go to (mise's \
-        `write_targets.packages` setting, else its global config) and the file new `[tools]` \
-        entries go to (`write_targets.tools`), each with symlinks resolved to the checkout it \
-        lands in, every global config file mise loads, the Homebrew and App Store catalog URLs, \
-        and the cached Homebrew search index. Never changes anything.",
+    description: "Reports where pkg takes effect: the mise executable (`PKG_MISE`, else `mise` on \
+        PATH, else `~/.local/bin/mise`), its version, and whether `pkg update` updates it (not \
+        when a package manager installed it), the home directory pkg runs mise in, the file new \
+        `[bootstrap.packages]` entries go to (mise's `write_targets.packages` setting, else its \
+        global config) and the file new `[tools]` entries go to (`write_targets.tools`), each \
+        with symlinks resolved to the checkout it lands in, every global config file mise loads, \
+        the Homebrew and App Store catalog URLs, and the cached Homebrew search index. Without \
+        mise it says so and reports the global config. Never changes anything.",
     arguments: &[],
     effect: Effect::Reads,
-    requires: &[Requirement::Mise],
+    requires: &[],
     dry_run: false,
     idempotent: true,
     errors: MISE_ERRORS,
@@ -74,8 +77,13 @@ pub struct MiseContext {
     pub program: PathBuf,
     /// The environment variable that overrides it.
     pub environment_variable: String,
-    /// What `mise version` prints.
-    pub version: String,
+    /// Whether that executable exists and runs.
+    pub found: bool,
+    /// What `mise version` prints; null when mise is not found.
+    pub version: Option<String>,
+    /// Whether `pkg update` updates mise with `mise self-update`; false for a mise a package
+    /// manager installed.
+    pub self_updates: bool,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -101,7 +109,9 @@ impl From<pkg_core::Context> for Context {
             mise: MiseContext {
                 program: context.mise.program,
                 environment_variable: MISE_VARIABLE.to_string(),
+                found: context.mise.found,
                 version: context.mise.version,
+                self_updates: context.mise.self_updates,
             },
             home: context.home,
             packages_config: context.packages_config,
@@ -131,10 +141,7 @@ impl RenderOutput for Context {
         let files: Vec<String> = self.config_files.iter().map(for_people).collect();
         let rows = vec![
             vec!["pkg".to_string(), self.version.clone()],
-            vec![
-                "mise".to_string(),
-                format!("{} {}", self.mise.program.display(), self.mise.version),
-            ],
+            vec!["mise".to_string(), self.mise_row()],
             vec!["packages go to".to_string(), config(&self.packages_config)],
             vec!["tools go to".to_string(), config(&self.tools_config)],
             vec!["config files".to_string(), files.join(", ")],
@@ -159,7 +166,9 @@ impl RenderOutput for Context {
             "mise": {
                 "program": self.mise.program.to_string_lossy(),
                 "environmentVariable": self.mise.environment_variable,
+                "found": self.mise.found,
                 "version": self.mise.version,
+                "selfUpdates": self.mise.self_updates,
             },
             "home": self.home.to_string_lossy(),
             "packagesConfig": config_json(&self.packages_config),
@@ -174,6 +183,19 @@ impl RenderOutput for Context {
                 "homebrewIndexFetchedAt": self.catalogs.homebrew_index_fetched_at,
             },
         })
+    }
+}
+
+impl Context {
+    fn mise_row(&self) -> String {
+        let program = self.mise.program.display();
+        match (&self.mise.version, self.mise.self_updates) {
+            (None, _) => format!("not found ({program}); `{NAME} setup` installs it"),
+            (Some(version), true) => format!("{program} {version}"),
+            (Some(version), false) => {
+                format!("{program} {version} (its package manager updates it)")
+            }
+        }
     }
 }
 

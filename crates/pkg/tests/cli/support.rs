@@ -5,6 +5,7 @@
 //! local HTTP server that serves fixed documents by path.
 
 use std::collections::{BTreeMap, HashMap};
+use std::ffi::OsStr;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -14,6 +15,9 @@ use std::time::SystemTime;
 
 use serde_json::{Value, json};
 use tempfile::TempDir;
+
+/// The only directories on `PATH` when pkg runs: enough for the fake mise's shell script.
+pub(crate) const SYSTEM_PATH: &str = "/usr/bin:/bin:/usr/sbin:/sbin";
 
 const FAKE_MISE: &str = r#"#!/bin/sh
 # Answers from $FAKE_MISE/answers/<key>[.<n>], where <key> is the arguments with the home
@@ -159,6 +163,8 @@ impl Fixture {
         fixture.mise(&["settings", "get", "write_targets.tools"]).stdout(target);
         fixture.mise(&["backends", "ls"]).stdout("aqua\ncargo\ncore\ngithub\nnpm\n");
         fixture.mise(&["version"]).stdout("2026.11.9 macos-arm64 (2026-11-16)\n");
+        fixture.mise(&["version", "--json"]).json(&mise_version("2026.11.9", "2026.11.9"));
+        fixture.mise(&["self-update", "--yes"]).stdout("");
         let config = fixture.config_dir();
         fixture.mise(&["config", "ls", "--json"]).json(&json!([
             { "path": config.join("config.macos.toml"), "tools": ["npm:prettier"] },
@@ -345,12 +351,18 @@ impl Fixture {
     }
 
     pub(crate) fn run(&self, args: &[&str]) -> Outcome {
+        self.run_with(args, &[])
+    }
+
+    /// `run` with `env` applied on top of the fixture's environment; `None` unsets a variable.
+    /// `PATH` holds only the system directories, so no mise or pkg of the host's is found.
+    pub(crate) fn run_with(&self, args: &[&str], env: &[(&str, Option<&OsStr>)]) -> Outcome {
         let mut command = Command::new(env!("CARGO_BIN_EXE_pkg"));
         command
             .args(args)
             .current_dir(self.dir.path())
             .env_clear()
-            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("PATH", SYSTEM_PATH)
             .env("HOME", self.home())
             .env("PKG_MISE", self.path("bin/mise"))
             .env("FAKE_MISE", self.path("mise"))
@@ -360,12 +372,25 @@ impl Fixture {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        for (key, value) in env {
+            match value {
+                Some(value) => command.env(key, value),
+                None => command.env_remove(key),
+            };
+        }
         let output = command.output().expect("pkg runs");
         Outcome {
             status: output.status.code().unwrap_or(-1),
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
             stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         }
+    }
+
+    /// Marks the fake mise as one a package manager installed, which mise's packaging contract
+    /// signals with a file under its install prefix (the directory above `bin/`).
+    pub(crate) fn disable_mise_self_update(&self) {
+        std::fs::create_dir_all(self.path("lib")).expect("the prefix's lib directory");
+        std::fs::write(self.path("lib/.disable-self-update"), "").expect("the marker");
     }
 
     /// `run` with `--output json`.
@@ -473,6 +498,17 @@ pub(crate) fn status(extra: &[(&str, &str, Option<&str>)]) -> Value {
         })
         .collect();
     Value::Object(managers)
+}
+
+/// `mise version --json` for a mise at `current` that knows of `latest`.
+pub(crate) fn mise_version(current: &str, latest: &str) -> Value {
+    json!({
+        "version": format!("{current} macos-arm64 (2026-11-16)"),
+        "latest": latest,
+        "os": "macos",
+        "arch": "arm64",
+        "build_time": "2026-11-16 10:40:41 +00:00",
+    })
 }
 
 fn tool(version: &str, config: &Path) -> Value {
