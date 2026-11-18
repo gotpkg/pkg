@@ -48,7 +48,7 @@ The strict dry-run guarantee and the first version's platform scope require reso
 
 [README installation](../README.md#install) offers Cargo installation and future mise/Homebrew installation. [Knope configuration](../knope.toml) already names archives for macOS arm64/x64, Linux arm64/x64 musl, and Windows x64; existing release provenance must be preserved.
 
-[Environment resolution](../crates/pkg/src/environment.rs) chooses `PKG_MISE` or mise on PATH. [The mise adapter](../crates/pkg/src/mise/mod.rs) always runs from home, uses closed stdin, and tells the user to install mise themselves when it is absent. [Sync](../crates/pkg/src/commands/sync.rs) deliberately excludes settings, services, dotfiles, and bootstrap hooks.
+[Environment resolution](../crates/pkg/src/environment.rs) chooses `PKG_MISE` or mise on PATH and supplies the [core settings](../crates/pkg-core/src/settings.rs). [The core mise adapter](../crates/pkg-core/src/mise/mod.rs) always runs from home, uses closed stdin, and reports a missing mise through typed errors that the CLI turns into installation advice. [Sync](../crates/pkg-core/src/sync.rs) deliberately excludes settings, services, dotfiles, and bootstrap hooks.
 
 Mark's local restore guide was inspected as evidence, not as a portable dependency or a proposed file to change. Its enrollment operation is `mise bootstrap --from <repository> --from-dir ~/.dotfiles --config-dir mise`; later runs use the linked global configuration. It also documents Git authentication, App Store and 1Password sign-in, Xcode requirements, sudo, and interactive hooks. pkg must not silently omit those operations to make restoration appear successful.
 
@@ -83,7 +83,7 @@ Do not run as root, invoke sudo, edit shell startup files, install mise, or appl
 
 ### Selecting and maintaining mise
 
-Extend [environment resolution](../crates/pkg/src/environment.rs), [context reporting](../crates/pkg/src/commands/context.rs), and the [registry](../crates/pkg/src/registry.rs) with a single mise-selection contract:
+Extend [environment resolution](../crates/pkg/src/environment.rs), [core settings](../crates/pkg-core/src/settings.rs), [context reporting](../crates/pkg/src/commands/context.rs), and the [registry](../crates/pkg/src/registry.rs) with a single mise-selection contract:
 
 1. An explicit `PKG_MISE` wins. An invalid, missing, or incompatible explicit executable is an error, never permission to use another one.
 2. Otherwise reuse a compatible external mise on PATH. An incompatible or broken external executable is reported with its path and remediation; do not silently shadow it.
@@ -130,7 +130,7 @@ The existing promise in [Previewing with dry run](../crates/pkg/docs/packages.md
 - [VISION.md](../VISION.md): expand the first-machine goal and permit explicit full bootstrap delegated to mise. Preserve package-only sync and mise's ownership of installed software. Narrow the no-extra-state principle to permit the managed executable and its release-selection metadata, not a parallel package database. This is a proposed vision revision, not a change made in this draft.
 - [README.md](../README.md) and [Packages](../crates/pkg/docs/packages.md): distinguish installer, setup, full bootstrap, sync, runtime ownership, terminal interaction, and prerequisites.
 - [Registry and command modules](../crates/pkg/src/registry.rs): own arguments, effects, version requirements, stable errors, receipt schemas, examples, and generated [CLI reference](../crates/pkg/docs/cli.md). Reuse existing error categories where meaningful; a new category must represent a distinct caller recovery action.
-- [mise adapter](../crates/pkg/src/mise/mod.rs) and [environment resolution](../crates/pkg/src/environment.rs): consume the same selected executable and explicitly chosen bootstrap context; ordinary package operations retain home-directory isolation.
+- [Core API](../crates/pkg-core/src/lib.rs), [mise adapter](../crates/pkg-core/src/mise/mod.rs), [settings](../crates/pkg-core/src/settings.rs), and [CLI environment resolution](../crates/pkg/src/environment.rs): add typed onboarding operations, consume the same selected executable and explicitly chosen bootstrap context, and keep presentation in the CLI. Ordinary package operations retain home-directory isolation.
 - [mise tasks](../mise.toml), [Knope](../knope.toml), and [release workflows](../.github/workflows/): build and verify installer assets with the release, including checksums and archive safety.
 - New current documentation is needed for onboarding under `guides/` and in the binary's documentation set: start from the guide template, link the registry contract, and cover a blank home, an existing mise installation, and a dotfiles checkout with a config subdirectory. Update the project's command/Rust guidance to describe the approved bootstrap exceptions.
 
@@ -138,7 +138,7 @@ The existing promise in [Previewing with dry run](../crates/pkg/docs/packages.md
 
 Existing package commands, argument defaults, JSON fields, write-target rules, and sync behavior remain unchanged. An explicit `PKG_MISE` keeps precedence. No external mise, existing global config, or existing checkout is taken over automatically. The full-bootstrap effects and its terminal interaction are new, opt-in command behavior.
 
-This proposal is independent of the library extraction in [PR #1](https://github.com/markmals/pkg/pull/1). If that lands first, put onboarding operations in the library and CLI presentation in the executable. If onboarding lands first, extraction must include its operations rather than leave a second implementation behind.
+The library extraction in [proposal 0001](0001-reusable-package-library.md) is merged through [PR #1](https://github.com/markmals/pkg/pull/1). Put onboarding operations in `pkg-core` and CLI presentation in `pkg`, using the existing typed context, error, and progress boundaries rather than introducing a second implementation.
 
 ## Implications on adoption
 
