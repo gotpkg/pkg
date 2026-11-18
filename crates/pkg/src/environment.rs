@@ -15,9 +15,12 @@ pub(crate) const MISE_VARIABLE: &str = "PKG_MISE";
 pub(crate) const HOMEBREW_API_VARIABLE: &str = "PKG_HOMEBREW_API";
 /// The App Store (iTunes Search API) base URL; unset means [`DEFAULT_APP_STORE_API`].
 pub(crate) const APP_STORE_API_VARIABLE: &str = "PKG_APP_STORE_API";
+/// mise's installer script URL, such as a mirror; unset means [`DEFAULT_MISE_INSTALLER`].
+pub(crate) const MISE_INSTALLER_VARIABLE: &str = "PKG_MISE_INSTALLER";
 
 pub(crate) const DEFAULT_HOMEBREW_API: &str = "https://formulae.brew.sh/api";
 pub(crate) const DEFAULT_APP_STORE_API: &str = "https://itunes.apple.com";
+pub(crate) const DEFAULT_MISE_INSTALLER: &str = pkg_core::DEFAULT_MISE_INSTALLER;
 
 pub(crate) fn from_process() -> Result<Settings, Failure> {
     let snapshot: BTreeMap<OsString, OsString> = std::env::vars_os().collect();
@@ -61,6 +64,7 @@ fn resolve(variable: impl Fn(&str) -> Option<OsString>) -> Result<Settings, Fail
         child_env: BTreeMap::new(),
         homebrew_api: text(HOMEBREW_API_VARIABLE, DEFAULT_HOMEBREW_API),
         app_store_api: text(APP_STORE_API_VARIABLE, DEFAULT_APP_STORE_API),
+        mise_installer: text(MISE_INSTALLER_VARIABLE, DEFAULT_MISE_INSTALLER),
         config_dir,
         global_config_override,
         cache_dir,

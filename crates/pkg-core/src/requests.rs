@@ -31,6 +31,16 @@ pub struct UpdateRequest {
     pub mode: Mode,
 }
 
+#[derive(Debug)]
+pub struct SetupRequest {
+    pub mode: Mode,
+    /// Whether setup may add mise's shims to pkg's block in a shell startup file; false prints
+    /// the line instead.
+    pub modify_path: bool,
+    /// The running pkg's version, which the handoff never replaces with an older one.
+    pub pkg_version: String,
+}
+
 #[derive(Debug, Default)]
 pub struct ListRequest {
     pub managers: Vec<String>,

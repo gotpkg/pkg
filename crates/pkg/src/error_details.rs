@@ -31,6 +31,10 @@ pub(crate) fn render(details: &ErrorDetails) -> Value {
     optional(&mut fields, "variable", details.variable.as_ref());
     optional(&mut fields, "argument", details.argument.as_ref());
     optional(&mut fields, "value", details.value.as_ref());
+    optional(&mut fields, "path", details.path.as_deref().map(Path::to_string_lossy));
+    optional(&mut fields, "phase", details.phase.as_ref());
+    optional(&mut fields, "completed", details.completed.as_ref());
+    optional(&mut fields, "changesMayRemain", details.changes_may_remain);
     Value::Object(fields)
 }
 

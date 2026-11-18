@@ -230,6 +230,8 @@ fn context_show_resolves_the_config_link_to_the_dotfiles_checkout() {
     assert_eq!(context["mise"]["version"], "2026.11.9 macos-arm64 (2026-11-16)");
     assert_eq!(context["mise"]["found"], true);
     assert_eq!(context["mise"]["selfUpdates"], true);
+    assert_eq!(context["pkg"]["owner"], "other", "the test build lives in target/");
+    assert!(context["pkg"]["tool"].is_null());
     assert!(context["catalogs"]["homebrewIndexFetchedAt"].is_null());
     assert_matches_output_schema(&["context", "show"], &context);
 
@@ -260,7 +262,7 @@ fn a_missing_mise_is_a_precondition_failure_that_says_how_to_install_it() {
     let fixture = Fixture::seeded();
     std::fs::remove_file(fixture.path("bin/mise")).unwrap();
     let error = fixture.json(&["list"]).assert_failed(3, "PRECONDITION_FAILED");
-    assert!(error["suggestions"].to_string().contains("mise.run"), "{error}");
+    assert!(error["suggestions"].to_string().contains("pkg setup"), "{error}");
 }
 
 #[cfg(unix)]

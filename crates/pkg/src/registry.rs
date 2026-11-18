@@ -176,6 +176,11 @@ pub const RESOURCES: &[(&str, &str, Audience)] = &[
     ("prune", "Uninstall Homebrew packages no config declares", Audience::People),
     ("where", "Print where a formula or tool is installed", Audience::People),
     ("tap", "List, add, and remove Homebrew tap URLs", Audience::People),
+    (
+        "setup",
+        "Install mise and get pkg ready on a machine with nothing to restore",
+        Audience::People,
+    ),
     ("cli", "Find the command for a task", Audience::Agents),
     ("schema", "Inspect a command's full specification", Audience::Agents),
     ("docs", "Search and read pkg's documentation", Audience::Agents),

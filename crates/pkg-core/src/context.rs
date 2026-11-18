@@ -10,6 +10,7 @@ use crate::catalog::homebrew::Homebrew;
 use crate::common::{Machine, absolute};
 use crate::environment::real_path;
 use crate::mise::{ConfigTarget, Mise};
+use crate::onboarding::handoff::PKG_TOOL;
 use crate::{Client, Error, Outcome, Progress, Recovery};
 
 /// Where the client's operations take effect.
@@ -25,7 +26,20 @@ pub struct Context {
     pub tools_config: ConfigContext,
     /// Every global config file mise loads, symlinks resolved.
     pub config_files: Vec<PathBuf>,
+    /// pkg itself as a mise tool (`github:markmals/pkg`), when a config declares it.
+    pub pkg_tool: Option<PkgTool>,
     pub catalogs: Catalogs,
+}
+
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PkgTool {
+    /// The version the config asks for, such as `latest`.
+    pub requested: String,
+    /// The version mise has installed; null when none is.
+    pub installed: Option<String>,
+    /// The config file that declares it.
+    pub config: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug, Serialize, JsonSchema)]
@@ -94,12 +108,24 @@ impl Client {
             path: target.path,
             real_path: target.real_path,
         };
-        let (packages_config, tools_config, config_files) = if release.is_some() {
+        let (packages_config, tools_config, config_files, pkg_tool) = if release.is_some() {
             let machine = Machine::load(&self.settings)?;
+            let pkg_tool = machine
+                .environment
+                .mise
+                .tool_states()?
+                .into_iter()
+                .find(|tool| tool.key == PKG_TOOL)
+                .map(|tool| PkgTool {
+                    requested: tool.requested,
+                    installed: tool.installed.then_some(tool.version).flatten(),
+                    config: tool.config,
+                });
             (
                 describe(machine.target(false)?),
                 describe(machine.target(true)?),
                 machine.config_files.iter().map(|path| absolute(path)).collect(),
+                pkg_tool,
             )
         } else {
             let global = self.settings.global_config();
@@ -108,7 +134,7 @@ impl Client {
                 real_path: real_path(&global),
                 path: global.clone(),
             };
-            (target(), target(), Vec::new())
+            (target(), target(), Vec::new(), None)
         };
         Ok(Outcome::new(Context {
             mise: MiseContext {
@@ -121,6 +147,7 @@ impl Client {
             packages_config,
             tools_config,
             config_files,
+            pkg_tool,
             catalogs: Catalogs {
                 homebrew_api: self.settings.homebrew_api.clone(),
                 app_store_api: self.settings.app_store_api.clone(),

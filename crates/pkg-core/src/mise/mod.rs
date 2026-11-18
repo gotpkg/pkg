@@ -1,5 +1,6 @@
 //! mise execution within a caller-supplied home and child environment.
 
+mod installer;
 mod plans;
 mod queries;
 mod release;
@@ -12,6 +13,7 @@ use std::process::{Command, Stdio};
 
 use crate::{Error, ErrorDetails, ErrorKind, Progress, Recovery, Settings};
 
+pub(crate) use installer::run_installer;
 pub(crate) use plans::{removals, upgrade_plan};
 pub(crate) use queries::{ConfigTarget, OutdatedTool, PackageState, ToolState};
 pub(crate) use release::{MISE, MiseRelease, PACKAGE_MANAGER_REASON};

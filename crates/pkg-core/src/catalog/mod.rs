@@ -59,6 +59,22 @@ impl Client {
         let reader = std::io::BufReader::new(response.into_body().into_reader());
         read_json(reader).map(Some).map_err(|error| unreachable(url, &error))
     }
+
+    /// GETs `url` and returns its body as text, such as an installer script.
+    ///
+    /// # Errors
+    ///
+    /// `UNAVAILABLE` when the server cannot be reached, answers with an error status, or sends
+    /// something that is not text.
+    pub(crate) fn get_text(&self, url: &str) -> Result<String, Failure> {
+        let response =
+            self.agent.get(url).call().map_err(|error| unreachable(url, &error.to_string()))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(unreachable(url, &format!("it answered {status}")));
+        }
+        response.into_body().read_to_string().map_err(|error| unreachable(url, &error.to_string()))
+    }
 }
 
 fn read_json<T: DeserializeOwned>(reader: impl Read) -> Result<T, String> {

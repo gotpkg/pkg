@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use pkg_core::{ConfigContext, Outcome};
+use pkg_core::{ConfigContext, Outcome, PkgOwner, PkgTool, pkg_owner};
 use schemars::{JsonSchema, schema_for};
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -58,6 +58,7 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
 pub struct Context {
     /// The pkg version answering.
     pub version: String,
+    pub pkg: PkgContext,
     pub mise: MiseContext,
     /// The home directory pkg runs mise in.
     pub home: PathBuf,
@@ -68,6 +69,18 @@ pub struct Context {
     /// Every global config file mise loads, symlinks resolved.
     pub config_files: Vec<PathBuf>,
     pub catalogs: Catalogs,
+}
+
+#[derive(Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PkgContext {
+    /// The executable answering.
+    pub executable: PathBuf,
+    /// Who put it there: `installer` (rerun the installer to update it), `mise` (`pkg update`
+    /// updates it), or `other`.
+    pub owner: PkgOwner,
+    /// pkg as a mise tool, when a config declares `github:markmals/pkg`.
+    pub tool: Option<PkgTool>,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -100,12 +113,14 @@ pub struct Catalogs {
     pub homebrew_index_fetched_at: Option<u64>,
 }
 
-impl From<pkg_core::Context> for Context {
-    /// Adds the CLI's version and the environment variables that select mise and the catalogs.
-    fn from(context: pkg_core::Context) -> Context {
+impl Context {
+    /// Adds the CLI's version and executable and the environment variables that select mise and
+    /// the catalogs.
+    fn new(context: pkg_core::Context, executable: PathBuf, owner: PkgOwner) -> Context {
         let catalogs = context.catalogs;
         Context {
             version: env!("CARGO_PKG_VERSION").to_string(),
+            pkg: PkgContext { executable, owner, tool: context.pkg_tool },
             mise: MiseContext {
                 program: context.mise.program,
                 environment_variable: MISE_VARIABLE.to_string(),
@@ -140,7 +155,7 @@ impl RenderOutput for Context {
         };
         let files: Vec<String> = self.config_files.iter().map(for_people).collect();
         let rows = vec![
-            vec!["pkg".to_string(), self.version.clone()],
+            vec!["pkg".to_string(), self.pkg_row()],
             vec!["mise".to_string(), self.mise_row()],
             vec!["packages go to".to_string(), config(&self.packages_config)],
             vec!["tools go to".to_string(), config(&self.tools_config)],
@@ -163,6 +178,15 @@ impl RenderOutput for Context {
             self.config_files.iter().map(|file| file.to_string_lossy()).collect();
         json!({
             "version": self.version,
+            "pkg": {
+                "executable": self.pkg.executable.to_string_lossy(),
+                "owner": self.pkg.owner,
+                "tool": self.pkg.tool.as_ref().map(|tool| json!({
+                    "requested": tool.requested,
+                    "installed": tool.installed,
+                    "config": tool.config.as_ref().map(|config| config.to_string_lossy()),
+                })),
+            },
             "mise": {
                 "program": self.mise.program.to_string_lossy(),
                 "environmentVariable": self.mise.environment_variable,
@@ -187,6 +211,16 @@ impl RenderOutput for Context {
 }
 
 impl Context {
+    fn pkg_row(&self) -> String {
+        let executable = for_people(&self.pkg.executable);
+        let owner = match self.pkg.owner {
+            PkgOwner::Installer => "the installer's copy",
+            PkgOwner::Mise => "managed by mise",
+            PkgOwner::Other => "installed outside the installer and mise",
+        };
+        format!("{} at {executable}, {owner}", self.version)
+    }
+
     fn mise_row(&self) -> String {
         let program = self.mise.program.display();
         match (&self.mise.version, self.mise.self_updates) {
@@ -208,8 +242,13 @@ fn config_json(config: &ConfigContext) -> Value {
 }
 
 fn show_context(invocation: &Invocation) -> Result<Response, Failure> {
+    let settings = invocation.environment()?;
+    let executable = std::env::current_exe()
+        .map_err(|error| Failure::internal(format!("cannot tell where pkg runs from: {error}")))?;
+    let owner = pkg_owner(&settings, &executable);
     execute(invocation, |client, progress| {
         let outcome = client.context(progress)?;
-        Ok(Outcome { result: Context::from(outcome.result), warnings: outcome.warnings })
+        let context = Context::new(outcome.result, executable, owner);
+        Ok(Outcome { result: context, warnings: outcome.warnings })
     })
 }

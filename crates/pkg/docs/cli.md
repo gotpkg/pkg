@@ -1400,6 +1400,237 @@ Result schema:
 }
 ```
 
+### `setup`
+
+Install mise and get pkg ready on a machine with nothing to restore.
+
+#### `pkg setup`
+
+Install mise and get pkg ready on a machine with nothing to restore.
+
+Gets a new Mac or Linux machine ready for `pkg install` when there is no configuration to restore (use `pkg bootstrap --from` for that). When pkg finds no mise (`PKG_MISE`, `mise` on PATH, `~/.local/bin/mise`), it runs mise's own installer (https://mise.run, or `PKG_MISE_INSTALLER`) for `~/.local/bin/mise`, and it refuses a mise older than 2026.11.9. When no global mise config exists, so nothing else will put mise's tools on PATH, it adds mise's shims directory to pkg's block in the startup file of your login shell (`~/.zshenv`, `~/.bashrc` and `~/.profile`, or fish's `conf.d/pkg.fish`) and prints the command that loads it now; --no-modify-path prints the line instead. Then it hands pkg to mise: it declares and installs `github:markmals/pkg` as `pkg install` would, unless a config declares it, and replaces the installer's `~/.local/bin/pkg` with a link to mise's shim, never with an older release. Its declaration creates a global config on a machine without one, which `pkg bootstrap --from` then refuses to link over. Running it again changes nothing already in place. Fails on Windows.
+
+- **Effect:** modifies mise, shell startup files, and pkg's own installation
+- **Requires:** `network`
+- **Dry run:** yes
+- **Idempotent:** yes
+- **Errors:** `PRECONDITION_FAILED`, `UNAVAILABLE`, `MISE_FAILED`, `INTERNAL`
+
+| Argument | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--no-modify-path` | boolean | no | — | Leave shell startup files alone and print the PATH line to add instead |
+| `--dry-run` | boolean | no | — | Show what would change without installing, removing, or writing anything |
+
+Examples:
+
+```sh
+# See what setup would do
+pkg setup --dry-run
+# Install mise and hand pkg to it
+pkg setup
+```
+
+Result schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "$ref": "#/$defs/ReceiptStatus"
+    },
+    "mise": {
+      "$ref": "#/$defs/MiseSetup"
+    },
+    "path": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PathChange"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "What pkg did to put mise's shims on `PATH`; null when nothing was needed, because a\nconfiguration exists or the shims are on `PATH` already."
+    },
+    "handoff": {
+      "$ref": "#/$defs/Handoff"
+    }
+  },
+  "required": [
+    "status",
+    "mise",
+    "handoff"
+  ],
+  "description": "The outcome of `pkg setup`.",
+  "title": "SetupReceipt",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ReceiptStatus": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "completed",
+          "description": "The change is made."
+        },
+        {
+          "type": "string",
+          "const": "dry-run",
+          "description": "Nothing changed; the receipt shows what running without --dry-run would do."
+        }
+      ],
+      "description": "Whether a modifying command made its change."
+    },
+    "MiseSetup": {
+      "type": "object",
+      "properties": {
+        "program": {
+          "type": "string",
+          "description": "The executable."
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Its version; null in a dry run that would install it."
+        },
+        "action": {
+          "$ref": "#/$defs/MiseAction",
+          "description": "`found` when pkg used the mise it found, `installed` when it ran mise's installer (for\n`dry-run`: would run)."
+        }
+      },
+      "required": [
+        "program",
+        "action"
+      ],
+      "description": "The mise `setup` and `bootstrap` use."
+    },
+    "MiseAction": {
+      "type": "string",
+      "enum": [
+        "found",
+        "installed"
+      ]
+    },
+    "PathChange": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/PathAction",
+          "description": "`added` when pkg wrote its block, `unchanged` when the block already had the shims, and\n`printed` when the line is for you to add (another shell, a linked startup file, or\n`--no-modify-path`)."
+        },
+        "directory": {
+          "type": "string",
+          "description": "mise's shims directory."
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The startup files pkg's block is in."
+        },
+        "line": {
+          "type": "string",
+          "description": "The line that puts `~/.local/bin` and the shims first on `PATH`."
+        },
+        "load": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The command that loads the change in the current terminal, when a file changed."
+        }
+      },
+      "required": [
+        "action",
+        "directory",
+        "files",
+        "line"
+      ],
+      "description": "What `setup` did about mise's shims being on `PATH`."
+    },
+    "PathAction": {
+      "type": "string",
+      "enum": [
+        "added",
+        "unchanged",
+        "printed"
+      ]
+    },
+    "Handoff": {
+      "type": "object",
+      "properties": {
+        "declaration": {
+          "$ref": "#/$defs/Declaration",
+          "description": "`added` when pkg declared `github:markmals/pkg`, `existing` when a config already did."
+        },
+        "config": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The config file that declares it; null in a dry run that would add it."
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The version of pkg mise runs; null when it is not known."
+        },
+        "link": {
+          "$ref": "#/$defs/Link",
+          "description": "What happened to `~/.local/bin/pkg`: `linked` (replaced by a link to mise's shim),\n`already-linked`, `kept` (see `reason`), or `none` (nothing there)."
+        },
+        "path": {
+          "type": "string",
+          "description": "`~/.local/bin/pkg`."
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why `~/.local/bin/pkg` was kept."
+        },
+        "others": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Other pkg executables on `PATH`, which a shell may run instead."
+        }
+      },
+      "required": [
+        "declaration",
+        "link",
+        "path",
+        "others"
+      ],
+      "description": "What happened when pkg was handed to mise."
+    },
+    "Declaration": {
+      "type": "string",
+      "enum": [
+        "added",
+        "existing"
+      ]
+    },
+    "Link": {
+      "type": "string",
+      "enum": [
+        "linked",
+        "already-linked",
+        "kept",
+        "none"
+      ]
+    }
+  }
+}
+```
+
 ### `cli`
 
 Find the command for a task.
@@ -1996,6 +2227,9 @@ Result schema:
       "type": "string",
       "description": "The pkg version answering."
     },
+    "pkg": {
+      "$ref": "#/$defs/PkgContext"
+    },
     "mise": {
       "$ref": "#/$defs/MiseContext"
     },
@@ -2024,6 +2258,7 @@ Result schema:
   },
   "required": [
     "version",
+    "pkg",
     "mise",
     "home",
     "packagesConfig",
@@ -2035,6 +2270,80 @@ Result schema:
   "title": "Context",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "PkgContext": {
+      "type": "object",
+      "properties": {
+        "executable": {
+          "type": "string",
+          "description": "The executable answering."
+        },
+        "owner": {
+          "$ref": "#/$defs/PkgOwner",
+          "description": "Who put it there: `installer` (rerun the installer to update it), `mise` (`pkg update`\nupdates it), or `other`."
+        },
+        "tool": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PkgTool"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "pkg as a mise tool, when a config declares `github:markmals/pkg`."
+        }
+      },
+      "required": [
+        "executable",
+        "owner"
+      ]
+    },
+    "PkgOwner": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "installer",
+          "description": "The installer's copy in `~/.local/bin`, which rerunning the installer updates."
+        },
+        {
+          "type": "string",
+          "const": "mise",
+          "description": "mise, which `pkg update` has update it."
+        },
+        {
+          "type": "string",
+          "const": "other",
+          "description": "Something else, such as Homebrew or a build from a checkout."
+        }
+      ],
+      "description": "Who put a pkg executable where it is."
+    },
+    "PkgTool": {
+      "type": "object",
+      "properties": {
+        "requested": {
+          "type": "string",
+          "description": "The version the config asks for, such as `latest`."
+        },
+        "installed": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The version mise has installed; null when none is."
+        },
+        "config": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The config file that declares it."
+        }
+      },
+      "required": [
+        "requested"
+      ]
+    },
     "MiseContext": {
       "type": "object",
       "properties": {

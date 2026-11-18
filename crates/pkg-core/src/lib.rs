@@ -21,12 +21,17 @@
 //! # Operations
 //!
 //! `Client` exposes `install`, `remove`, `list`, `search`, `info`, `outdated`, `update`, `sync`,
-//! `prune`, `locate`, `tap_list`, `tap_add`, `tap_remove`, and `context`. Requests are typed and
-//! validated before I/O: package names use mise syntax; install/remove need at least one name;
-//! pagination limits must be positive; search accepts the four catalog source variants and
-//! at most 50 results. Empty update selection means every declared package/tool.
+//! `prune`, `locate`, `tap_list`, `tap_add`, `tap_remove`, `context`, and `setup`. Requests are
+//! typed and validated before I/O: package names use mise syntax; install/remove need at least
+//! one name; pagination limits must be positive; search accepts the four catalog source variants
+//! and at most 50 results. Empty update selection means every declared package/tool.
 //! Construct search requests with `SearchRequest::new`, which validates and tokenizes the
 //! query before context resolution. Package/tap operands cannot begin with an option prefix.
+//!
+//! `setup` gets a machine ready rather than changing packages: it may download and run mise's
+//! installer script (`Settings::mise_installer`) with `sh`, edit pkg's block of `PATH` lines in the
+//! login shell's startup files, and replace `~/.local/bin/pkg` with a link to mise's shim. It
+//! supports macOS and Linux only.
 //!
 //! Mutation requests choose `Mode::Apply` or `Mode::DryRun` explicitly. A preview uses the same
 //! decisions and refusals as apply without installing, uninstalling, or writing configuration.
@@ -74,6 +79,7 @@ mod list;
 mod locate;
 pub mod matching;
 mod mise;
+mod onboarding;
 mod outdated;
 mod package;
 mod progress;
@@ -82,18 +88,23 @@ mod remove;
 mod requests;
 mod search;
 mod settings;
+mod startup;
 mod sync;
 mod tap;
 mod update;
 
 pub use client::Client;
 pub use common::ReceiptStatus;
-pub use context::{Catalogs, ConfigContext, Context, MiseContext};
+pub use context::{Catalogs, ConfigContext, Context, MiseContext, PkgTool};
 pub use error::{Error, ErrorDetails, ErrorKind, Recovery};
 pub use info::PackageInfo;
 pub use install::{InstallAction, InstallKind, InstallReceipt, Installed};
 pub use list::Listed;
 pub use locate::Location;
+pub use onboarding::handoff::{Declaration, Handoff, Link, PkgOwner, pkg_owner};
+pub use onboarding::mise::{MiseAction, MiseSetup};
+pub use onboarding::setup::SetupReceipt;
+pub use onboarding::shims::{PathAction, PathChange};
 pub use outdated::{OutdatedPackage, OutdatedReport, Skipped};
 pub use package::is_package;
 pub use progress::{Outcome, OutputStream, Progress};
@@ -101,10 +112,13 @@ pub use prune::PruneReceipt;
 pub use remove::{LeftInstalled, RemoveReceipt, Removed};
 pub use requests::{
     InfoRequest, InstallRequest, ListRequest, LocateRequest, Mode, PruneRequest, RemoveRequest,
-    SearchRequest, SearchSource, SyncRequest, TapAddRequest, TapRemoveRequest, UpdateRequest,
+    SearchRequest, SearchSource, SetupRequest, SyncRequest, TapAddRequest, TapRemoveRequest,
+    UpdateRequest,
 };
 pub use search::Found;
-pub use settings::{DEFAULT_APP_STORE_API, DEFAULT_HOMEBREW_API, Settings, find_on_path};
+pub use settings::{
+    DEFAULT_APP_STORE_API, DEFAULT_HOMEBREW_API, DEFAULT_MISE_INSTALLER, Settings, find_on_path,
+};
 pub use sync::SyncReceipt;
 pub use tap::{TapEntry, TapList, TapReceipt};
 pub use update::{UpdateReceipt, Updated};

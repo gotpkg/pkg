@@ -19,6 +19,24 @@ use tempfile::TempDir;
 /// The only directories on `PATH` when pkg runs: enough for the fake mise's shell script.
 pub(crate) const SYSTEM_PATH: &str = "/usr/bin:/bin:/usr/sbin:/sbin";
 
+/// What `mise use -g github:markmals/pkg@latest` leaves behind: mise's shim for pkg, which runs a
+/// pkg that reports the version pkg itself was built as.
+pub(crate) const INSTALLS_PKG: &str = r#"shims="$HOME/.local/share/mise/shims"
+mkdir -p "$shims"
+printf '#!/bin/sh\necho "pkg 0.0.0"\n' > "$shims/pkg"
+chmod +x "$shims/pkg"
+"#;
+
+/// A stand-in for mise's installer at https://mise.run: it puts the fake mise where
+/// `MISE_INSTALL_PATH` says.
+pub(crate) const FAKE_MISE_INSTALLER: &str = r#"#!/bin/sh
+set -e
+mkdir -p "$(dirname "$MISE_INSTALL_PATH")"
+cp "$FAKE_MISE/../bin/mise" "$MISE_INSTALL_PATH"
+chmod +x "$MISE_INSTALL_PATH"
+echo "mise: installed to $MISE_INSTALL_PATH" >&2
+"#;
+
 const FAKE_MISE: &str = r#"#!/bin/sh
 # Answers from $FAKE_MISE/answers/<key>[.<n>], where <key> is the arguments with the home
 # directory written as `~` and every other byte but letters and digits replaced by `_`, and <n>
@@ -222,6 +240,7 @@ impl Fixture {
                 .declares(package);
         }
         fixture.mise(&["use", "-g", "ripgrep@latest"]).stdout("mise ripgrep@15.2.0 installed\n");
+        fixture.mise(&["use", "-g", "github:markmals/pkg@latest"]).runs(INSTALLS_PKG);
         fixture
             .mise(&["bootstrap", "packages", "prune", "--dry-run", "--manager", "brew"])
             .nth(2)
@@ -341,6 +360,20 @@ impl Fixture {
             .insert(path.to_string(), (200, body.to_string()));
     }
 
+    /// Serves `body` as plain text at `path` on the fake catalogs.
+    pub(crate) fn serve_text(&self, path: &str, body: &str) {
+        self.catalog
+            .routes
+            .lock()
+            .expect("the routes")
+            .insert(path.to_string(), (200, body.to_string()));
+    }
+
+    /// The fake catalogs' base URL.
+    pub(crate) fn catalog_url(&self) -> &str {
+        &self.catalog.url
+    }
+
     /// Answers `path` with an error status.
     pub(crate) fn fail(&self, path: &str, status: u16) {
         self.catalog
@@ -454,6 +487,12 @@ impl Answer {
 
     pub(crate) fn status(self, status: i32) -> Answer {
         std::fs::write(self.directory.join("status"), status.to_string()).expect("status");
+        self
+    }
+
+    /// Runs `script` with `sh` before answering, in mise's environment.
+    pub(crate) fn runs(self, script: &str) -> Answer {
+        std::fs::write(self.directory.join("run"), script).expect("run");
         self
     }
 
