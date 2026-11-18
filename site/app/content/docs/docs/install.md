@@ -9,7 +9,7 @@ pkg has no published release yet, so there is no prebuilt binary or package to i
 
 ## Prerequisites
 
-- Git, to clone [github.com/markmals/pkg](https://github.com/markmals/pkg).
+- Git, to clone [github.com/gotpkg/pkg](https://github.com/gotpkg/pkg).
 - Rust 1.100 or newer, with Cargo. The checkout pins 1.100.0 in `rust-toolchain.toml`, which rustup reads when you build inside it.
 - mise 2026.11.9 or newer. The build does not need it, but pkg runs mise for nearly every command. Check your version with `mise --version`, and see [mise's documentation](https://mise.jdx.dev) to install it.
 
@@ -18,7 +18,7 @@ The commands on this page are for a POSIX shell such as zsh or bash on macOS or 
 ## Build and install
 
 ```sh
-git clone https://github.com/markmals/pkg.git
+git clone https://github.com/gotpkg/pkg.git
 cd pkg
 cargo install --locked --path crates/pkg --root ~/.local
 ```
@@ -62,4 +62,4 @@ cargo install --locked --path crates/pkg --root ~/.local
 
 To remove the binary, run `cargo uninstall pkg --root ~/.local`. Your mise config and everything pkg installed stay as they are.
 
-The [README](https://github.com/markmals/pkg/blob/main/README.md#install) owns these install instructions.
+The [README](https://github.com/gotpkg/pkg/blob/main/README.md#install) owns these install instructions.

@@ -57,4 +57,4 @@ Not every entry applies to every machine. Packages whose manager this machine la
 
 The cache directory is `$XDG_CACHE_HOME/pkg`, else `~/.cache/pkg` (`%LOCALAPPDATA%\pkg\cache` on Windows). Deleting it costs the next search one download. `pkg context show` prints the values in effect.
 
-The repository's [package contract](https://github.com/markmals/pkg/blob/main/crates/pkg/docs/packages.md#where-installs-are-recorded) and [catalog notes](https://github.com/markmals/pkg/blob/main/crates/pkg/docs/catalogs.md#settings) own these rules.
+The repository's [package contract](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/packages.md#where-installs-are-recorded) and [catalog notes](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/catalogs.md#settings) own these rules.

@@ -50,4 +50,4 @@ The prefix decides where the entry is recorded and which machines can install it
 - [Scripts and agents](/docs/automation): JSON output, exit statuses, discovery commands, and the Rust library.
 - [Command reference](/docs/reference): every command and its options on one page.
 
-These pages summarize the project's [README](https://github.com/markmals/pkg/blob/main/README.md) and the [CLI reference](https://github.com/markmals/pkg/blob/main/crates/pkg/docs/cli.md) generated from pkg's command registry. When they disagree, those files are correct.
+These pages summarize the project's [README](https://github.com/gotpkg/pkg/blob/main/README.md) and the [CLI reference](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/cli.md) generated from pkg's command registry. When they disagree, those files are correct.

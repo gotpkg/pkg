@@ -5,7 +5,7 @@ sidebar:
     order: 3
 ---
 
-pkg names packages the way mise does, as `manager:name`, and records each one in your global mise config. This page covers the daily commands. The [package contract](https://github.com/markmals/pkg/blob/main/crates/pkg/docs/packages.md) in the repository has the full rules.
+pkg names packages the way mise does, as `manager:name`, and records each one in your global mise config. This page covers the daily commands. The [package contract](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/packages.md) in the repository has the full rules.
 
 ## Name a package
 
@@ -39,7 +39,7 @@ pkg info brew:wget                             # one formula: description, homep
 pkg info mas:937984704                         # one App Store app
 ```
 
-The first search downloads Homebrew's catalog, about 7 MB, and later searches download it again once the copy is a day old. Formulae in third-party taps are not in Homebrew's catalog, so search does not find them. The repository's [catalog notes](https://github.com/markmals/pkg/blob/main/crates/pkg/docs/catalogs.md) cover caching and what happens when a catalog is unreachable.
+The first search downloads Homebrew's catalog, about 7 MB, and later searches download it again once the copy is a day old. Formulae in third-party taps are not in Homebrew's catalog, so search does not find them. The repository's [catalog notes](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/catalogs.md) cover caching and what happens when a catalog is unreachable.
 
 ## Install
 

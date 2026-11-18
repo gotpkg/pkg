@@ -68,9 +68,9 @@ The `pkg-core` crate runs the same package operations as typed, blocking calls, 
 
 ```toml
 [dependencies]
-pkg-core = { git = "https://github.com/markmals/pkg.git" }
+pkg-core = { git = "https://github.com/gotpkg/pkg.git" }
 ```
 
-mise 2026.11.9 or newer still has to be installed separately. The [Rust library guide](https://github.com/markmals/pkg/blob/main/guides/rust-library.md) has a worked example and the limits, and the [API contract](https://github.com/markmals/pkg/blob/main/crates/pkg-core/src/lib.rs) defines isolation, progress, errors, and mutation safety.
+mise 2026.11.9 or newer still has to be installed separately. The [Rust library guide](https://github.com/gotpkg/pkg/blob/main/guides/rust-library.md) has a worked example and the limits, and the [API contract](https://github.com/gotpkg/pkg/blob/main/crates/pkg-core/src/lib.rs) defines isolation, progress, errors, and mutation safety.
 
-The [generated CLI reference](https://github.com/markmals/pkg/blob/main/crates/pkg/docs/cli.md) owns the JSON contract on this page, including every command's result schema.
+The [generated CLI reference](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/cli.md) owns the JSON contract on this page, including every command's result schema.

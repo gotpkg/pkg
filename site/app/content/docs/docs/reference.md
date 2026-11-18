@@ -5,7 +5,7 @@ sidebar:
     order: 6
 ---
 
-This page indexes every command. The complete [CLI reference](https://github.com/markmals/pkg/blob/main/crates/pkg/docs/cli.md), generated from pkg's command registry, owns each command's full description, errors, and JSON result schema. The same reference ships inside the binary: `pkg docs show docs/cli.md` prints it, and `pkg schema <command>` prints one command's entry.
+This page indexes every command. The complete [CLI reference](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/cli.md), generated from pkg's command registry, owns each command's full description, errors, and JSON result schema. The same reference ships inside the binary: `pkg docs show docs/cli.md` prints it, and `pkg schema <command>` prints one command's entry.
 
 ## Options every command accepts
 

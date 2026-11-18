@@ -30,7 +30,7 @@ export default defineConfig({
                 // The logo is the word "pkg"; the title stays as its alternative text.
                 replacesTitle: true,
             },
-            social: [{ icon: "github", label: "GitHub", href: "https://github.com/markmals/pkg" }],
+            social: [{ icon: "github", label: "GitHub", href: "https://github.com/gotpkg/pkg" }],
             sidebar: [
                 "docs",
                 "docs/install",
