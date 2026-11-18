@@ -1,5 +1,7 @@
 # pkg
 
+![pkg logo banner](./assets/pkg-banner.png)
+
 `pkg` installs and manages software with [mise](https://mise.jdx.dev)'s bootstrap packages and tools, and records every install in your global mise config, so `mise bootstrap` brings it back on a new machine. When a website says `brew install wget`, type `pkg install brew:wget`.
 
 ## Install
