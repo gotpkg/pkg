@@ -16,7 +16,7 @@ packages
 mise
 # The Homebrew and App Store catalogs behind search and info.
 catalog
-# The release helper crate: archives and the Homebrew formula.
+# The release helper crate: archives, the installer, and its checksums.
 xtask
 
 # Retain the scope of pushed commits from before the library proposal was renumbered to 0001.

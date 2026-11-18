@@ -128,10 +128,6 @@ description = "Build a local CLI archive and a source archive for a private libr
 depends = ["package"]
 run = "git archive --format=tar.gz --prefix=pkg-source/ --output=artifacts/pkg-core-source.tar.gz HEAD"
 
-[tasks."release:formula"]
-description = "Write the Homebrew formula for the archives in artifacts/ to artifacts/pkg.rb"
-run = "cargo xtask formula"
-
 [tasks."release:installer"]
 description = "Write the installer for this version, which gotpkg.dev serves, to artifacts/install.sh"
 run = "cargo xtask installer"

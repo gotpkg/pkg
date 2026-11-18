@@ -6,8 +6,8 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Cargo build output, and the release archives and formula `mise run package` and
-# `mise run release:formula` write. Cargo.lock is committed: it makes a release reproducible.
+# Cargo build output, and the release archives, installer and checksums `mise run package` and
+# the `release:*` tasks write. Cargo.lock is committed: it makes a release reproducible.
 /target/
 /artifacts/
 **/*.rs.bk

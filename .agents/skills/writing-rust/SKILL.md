@@ -24,7 +24,7 @@ description: Use when writing, reviewing, or restructuring Rust in this reposito
 | Shipped documentation                  | `crates/pkg/docs/*.md`, listed in `docs::DOCUMENTS`                                |
 | Rules about values                     | `#[cfg(test)] mod tests` beside the code                                           |
 | Rules about the process                | `crates/pkg/tests/cli/` (one test binary, a fake mise, fake catalogs)              |
-| Release archives and Homebrew formula  | `xtask/` (`cargo xtask …`), never shipped                                          |
+| Release archives and the installer     | `xtask/` (`cargo xtask …`), never shipped                                          |
 
 The binary is a shell around `pkg::app::run`. The CLI consumes `pkg_core::Client`; [the library contract](../../../crates/pkg-core/src/lib.rs) owns typed requests, outcomes, errors, and progress lifetimes.
 

@@ -4,7 +4,7 @@ version = "0.0.0"
 edition.workspace = true
 publish.workspace = true
 rust-version.workspace = true
-description = "Release helpers for pkg: per-target archives, the installer, its SHA256SUMS manifest, and the Homebrew formula"
+description = "Release helpers for pkg: per-target archives, the installer, and its SHA256SUMS manifest"
 
 [dependencies]
 flate2 = "1.1"

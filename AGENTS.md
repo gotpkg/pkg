@@ -10,7 +10,7 @@ This file holds only what is true of this project. The process itself comes from
 
 - `crates/pkg/`: the shipped CLI. `src/registry.rs` declares the command contract; `src/commands/` holds each command's registry entry, typed library adapter, and text renderer; `src/environment.rs` captures process defaults; `docs/` is the Markdown compiled into the binary for `docs search` (`docs/cli.md` is generated); `tests/cli/` runs the real binary against a fake mise and fake catalogs.
 - `crates/pkg-core/`: the reusable, unpublished Rust library. `src/lib.rs` owns the API contract; operation modules implement `Client` methods with typed requests/outcomes/errors; `src/mise/`, `src/declarations.rs`, and `src/catalog/` own process/config/network effects. `Settings` supplies all locations and the child environment. Core reports progress through the caller's callback and never writes to the terminal. `guides/rust-library.md` is the consumer guide.
-- `xtask/`: the unpublished release helper, `cargo xtask package` and `cargo xtask formula`.
+- `xtask/`: the unpublished release helper, `cargo xtask package`, `cargo xtask installer` and `cargo xtask checksums`.
 - `.agents/skills/`: `designing-human-first-clis` (the CLI contract: text for people by default, JSON and discovery for agents) and `writing-rust` (this repository's Rust conventions). Read both before changing commands.
 
 ## Commands
@@ -19,7 +19,7 @@ This file holds only what is true of this project. The process itself comes from
 - `mise run cli:reference` regenerates `crates/pkg/docs/cli.md` after a registry change; the tests fail until it matches.
 - `mise run build`, `test`, `lint`, `doc`: Cargo over the workspace.
 - `mise run package [-- <target>]` writes `artifacts/pkg-<target>.tar.gz` (`.zip` on Windows), this machine's target by default.
-- `mise run release:formula` writes the Homebrew formula for the archives in `artifacts/`.
+- `mise run release:installer` and `mise run release:checksums` write the installer and the `SHA256SUMS` manifest for the archives in `artifacts/`.
 - `mise run release` publishes the GitHub release through Knope; only release.yml runs it.
 
 ## Platform rules and preview

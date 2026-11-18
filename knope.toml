@@ -74,7 +74,7 @@ base = "main"
 template = "release: prepare $version"
 
 [workflows.steps.body]
-template = "Merging this pull request releases pkg $version: it builds the five archives, their SHA256SUMS manifest and the installer, tags `v$version`, publishes the GitHub release with these notes, updates the Homebrew formula when the tap token is configured, and checks that gotpkg.dev serves the new installer when the domain is configured.\n\n$changelog"
+template = "Merging this pull request releases pkg $version: it builds the five archives, their SHA256SUMS manifest and the installer, tags `v$version`, publishes the GitHub release with these notes, and checks that gotpkg.dev serves the new installer when the domain is configured.\n\n$changelog"
 
 # `.github/workflows/release.yml` runs this (through `mise run release`) when the release pull
 # request merges, after it has built the archives into `artifacts/`.
