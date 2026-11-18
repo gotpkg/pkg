@@ -72,7 +72,7 @@
 # - github.token    → use GITHUB_TOKEN env var instead
 
 sync:
-    remote: "git+https://github.com/markmals/pkg.git"
+    remote: "git+https://github.com/gotpkg/pkg.git"
 export:
     auto: true
 dolt:
