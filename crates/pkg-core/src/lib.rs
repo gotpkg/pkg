@@ -8,8 +8,9 @@
 //! installation state; the client is not an inventory snapshot. Child processes receive only
 //! that snapshot plus the explicit home/configuration selection, with stdin closed, except that
 //! `bootstrap` with `terminal: true` lets mise read the caller's stdin and write to its stderr.
-//! The host's environment, current directory, signal policy, and standard streams are never
-//! changed.
+//! `bootstrap` with `terminal: false` starts mise in a session of its own with no controlling
+//! terminal, so nothing it runs can wait at `/dev/tty`. The host's environment, current
+//! directory, signal policy, and standard streams are never changed.
 //!
 //! The caller supplies credentials through the child environment, which is omitted from Debug
 //! output. This is process isolation, not a sandbox: mise and the selected packages still run
