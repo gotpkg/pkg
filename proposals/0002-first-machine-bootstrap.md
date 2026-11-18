@@ -2,7 +2,7 @@
 id: proposal.0002
 title: First-Machine Setup and Bootstrap
 authors: [Mark]
-status: active-review
+status: implemented
 pull-request: https://github.com/gotpkg/pkg/pull/2
 issues: []
 supersedes: []
