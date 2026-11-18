@@ -2,7 +2,7 @@
 # source of version bumps: Scoped Commits subjects are not Conventional Commits.
 
 [package]
-versioned_files = ["crates/pkg/Cargo.toml", "Cargo.lock"]
+versioned_files = ["crates/pkg/Cargo.toml", "crates/pkg-core/Cargo.toml", "Cargo.lock"]
 changelog = "CHANGELOG.md"
 
 # The archives `mise run package -- <target>` builds; release.yml builds all five before

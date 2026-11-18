@@ -1,16 +1,19 @@
 //! `pkg list`: what the mise config declares, and whether each one is installed.
 
-use schemars::{JsonSchema, schema_for};
-use serde::Serialize;
+use std::path::Path;
 
-use super::common::{MISE_ERRORS, Machine, absolute, table};
+use pkg_core::matching::Page;
+use pkg_core::{ListRequest, Listed};
+use schemars::schema_for;
+use serde_json::{Value, json};
+
+use super::common::{MISE_ERRORS, execute, table};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::registry::{
     ArgumentKind, ArgumentSpec, CommandSpec, Effect, Example, Requirement, ValueKind,
 };
-use crate::response::{RenderText, Response};
-use crate::search::{self, Page};
+use crate::response::{RenderOutput, Response};
 
 /// `--manager`, shared with the commands that filter by package manager.
 pub const MANAGER: ArgumentSpec = ArgumentSpec {
@@ -69,25 +72,7 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     run: list,
 }];
 
-/// One declared package or tool.
-#[derive(Clone, Serialize, JsonSchema)]
-pub struct Listed {
-    pub package: String,
-    /// The package manager, such as `brew`, or `tool` for a mise tool.
-    pub manager: String,
-    /// A name mise knows besides the package, such as an App Store app's.
-    pub name: Option<String>,
-    /// The version the config asks for, usually `latest`.
-    pub requested: String,
-    pub installed: Option<String>,
-    /// `installed`, `missing`, or another state mise reports, such as `unavailable` for a
-    /// manager this machine does not have.
-    pub state: String,
-    /// The config file that declares it, symlinks resolved.
-    pub config: Option<String>,
-}
-
-impl RenderText for Page<Listed> {
+impl RenderOutput for Page<Listed> {
     fn render_text(&self) -> String {
         if self.items.is_empty() {
             return "Your mise config declares no packages.".into();
@@ -128,47 +113,34 @@ impl RenderText for Page<Listed> {
         }
         text
     }
+
+    fn render_json(&self) -> Value {
+        let items: Vec<Value> = self
+            .items
+            .iter()
+            .map(|item| {
+                json!({
+                    "package": item.package,
+                    "manager": item.manager,
+                    "name": item.name,
+                    "requested": item.requested,
+                    "installed": item.installed,
+                    "state": item.state,
+                    "config": item.config.as_deref().map(Path::to_string_lossy),
+                })
+            })
+            .collect();
+        json!({ "items": items, "hasMore": self.has_more, "nextCursor": self.next_cursor })
+    }
 }
 
 fn list(invocation: &Invocation) -> Result<Response, Failure> {
-    let machine = Machine::load(invocation)?;
-    let managers = invocation.strings("manager");
-    let wants =
-        |manager: &str| managers.is_empty() || managers.iter().any(|wanted| wanted == manager);
-    let mise = &machine.environment.mise;
-    let mut items: Vec<Listed> = Vec::new();
-    if managers.is_empty() || managers.iter().any(|manager| manager != "tool") {
-        for state in mise.package_states()? {
-            if !wants(&state.manager) {
-                continue;
-            }
-            items.push(Listed {
-                config: machine.declarations.package_file(&state.key).map(absolute),
-                state: if state.available { state.state } else { "unavailable".into() },
-                package: state.key,
-                manager: state.manager,
-                name: state.name,
-                requested: state.requested,
-                installed: state.installed,
-            });
-        }
-    }
-    if wants("tool") {
-        for tool in mise.tool_states()? {
-            items.push(Listed {
-                state: if tool.installed { "installed" } else { "missing" }.into(),
-                installed: tool.installed.then_some(tool.version).flatten(),
-                config: tool.config.as_deref().map(absolute),
-                package: tool.key,
-                manager: "tool".into(),
-                name: None,
-                requested: tool.requested,
-            });
-        }
-    }
-    let limit = invocation.integer("limit").unwrap_or(u64::MAX);
-    let page = search::page(items, invocation.string("cursor").as_deref(), limit)?;
-    Ok(Response::new(&page))
+    let request = ListRequest {
+        managers: invocation.strings("manager"),
+        limit: invocation.integer("limit"),
+        cursor: invocation.string("cursor"),
+    };
+    execute(invocation, |client, progress| client.list(request, progress))
 }
 
 #[cfg(test)]

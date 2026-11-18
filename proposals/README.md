@@ -19,3 +19,7 @@ Name each file `<NNNN>-<slug>.md`, using the next four-digit number and a kebab-
 **Decided by** is about judgement, not keystrokes. The human may ask the agent to make the edit. What an agent must never do is decide on its own that a proposal is settled enough to implement, or that finished work is good enough to accept.
 
 Proposals are kept after they close. When a later proposal replaces an earlier one as a change, it names it in `supersedes` and the earlier one becomes `superseded`. That relationship records how the changes were made; it does not say which requirements apply now.
+
+## Proposal index
+
+- [0001 — Reusable Package Library](0001-reusable-package-library.md).

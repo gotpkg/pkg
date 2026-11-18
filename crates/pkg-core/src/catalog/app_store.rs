@@ -3,12 +3,12 @@
 use serde::Deserialize;
 
 use super::Client;
-use crate::failure::Failure;
+use crate::error::Error as Failure;
 
 /// One app as the App Store describes it.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct App {
+pub(crate) struct App {
     pub track_id: u64,
     pub track_name: String,
     #[serde(default)]
@@ -16,11 +16,7 @@ pub struct App {
     #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
-    pub seller_name: Option<String>,
-    #[serde(default)]
     pub track_view_url: Option<String>,
-    #[serde(default)]
-    pub formatted_price: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -29,13 +25,13 @@ struct Results {
     results: Vec<App>,
 }
 
-pub struct AppStore<'a> {
+pub(crate) struct AppStore<'a> {
     client: &'a Client,
     api: &'a str,
 }
 
 impl<'a> AppStore<'a> {
-    pub fn new(client: &'a Client, api: &'a str) -> AppStore<'a> {
+    pub(crate) fn new(client: &'a Client, api: &'a str) -> AppStore<'a> {
         AppStore { client, api }
     }
 
@@ -44,7 +40,7 @@ impl<'a> AppStore<'a> {
     /// # Errors
     ///
     /// `UNAVAILABLE` when the App Store cannot be reached.
-    pub fn lookup(&self, ids: &[&str]) -> Result<Vec<App>, Failure> {
+    pub(crate) fn lookup(&self, ids: &[&str]) -> Result<Vec<App>, Failure> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -60,7 +56,7 @@ impl<'a> AppStore<'a> {
     /// # Errors
     ///
     /// `UNAVAILABLE` when the App Store cannot be reached.
-    pub fn search(&self, term: &str) -> Result<Vec<App>, Failure> {
+    pub(crate) fn search(&self, term: &str) -> Result<Vec<App>, Failure> {
         let results: Option<Results> = self.client.get_json(
             &format!("{}/search", self.api),
             &[("term", term), ("entity", MAC), ("limit", "25")],

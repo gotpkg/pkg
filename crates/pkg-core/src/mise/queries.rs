@@ -4,15 +4,14 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
-use serde_json::json;
 
 use super::Mise;
 use crate::environment::real_path;
-use crate::failure::Failure;
+use crate::error::{Error as Failure, ErrorDetails, ErrorKind, Recovery};
 
 /// The config file mise writes a new declaration to.
 #[derive(Clone, Debug)]
-pub struct ConfigTarget {
+pub(crate) struct ConfigTarget {
     /// The `write_targets.*` setting as mise reports it; `None` when unset, which means the
     /// global config.
     pub setting: Option<String>,
@@ -24,7 +23,7 @@ pub struct ConfigTarget {
 
 /// One `[bootstrap.packages]` entry, as `mise bootstrap packages status --json` reports it.
 #[derive(Clone, Debug)]
-pub struct PackageState {
+pub(crate) struct PackageState {
     /// `brew:wget`.
     pub key: String,
     pub manager: String,
@@ -42,7 +41,7 @@ pub struct PackageState {
 
 /// One `[tools]` entry of the global config, as `mise ls --global --json` reports it.
 #[derive(Clone, Debug)]
-pub struct ToolState {
+pub(crate) struct ToolState {
     /// `jq`, `npm:prettier`.
     pub key: String,
     pub requested: String,
@@ -53,7 +52,7 @@ pub struct ToolState {
 }
 
 #[derive(Clone, Debug)]
-pub struct OutdatedTool {
+pub(crate) struct OutdatedTool {
     pub key: String,
     pub current: Option<String>,
     pub latest: String,
@@ -61,10 +60,8 @@ pub struct OutdatedTool {
 
 /// A tool in mise's registry.
 #[derive(Clone, Debug, Deserialize)]
-pub struct RegistryTool {
+pub(crate) struct RegistryTool {
     pub short: String,
-    #[serde(default)]
-    pub backends: Vec<String>,
     #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
@@ -73,14 +70,12 @@ pub struct RegistryTool {
 
 /// `mise tool <name> --json`.
 #[derive(Clone, Debug, Deserialize)]
-pub struct ToolInfo {
+pub(crate) struct ToolInfo {
     pub backend: String,
     #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
     pub url: Option<String>,
-    #[serde(default)]
-    pub installed_versions: Vec<String>,
     #[serde(default)]
     pub requested_versions: Vec<String>,
 }
@@ -139,14 +134,14 @@ struct ConfigFile {
     path: PathBuf,
 }
 
-impl Mise {
+impl Mise<'_> {
     /// The file mise writes new `[bootstrap.packages]` (`setting` `packages`) or `[tools]`
     /// (`tools`) declarations to with `-g`: its `write_targets` setting, else `global_config`.
     ///
     /// # Errors
     ///
     /// `MISE_FAILED` when mise cannot read its settings.
-    pub fn write_target(
+    pub(crate) fn write_target(
         &self,
         setting: &str,
         global_config: &Path,
@@ -178,7 +173,7 @@ impl Mise {
     /// # Errors
     ///
     /// `MISE_FAILED` when mise cannot list them.
-    pub fn tool_backends(&self) -> Result<Vec<String>, Failure> {
+    pub(crate) fn tool_backends(&self) -> Result<Vec<String>, Failure> {
         Ok(self.read(&["backends", "ls"])?.split_whitespace().map(str::to_string).collect())
     }
 
@@ -187,7 +182,7 @@ impl Mise {
     /// # Errors
     ///
     /// `MISE_FAILED` when mise cannot list them or its answer is not JSON.
-    pub fn config_files(&self) -> Result<Vec<PathBuf>, Failure> {
+    pub(crate) fn config_files(&self) -> Result<Vec<PathBuf>, Failure> {
         let files: Vec<ConfigFile> = parse(&self.read(&["config", "ls", "--json"])?, "config ls")?;
         Ok(files.into_iter().map(|file| file.path).collect())
     }
@@ -197,7 +192,7 @@ impl Mise {
     /// # Errors
     ///
     /// `MISE_FAILED` when mise cannot report them.
-    pub fn package_states(&self) -> Result<Vec<PackageState>, Failure> {
+    pub(crate) fn package_states(&self) -> Result<Vec<PackageState>, Failure> {
         let output = self.read(&["bootstrap", "packages", "status", "--json"])?;
         let managers: BTreeMap<String, ManagerStatus> = if output.trim().is_empty() {
             BTreeMap::new()
@@ -228,7 +223,7 @@ impl Mise {
     /// # Errors
     ///
     /// `MISE_FAILED` when mise cannot list them.
-    pub fn tool_states(&self) -> Result<Vec<ToolState>, Failure> {
+    pub(crate) fn tool_states(&self) -> Result<Vec<ToolState>, Failure> {
         let tools: BTreeMap<String, Vec<ToolVersion>> =
             parse(&self.read(&["ls", "--global", "--json"])?, "ls --global")?;
         Ok(tools
@@ -254,7 +249,7 @@ impl Mise {
     /// # Errors
     ///
     /// `MISE_FAILED` when mise cannot check them.
-    pub fn outdated_tools(&self) -> Result<Vec<OutdatedTool>, Failure> {
+    pub(crate) fn outdated_tools(&self) -> Result<Vec<OutdatedTool>, Failure> {
         let output = self.read(&["outdated", "--global", "--json"])?;
         let outdated: BTreeMap<String, Outdated> =
             if output.trim().is_empty() { BTreeMap::new() } else { parse(&output, "outdated")? };
@@ -269,7 +264,7 @@ impl Mise {
     /// # Errors
     ///
     /// `MISE_FAILED` when mise cannot list it.
-    pub fn registry(&self) -> Result<Vec<RegistryTool>, Failure> {
+    pub(crate) fn registry(&self) -> Result<Vec<RegistryTool>, Failure> {
         parse(&self.read(&["registry", "--json"])?, "registry")
     }
 
@@ -278,7 +273,7 @@ impl Mise {
     /// # Errors
     ///
     /// `PRECONDITION_FAILED` when mise cannot run.
-    pub fn tool_info(&self, key: &str) -> Result<Option<ToolInfo>, Failure> {
+    pub(crate) fn tool_info(&self, key: &str) -> Result<Option<ToolInfo>, Failure> {
         let output = self.capture(&["tool", key, "--json"])?;
         if !output.success {
             return Ok(None);
@@ -291,7 +286,7 @@ impl Mise {
     /// # Errors
     ///
     /// `MISE_FAILED` when it is not installed.
-    pub fn location(&self, key: &str, tool: bool) -> Result<PathBuf, Failure> {
+    pub(crate) fn location(&self, key: &str, tool: bool) -> Result<PathBuf, Failure> {
         let output = if tool {
             self.read(&["where", key])?
         } else {
@@ -304,10 +299,10 @@ impl Mise {
 fn parse<T: for<'de> Deserialize<'de>>(text: &str, command: &str) -> Result<T, Failure> {
     serde_json::from_str(text).map_err(|error| {
         Failure::new(
-            crate::failure::ErrorCode::MiseFailed,
+            ErrorKind::MiseFailed,
             format!("`mise {command}` printed something pkg cannot read: {error}"),
         )
-        .with_details(json!({ "command": command }))
-        .suggest("Check that mise is 2026.11.9 or newer: mise --version")
+        .with_details(ErrorDetails { command: Some(command.to_string()), ..Default::default() })
+        .recover(Recovery::CheckMiseVersion)
     })
 }

@@ -9,19 +9,19 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use super::Client;
-use crate::failure::Failure;
+use crate::error::{Error as Failure, ErrorDetails};
 
 /// How long a downloaded index serves searches before pkg downloads it again.
-pub const INDEX_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
+pub(crate) const INDEX_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 const INDEX_FILE: &str = "homebrew-index.json";
 
 /// Every formula and cask, reduced to what search reads.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Index {
+pub(crate) struct Index {
     /// Seconds since the Unix epoch when pkg downloaded it.
     pub fetched_at: u64,
     pub formulae: Vec<IndexEntry>,
@@ -29,7 +29,7 @@ pub struct Index {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct IndexEntry {
+pub(crate) struct IndexEntry {
     /// The formula name or cask token: what goes after `brew:` or `brew-cask:`.
     pub name: String,
     /// A cask's display name, such as `Mozilla Firefox`.
@@ -43,8 +43,7 @@ pub struct IndexEntry {
 
 /// One formula, as `api/formula/<name>.json` describes it.
 #[derive(Clone, Debug, Deserialize)]
-pub struct Formula {
-    pub name: String,
+pub(crate) struct Formula {
     #[serde(default)]
     pub desc: Option<String>,
     #[serde(default)]
@@ -65,15 +64,14 @@ pub struct Formula {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct FormulaVersions {
+pub(crate) struct FormulaVersions {
     #[serde(default)]
     pub stable: Option<String>,
 }
 
 /// One cask, as `api/cask/<token>.json` describes it.
 #[derive(Clone, Debug, Deserialize)]
-pub struct Cask {
-    pub token: String,
+pub(crate) struct Cask {
     #[serde(default)]
     pub name: Vec<String>,
     #[serde(default)]
@@ -82,8 +80,6 @@ pub struct Cask {
     pub homepage: Option<String>,
     #[serde(default)]
     pub version: Option<String>,
-    #[serde(default)]
-    pub auto_updates: Option<bool>,
     #[serde(default)]
     pub caveats: Option<String>,
     #[serde(default)]
@@ -96,7 +92,7 @@ pub struct Cask {
 
 impl Formula {
     /// The version as Homebrew installs it: `1.25.0_2` for revision 2.
-    pub fn version(&self) -> Option<String> {
+    pub(crate) fn version(&self) -> Option<String> {
         self.versions.stable.as_ref().map(|stable| match self.revision {
             0 => stable.clone(),
             revision => format!("{stable}_{revision}"),
@@ -106,7 +102,7 @@ impl Formula {
 
 impl Cask {
     /// The apps the cask puts in /Applications.
-    pub fn apps(&self) -> Vec<String> {
+    pub(crate) fn apps(&self) -> Vec<String> {
         self.artifacts
             .iter()
             .filter_map(|artifact| artifact.get("app").and_then(Value::as_array))
@@ -145,29 +141,29 @@ struct CaskSummary {
 }
 
 /// The index and what search should say about its age.
-pub struct LoadedIndex {
+pub(crate) struct LoadedIndex {
     pub index: Index,
     /// Set when the download failed and an older index answered instead.
     pub warning: Option<String>,
 }
 
-pub struct Homebrew<'a> {
+pub(crate) struct Homebrew<'a> {
     client: &'a Client,
     api: &'a str,
     cache_dir: &'a Path,
 }
 
 impl<'a> Homebrew<'a> {
-    pub fn new(client: &'a Client, api: &'a str, cache_dir: &'a Path) -> Homebrew<'a> {
+    pub(crate) fn new(client: &'a Client, api: &'a str, cache_dir: &'a Path) -> Homebrew<'a> {
         Homebrew { client, api, cache_dir }
     }
 
-    pub fn index_path(&self) -> PathBuf {
+    pub(crate) fn index_path(&self) -> PathBuf {
         self.cache_dir.join(INDEX_FILE)
     }
 
     /// The cached index without downloading anything, when there is one.
-    pub fn cached_index(&self) -> Option<Index> {
+    pub(crate) fn cached_index(&self) -> Option<Index> {
         let text = std::fs::read_to_string(self.index_path()).ok()?;
         serde_json::from_str(&text).ok()
     }
@@ -178,7 +174,7 @@ impl<'a> Homebrew<'a> {
     /// # Errors
     ///
     /// `UNAVAILABLE` when there is no cached index and Homebrew cannot be reached.
-    pub fn index(&self) -> Result<LoadedIndex, Failure> {
+    pub(crate) fn index(&self) -> Result<LoadedIndex, Failure> {
         let cached = self.cached_index();
         let now = now();
         if let Some(index) = cached
@@ -249,7 +245,7 @@ impl<'a> Homebrew<'a> {
         let url = format!("{}/{name}", self.api);
         self.client.get_json(&url, &[])?.ok_or_else(|| {
             Failure::unavailable(format!("Homebrew's catalog has no {name}"))
-                .with_details(json!({ "url": url }))
+                .with_details(ErrorDetails { url: Some(url), ..Default::default() })
         })
     }
 
@@ -266,7 +262,7 @@ impl<'a> Homebrew<'a> {
     /// # Errors
     ///
     /// `UNAVAILABLE` when Homebrew cannot be reached.
-    pub fn formula(&self, name: &str) -> Result<Option<Formula>, Failure> {
+    pub(crate) fn formula(&self, name: &str) -> Result<Option<Formula>, Failure> {
         self.client.get_json(&format!("{}/formula/{name}.json", self.api), &[])
     }
 
@@ -275,7 +271,7 @@ impl<'a> Homebrew<'a> {
     /// # Errors
     ///
     /// `UNAVAILABLE` when Homebrew cannot be reached.
-    pub fn cask(&self, token: &str) -> Result<Option<Cask>, Failure> {
+    pub(crate) fn cask(&self, token: &str) -> Result<Option<Cask>, Failure> {
         self.client.get_json(&format!("{}/cask/{token}.json", self.api), &[])
     }
 }
@@ -287,6 +283,7 @@ fn now() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn a_formula_version_carries_its_revision() {

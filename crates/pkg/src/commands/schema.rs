@@ -11,7 +11,7 @@ use crate::invocation::Invocation;
 use crate::registry::{
     self, ArgumentKind, ArgumentSpec, CommandDescription, CommandSpec, Effect, Example, ValueKind,
 };
-use crate::response::{RenderText, Response};
+use crate::response::{RenderOutput, Response};
 
 pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
     id: "schema",
@@ -80,7 +80,7 @@ pub struct CommandSummary {
     pub effect: String,
 }
 
-impl RenderText for SchemaResult {
+impl RenderOutput for SchemaResult {
     fn render_text(&self) -> String {
         match self {
             SchemaResult::List(list) => {
@@ -165,12 +165,12 @@ fn show_schema(invocation: &Invocation) -> Result<Response, Failure> {
                 effect: command.effect_label(),
             })
             .collect();
-        return Ok(Response::new(&SchemaResult::List(CommandList { items })));
+        return Ok(Response::new(&SchemaResult::List(CommandList { items }), invocation.output));
     }
 
     let path = command_path(&words);
     let command = registry::resolve(&path).ok_or_else(|| unknown_command(&words))?;
-    Ok(Response::new(&SchemaResult::Command(Box::new(command.describe()))))
+    Ok(Response::new(&SchemaResult::Command(Box::new(command.describe())), invocation.output))
 }
 
 /// `tap add`, `pkg tap add`, and `tap.add` all name the same command.

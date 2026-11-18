@@ -4,10 +4,10 @@ use clap::builder::{PossibleValuesParser, RangedU64ValueParser};
 use clap::{Arg, ArgAction, Command};
 
 use crate::NAME;
-use crate::package::is_package;
 use crate::registry::{
     self, ArgumentKind, ArgumentSpec, Audience, CommandSpec, GLOBAL_ARGUMENTS, RESOURCES, ValueKind,
 };
+use pkg_core::is_package;
 
 const ORIENTATION: &str = "\
 Install, remove, and find packages with mise. Every install is recorded in your mise config, so \
