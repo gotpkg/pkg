@@ -20,7 +20,8 @@ pub(crate) const PKG_TOOL: &str = "github:gotpkg/pkg";
 pub struct Handoff {
     /// `added` when pkg declared `github:gotpkg/pkg`, `existing` when a config already did.
     pub declaration: Declaration,
-    /// The config file that declares it; null in a dry run that would add it.
+    /// The config file that declares it, or for `dry-run` the one it would go to; null when mise
+    /// is not installed yet.
     pub config: Option<PathBuf>,
     /// The version of pkg mise runs; null when it is not known.
     pub version: Option<String>,
@@ -127,15 +128,18 @@ pub(crate) fn hand_off(
     let path = settings.local_bin().join("pkg");
     let shim = settings.mise_data_dir().join("shims/pkg");
     let copy = inspect(&path, &shim, settings);
-    let declared = if mise_ready {
+    let (declared, config) = if mise_ready {
         let machine = Machine::load(settings)?;
-        machine.declared_in(&machine.package(PKG_TOOL)).map(Path::to_path_buf)
+        match machine.declared_in(&machine.package(PKG_TOOL)) {
+            Some(file) => (true, Some(file.to_path_buf())),
+            None => (false, Some(machine.target(true)?.path)),
+        }
     } else {
-        None
+        (false, None)
     };
     let mut handoff = Handoff {
-        declaration: if declared.is_some() { Declaration::Existing } else { Declaration::Added },
-        config: declared,
+        declaration: if declared { Declaration::Existing } else { Declaration::Added },
+        config,
         version: None,
         link: Link::None,
         path: path.clone(),

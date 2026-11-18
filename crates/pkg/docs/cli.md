@@ -1571,7 +1571,7 @@ Result schema:
             "string",
             "null"
           ],
-          "description": "The config file that declares it; null in a dry run that would add it."
+          "description": "The config file that declares it, or for `dry-run` the one it would go to; null when mise\nis not installed yet."
         },
         "version": {
           "type": [
@@ -1870,7 +1870,7 @@ Result schema:
             "string",
             "null"
           ],
-          "description": "The config file that declares it; null in a dry run that would add it."
+          "description": "The config file that declares it, or for `dry-run` the one it would go to; null when mise\nis not installed yet."
         },
         "version": {
           "type": [

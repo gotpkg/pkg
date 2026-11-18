@@ -110,8 +110,9 @@ pub fn handoff_lines(handoff: &Handoff, dry: bool) -> String {
         (Declaration::Added, false) => "declared github:gotpkg/pkg".to_string(),
     };
     let config = handoff.config.as_ref().map(|config| format!(" in {}", for_people(config)));
-    let mut text =
-        format!("pkg: {declared}{}; mise updates pkg from now on\n", config.unwrap_or_default());
+    let then =
+        if dry { "mise would update pkg from then on" } else { "mise updates pkg from now on" };
+    let mut text = format!("pkg: {declared}{}; {then}\n", config.unwrap_or_default());
     let path = for_people(&handoff.path);
     match handoff.link {
         Link::Linked if dry => text.push_str(&format!("  would link {path} to mise's shim\n")),
