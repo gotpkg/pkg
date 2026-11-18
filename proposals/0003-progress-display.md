@@ -32,10 +32,10 @@ The person cannot tell a slow download from a hang, and cannot tell how much is 
 
 Observations were made on 2026-11-17 on macOS arm64 with mise 2026.11.9, in a disposable home and a disposable Homebrew prefix, with read-only timings taken on Mark's Mac. Source references are to mise at tag `v2026.11.9`.
 
-- mise picks its progress renderer from its own stderr ([`multi_progress_report.rs`](https://github.com/jdx/mise/blob/v2026.11.9/crates/mise-ui/src/multi_progress_report.rs)). It redraws a live region only when stderr is a terminal and none of `quiet`, `verbose`, `raw`, `ci` or its agent detection applies; otherwise it appends plain lines. pkg pipes both of mise's streams ([`Mise::run`](../crates/pkg/src/mise/mod.rs)), so under pkg mise always appends plain lines. Both modes were observed.
+- mise picks its progress renderer from its own stderr ([`multi_progress_report.rs`](https://github.com/jdx/mise/blob/v2026.11.9/crates/mise-ui/src/multi_progress_report.rs)). It redraws a live region only when stderr is a terminal and none of `quiet`, `verbose`, `raw`, `ci` or its agent detection applies; otherwise it appends plain lines. pkg pipes both of mise's streams ([`Mise::run`](../crates/pkg-core/src/mise/mod.rs)), so under pkg mise always appends plain lines. Both modes were observed.
 - Tool installs in plain mode ([`text_install_progress.rs`](https://github.com/jdx/mise/blob/v2026.11.9/crates/mise-ui/src/text_install_progress.rs)) print a header with the number of tools; a snapshot at an interval of one tenth of the elapsed time, clamped to 3–60 s; a completion line per tool; and a closing summary. A snapshot holds done/total and, for each active tool, its phase, its elapsed time and, during a download, bytes done, total and rate. Observed.
 - Homebrew formulae in plain mode print one line per phase change per formula (`download <file>`, `checksum`, `extract`, `relocate`, `codesign`, `link`, `post-install`) and a `✓ <version>` line when the formula is done. The downloader reports bytes to the renderer, but the plain reporter does not print them (`VerboseReport` in [`progress_report.rs`](https://github.com/jdx/mise/blob/v2026.11.9/crates/mise-ui/src/progress_report.rs)), and no line states how many formulae there are. Observed for formulae. Casks use the same reporter; that is read from source, not observed.
-- The count exists in mise's plan. `mise bootstrap packages use --dry-run -g <package>` prints one `pour <name>/<version> (requested|dependency)`, `build <name>/<version> from source (…)` or `install cask <token>/<version>` line per item, and took 0.03–0.4 s on Mark's Mac. pkg already runs this query for `pkg install --dry-run` and already reads these lines for `pkg upgrade --dry-run` ([`plans.rs`](../crates/pkg/src/mise/plans.rs)). The matching plans for upgrade and sync took 2.2–5.8 s.
+- The count exists in mise's plan. `mise bootstrap packages use --dry-run -g <package>` prints one `pour <name>/<version> (requested|dependency)`, `build <name>/<version> from source (…)` or `install cask <token>/<version>` line per item, and took 0.03–0.4 s on Mark's Mac. pkg already runs this query for `pkg install --dry-run` and already reads these lines for `pkg upgrade --dry-run` ([`plans.rs`](../crates/pkg-core/src/mise/plans.rs)). The matching plans for upgrade and sync took 2.2–5.8 s.
 - `mise bootstrap packages prune` prints only a closing line (`brew: pruned 8 formulae`). Its `--dry-run` lists every removal, and pkg already runs it before each prune.
 - None of these lines is a documented interface. mise's documentation describes no machine-readable progress, and the lines come from its terminal UI crate, so any release can reword them. This is an inference from the absence of a documented format.
 - [indicatif](https://docs.rs/indicatif/0.18.6/indicatif/) 0.18.6 draws bars and spinners to stderr about 20 times per second, manages several at once, and prints lines above them. It [draws nothing](https://docs.rs/indicatif/0.18.6/indicatif/struct.ProgressDrawTarget.html#method.term) when its target is not a terminal or `TERM` is `dumb` (or unset, except on Windows). It does not hide the cursor or change terminal modes. It is MIT-licensed, needs Rust 1.85 (this workspace requires 1.100), and brings `console`, `unit-prefix`, `portable-atomic` and `unicode-width`. Its `in_memory` feature provides a terminal for tests.
@@ -69,7 +69,8 @@ mise brew: installed wget
 - A bar is a fraction, so it needs a total, and a total that grows moves the bar backwards.
 - A region that redraws and lines that append cannot both write to one terminal unless one of them goes through the other.
 - Redrawn output is useless in a log, in CI and to a screen reader. Plain appended output has to stay reachable.
-- pkg already reads mise's human-oriented output in one place, and its rule there is to recognize only the lines it needs and skip the rest, so a line a later mise adds is ignored rather than misread ([`plans.rs`](../crates/pkg/src/mise/plans.rs)). For a display the safe direction is the opposite one: a line pkg does not recognize must be shown, never dropped.
+- pkg already reads mise's human-oriented output in one place, and its rule there is to recognize only the lines it needs and skip the rest, so a line a later mise adds is ignored rather than misread ([`plans.rs`](../crates/pkg-core/src/mise/plans.rs)). For a display the safe direction is the opposite one: a line pkg does not recognize must be shown, never dropped.
+- pkg's operations live in the `pkg-core` library, which never writes to the terminal and hands its caller mise's output as raw text ([the library contract](../crates/pkg-core/src/lib.rs)). Whatever draws belongs in a frontend, and whatever a frontend cannot work out from raw text has to cross that boundary as typed data.
 
 ### Quality bar
 
@@ -91,11 +92,11 @@ mise brew: installed wget
 
 The closest thing that already produces the intended result is mise's own live display, which a person sees when they run mise directly in a terminal (observed on a pseudo-terminal): one row per item with its phase, bytes, estimated time and a bar, and a done/total count above them. It shows what is worth preserving: a row for every item mise is working on, dependencies included; a count against a total; mise's own phase words; and a mark that stays when an item finishes. Its byte counts for Homebrew cannot be reproduced from piped output.
 
-pkg's current behavior is [`Mise::run`](../crates/pkg/src/mise/mod.rs): two threads copy mise's stdout and stderr to pkg's stderr line by line and keep the text, which the failure message reads. Preserve the routing (everything from mise goes to stderr, and stdout carries only the result), the capture, the order within each stream, and the behavior of every run whose stderr is not a terminal. The `eprintln!` inside the copy loop is incidental. The silent intervals around mise's runs were never designed; nothing has reported them.
+pkg's current behavior has two halves. In the library, [`Mise::run`](../crates/pkg-core/src/mise/mod.rs) reads mise's stdout and stderr, keeps the text, which the failure message reads, and hands each chunk to the operation's progress callback on the calling thread. In the CLI, [`execute`](../crates/pkg/src/commands/common.rs) writes each chunk to stderr as it arrives. Preserve the routing (everything from mise goes to stderr, and stdout carries only the result), the capture, the order within each stream, the callback's contract, and the behavior of every run whose stderr is not a terminal. The callback carries mise's output and warnings and nothing about the operation's own work, so nothing reports the silent intervals around mise's runs. They were never designed.
 
 ## Proposed solution
 
-Keep running mise exactly as today, piped, and put a display between its output and the terminal. pkg knows things mise does not: which step of its own work is running, which package of the request this is, and, for an install, the plan mise just printed. mise knows what each item is doing. The display combines them, drawn with indicatif so that redrawing, terminal width, rate limiting and Windows consoles are the library's concern.
+Keep running mise exactly as today, piped, and put a display between its output and the terminal. pkg knows things mise does not: which step of its own work is running, which package of the request this is, and, for an install, the plan mise just printed. mise knows what each item is doing. The library reports the first kind as typed progress events, beside the raw output it already delivers. The CLI recognizes mise's lines, combines the two, and draws with indicatif, so that redrawing, terminal width, rate limiting and Windows consoles are indicatif's concern.
 
 The human selected this approach over handing the terminal to mise and over a pseudo-terminal relay, and selected the commands and the plan query described below; see Alternatives considered.
 
@@ -125,7 +126,7 @@ The display is on only when all of these hold. Otherwise pkg behaves exactly as 
 
 There is no new argument, environment variable or setting. A person who wants plain lines in a terminal redirects stderr (`pkg install brew:wget 2>&1 | cat`) or sets `CI`, and then gets what they get today.
 
-The decision is made once per run, in [`app.rs`](../crates/pkg/src/app.rs), from the output format and the process environment. Nothing else asks whether stderr is a terminal.
+The decision is made once per run, in the `pkg` crate, from the output format and the process environment. Nothing else asks whether stderr is a terminal, and `pkg-core` never learns the answer.
 
 ### What the person can find out
 
@@ -151,9 +152,20 @@ The steps, in order:
 
 A dry run shows the same steps without the ones that change something. For `pkg install --dry-run`, asking for the plan is the dry run itself.
 
+### What crosses the library boundary
+
+`pkg-core` draws nothing and recognizes nothing. It reports what only the operation knows, through the progress callback every operation already takes ([the library contract](../crates/pkg-core/src/lib.rs)). Two events join `Output` and `Warning` in [`Progress`](../crates/pkg-core/src/progress.rs):
+
+- **A step begins.** The event names which stretch of work from the table above is starting. A stretch about one package carries the package, its position and the number of packages in the request. A stretch that uninstalls carries the manager. A step ends when the next one begins or the call returns, so all output delivered in between belongs to it.
+- **A plan.** The items mise is about to install or uninstall in the current step: each item's name, its version when the plan states one, and, for an install, whether it was requested or is a dependency.
+
+Both follow the callback's existing contract: they are delivered serially on the calling thread, before the method returns, and a consumer that ignores them loses nothing. `install`, `upgrade`, `sync`, `remove` and `prune` report their steps on every call, dry runs included; no other operation reports any. `remove` and `prune` report the plan they already compute. `install` reports a plan only when its request asks for one, as described under The plan query.
+
+Recognizing mise's lines stays out of the library. Its contract hands over mise's output as text, and turning that text into typed item progress there would present wording mise can change in any release as a stable interface.
+
 ### What happens to mise's lines
 
-With the display on, every line mise writes still reaches pkg the way it does today. pkg sorts each one into one of three kinds:
+With the display on, mise's output still reaches the CLI through the progress callback, as it does today, and the CLI assembles it into lines. It sorts each line into one of three kinds:
 
 | Kind               | Lines, as mise 2026.11.9 writes them                                                                                                                                                                                                                                     | Where it goes                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
@@ -164,21 +176,21 @@ With the display on, every line mise writes still reaches pkg the way it does to
 - Recognition works line by line, after the leading `mise` and any color codes are set aside. The only state it keeps is that indented rows belong to the snapshot line before them. It is conservative: a line that does not match exactly one known shape is "everything else".
 - Lines left on stderr appear above the display, in the order they arrived on their stream. No order is promised between mise's two streams, as today.
 - Recognition changes what the display shows and whether a line is left on stderr. It never changes what pkg runs next, the receipt, the failure or the exit status.
-- When a mise command fails, pkg writes the transient lines it withheld from that command to stderr, in order, before its own error. A failure therefore leaves on stderr every line it leaves today.
-- The text pkg keeps from mise for failure messages does not change.
+- When an operation fails, the CLI writes the transient lines it withheld during the failing step to stderr, in order, before the error. A failure therefore leaves on stderr every line it leaves today. The error's own text stays as it is today: `execute` already leaves mise's output out of it once that output has been written.
+- The text the library keeps from mise for failure messages does not change.
 
 Completion lines stay because they are the only record of which dependencies and which artifacts were installed; the receipt lists neither.
 
-The shapes in this table have no current home. They belong in the rustdoc of the code that recognizes them, with test fixtures recorded from mise 2026.11.9 the way this proposal's observations were made: real installs in a disposable home and Homebrew prefix, with mise's output piped.
+The shapes in this table have no current home. They belong in the rustdoc of the CLI code that recognizes them, with test fixtures recorded from mise 2026.11.9 the way this proposal's observations were made: real installs in a disposable home and Homebrew prefix, with mise's output piped.
 
 ### The plan query
 
-When the display is on, before pkg installs a bootstrap package it asks mise for the plan, with the query `pkg install --dry-run` already uses for that package: `bootstrap packages use --dry-run -g <package>` for one no config declares, and `bootstrap packages apply --dry-run <package>` for one that is declared and missing. From the plan it takes every item mise will install (the `pour`, `build` and `install cask` lines, dependencies included): how many, their names, and which are dependencies. [`upgrade_plan`](../crates/pkg/src/mise/plans.rs) reads the same lines today but keeps only requested formulae; an install plan keeps all of them.
+The CLI asks for plans on its install request only when the display is on. [`InstallRequest`](../crates/pkg-core/src/requests.rs) gains a field for that, and every other caller leaves it off. When it is set, before the library installs a bootstrap package it asks mise for the plan, with the query its dry run already uses for that package ([`install.rs`](../crates/pkg-core/src/install.rs)): `bootstrap packages use --dry-run -g <package>` for one no config declares, and `bootstrap packages apply --dry-run <package>` for one that is declared and missing. From the plan it takes every item mise will install (the `pour`, `build` and `install cask` lines, dependencies included) and reports them as a plan event. [`upgrade_plan`](../crates/pkg-core/src/mise/plans.rs) reads the same lines today but keeps only requested formulae; an install plan keeps all of them.
 
-- The plan serves the display only. pkg makes no decision from it and the receipt does not include it.
-- A plan query that fails, or a plan with no line pkg recognizes, is not an error and is not reported. pkg installs the package and shows the count without a total.
-- If mise then works on an item the plan did not list, the total grows to include it. The number finished never exceeds the total.
-- No plan query runs for tools (mise states the count itself), for `upgrade` or `sync` (their plans took 2.2–5.8 s on Mark's Mac), for `remove` or `prune` (they already have the plan), or when the display is off.
+- The plan serves the caller's display only. The library makes no decision from it and the receipt does not include it.
+- A plan query that fails, or a plan with no line the library recognizes, is not an error and is not reported. The package is installed, and the display shows the count without a total.
+- If mise then works on an item the plan did not list, the display's total grows to include it. The number finished never exceeds the total.
+- No plan query runs for tools (mise states the count itself), for `upgrade` or `sync` (their plans took 2.2–5.8 s on Mark's Mac), for `remove` or `prune` (they already have the plan), in a dry run (it is that query), or when the request does not ask.
 
 ### Starting and ending
 
@@ -189,35 +201,39 @@ When the display is on, before pkg installs a bootstrap package it asks mise for
 
 ### Current sources and what changes in each
 
-- [`Mise::run`](../crates/pkg/src/mise/mod.rs): today each line of mise's stdout and stderr is written to stderr with `eprintln!` as it arrives, and collected. The lines go to the run's progress reporter instead. With the display off, the reporter writes each line to stderr exactly as today. Collection, and the queries (`read`, `query`, `capture`), do not change.
-- [`plans.rs`](../crates/pkg/src/mise/plans.rs): add reading the items of an install plan, as above.
-- [`install`](../crates/pkg/src/commands/install.rs), [`upgrade`](../crates/pkg/src/commands/upgrade.rs), [`sync`](../crates/pkg/src/commands/sync.rs), [`remove`](../crates/pkg/src/commands/remove.rs) and [`prune`](../crates/pkg/src/commands/prune.rs): each reports its steps to the reporter, and `install` its packages and plans. Their mise commands, their order, their receipts and their failures do not change, apart from the plan query.
-- The registry descriptions of those five commands: `install`, `upgrade` and `sync` end with "mise's progress goes to stderr." Replace that sentence, and add the same one to `remove` and `prune`, with one stating the contract: on a terminal pkg shows progress as a live display, and otherwise mise's progress lines go to stderr as they arrive. The introduction in [`reference.rs`](../crates/pkg/src/reference.rs) says the same thing for every command and changes with them. Regenerate the [CLI reference](../crates/pkg/docs/cli.md).
-- [`app.rs`](../crates/pkg/src/app.rs): decides whether the display is on, and guarantees it is removed before `report` writes.
+In `pkg-core`:
+
+- [The library contract](../crates/pkg-core/src/lib.rs): its Progress section describes `Output` and `Warning`. Add the two events, when each operation reports them, and the plan request. Write this before the code; it is the specification of the boundary.
+- [`progress.rs`](../crates/pkg-core/src/progress.rs) and [`requests.rs`](../crates/pkg-core/src/requests.rs): the two events, and the field on `InstallRequest`.
+- [`install`](../crates/pkg-core/src/install.rs), [`upgrade`](../crates/pkg-core/src/upgrade.rs), [`sync`](../crates/pkg-core/src/sync.rs), [`remove`](../crates/pkg-core/src/remove.rs) and [`prune`](../crates/pkg-core/src/prune.rs): each reports its steps, `remove` and `prune` their plans, and `install` its plans when asked. Their mise commands, their order, their receipts and their errors do not change, apart from the plan query.
+- [`plans.rs`](../crates/pkg-core/src/mise/plans.rs): add reading the items of an install plan.
+- [`Mise::run`](../crates/pkg-core/src/mise/mod.rs) and the queries do not change.
+- [Use pkg From Rust](../guides/rust-library.md): its worked example matches every `Progress` event and builds an `InstallRequest`. Update both, and say that the new events can be ignored.
+
+In `pkg`:
+
+- [`execute`](../crates/pkg/src/commands/common.rs): today its callback writes every `Output` chunk to stderr. For the five commands with the display on, the callback is the display instead. In every other case it stays as it is and ignores the new events, so the bytes it writes do not change.
+- The registry descriptions of the five commands ([`install`](../crates/pkg/src/commands/install.rs), [`upgrade`](../crates/pkg/src/commands/upgrade.rs), [`sync`](../crates/pkg/src/commands/sync.rs), [`remove`](../crates/pkg/src/commands/remove.rs), [`prune`](../crates/pkg/src/commands/prune.rs)): `install`, `upgrade` and `sync` end with "mise's progress goes to stderr." Replace that sentence, and add the same one to `remove` and `prune`, with one stating the contract: on a terminal pkg shows progress as a live display, and otherwise mise's progress lines go to stderr as they arrive. The introduction in [`reference.rs`](../crates/pkg/src/reference.rs) says the same thing for every command and changes with them. Regenerate the [CLI reference](../crates/pkg/docs/cli.md).
 - [Packages](../crates/pkg/docs/packages.md): "Installing" and "Output for scripts and agents" each say that mise's progress goes to stderr. Revise both, and add a section that tells a reader what the display shows, when it is on, how to get plain lines, and its limits: Homebrew has no byte counts, and every figure is mise's last report.
-- [AGENTS.md](../AGENTS.md) ("mise's progress and warnings go to stderr") and [Designing Human-First CLIs](../.agents/skills/designing-human-first-clis/SKILL.md) ("Progress from long operations goes to stderr as it happens, so a person sees mise working"): revise each sentence to the same contract. Everything still goes to stderr.
-- [README.md](../README.md#layout): the layout gains the new module.
-- [`crates/pkg/Cargo.toml`](../crates/pkg/Cargo.toml): add `indicatif` 0.18, with a comment saying what it is for, as the other dependencies have.
-- New: a progress module in `crates/pkg/src/` with three separate parts. The reporter is what the commands and `Mise::run` talk to. Recognition of mise's lines is pure and does no I/O. The display is the only code that names indicatif.
+- [`crates/pkg/Cargo.toml`](../crates/pkg/Cargo.toml): add `indicatif` 0.18, with a comment saying what it is for. `pkg-core` gains no dependency.
+- New: a progress module in `crates/pkg/src/` with three separate parts. Assembling chunks into lines and recognizing them is pure and does no I/O. The display is the only code that names indicatif. The decision whether the display is on is the only code that looks at the terminal and the environment.
+
+Elsewhere:
+
+- [AGENTS.md](../AGENTS.md) ("mise's progress and warnings go to stderr"), [Designing Human-First CLIs](../.agents/skills/designing-human-first-clis/SKILL.md) ("Progress from long operations goes to stderr as it happens, so a person sees mise working") and [Writing Rust](../.agents/skills/writing-rust/SKILL.md) ("The CLI forwards upstream output to stderr"): revise each sentence to the same contract. Everything still goes to stderr.
+- The layouts in [AGENTS.md](../AGENTS.md), [Writing Rust](../.agents/skills/writing-rust/SKILL.md) and [README.md](../README.md#layout) gain the new module. Writing Rust's rule that mise's text is parsed only in `mise/plans.rs` gains its one exception: progress lines, which the CLI recognizes for display and for nothing else.
 
 ## Compatibility
 
-When the display is off (stderr is not a terminal, `--output json`, `CI` set, or a dumb terminal), nothing changes: not a byte on either stream, and not a mise command. The tests in [`tests/cli/`](../crates/pkg/tests/cli/) run pkg with piped streams and must pass unmodified; that is the proof.
+When the display is off (stderr is not a terminal, `--output json`, `CI` set, or a dumb terminal), nothing changes for a person or a script: not a byte on either stream, and not a mise command. The tests in [`tests/cli/`](../crates/pkg/tests/cli/) run pkg with piped streams and must pass unmodified; that is the proof.
 
 When the display is on, stderr differs from today in two ways: transient progress lines no longer accumulate, and pkg runs one more read-only mise query for each bootstrap package it installs (0.03–0.4 s measured). stdout, receipts, JSON schemas, error codes, error messages and exit statuses do not change anywhere.
 
 The binary gains a dependency and grows by its size, which was not measured.
 
-[PR #1](https://github.com/markmals/pkg/pull/1) (proposal 0002, in review) moves the package operations into a `pkg-core` library that never prints and never touches the terminal, and gives each operation a progress callback that receives mise's raw output by stream. This proposal is written against the current sources and fits that boundary without bending it:
+For Rust consumers of `pkg-core`, `Progress` gains two events and `InstallRequest` one field. Code that matches every `Progress` event, or builds an `InstallRequest`, has to add an arm or the field before it compiles. The crate is unpublished, and its guide changes with it. A consumer that ignores the new events and leaves plans off gets today's behavior, including today's mise commands.
 
-- The display, recognition and indicatif stay in the `pkg` crate. `pkg-core` gains no dependency and draws nothing.
-- The raw output the callback already delivers is what recognition consumes. The CLI assembles it into lines.
-- Steps, the package and its position, and plan items are known only to the operation, so they cross the boundary as typed progress events added to `pkg-core`'s progress type.
-- The plan query is requested by the caller on each install request and is off by default. The library does not decide on its own to run a query that exists for a display.
-
-If this proposal lands first, the extraction carries the reporter across its boundary in that shape.
-
-[PR #2](https://github.com/markmals/pkg/pull/2) (proposal 0001, draft) lets mise use the terminal during `pkg bootstrap`. A child that owns the terminal and a live display cannot share it. `bootstrap`, `setup` and the `mise` commands are not among this proposal's commands, so the two do not meet. Whether bootstrap ever gets a display is a later decision.
+[PR #2](https://github.com/markmals/pkg/pull/2) (proposal 0002, draft) lets mise use the terminal during `pkg bootstrap`. A child that owns the terminal and a live display cannot share it. `bootstrap`, `setup` and the `mise` commands are not among this proposal's commands, so the two do not meet. Whether bootstrap ever gets a display is a later decision.
 
 ## Implications on adoption
 
@@ -227,10 +243,11 @@ For maintainers, the recognized shapes are tied to mise's wording. Raising the m
 
 ## Scope
 
-- The reporter, the recognition of mise's lines, the indicatif display, and their wiring into `Mise::run` and the five commands, including the plan query for `install`.
+- In `pkg-core`, the step and plan events and the plan request. In the CLI, the recognition of mise's lines, the indicatif display, and their use by the five commands.
 - The documentation changes listed under Detailed design, and a change file for the release notes.
-- Tests: recognition against output recorded from mise 2026.11.9 for tool installs, Homebrew pours, an upgrade, a sync, a remove and a failure; the display against indicatif's in-memory terminal; the existing binary tests, unmodified, as the proof that nothing changes with the display off; and runs of the binary under a pseudo-terminal on Unix proving that the display turns on, the plan query is issued, stdout holds only the result, and a failure leaves the withheld lines on stderr.
-- No guide in `guides/`. [Packages](../crates/pkg/docs/packages.md) is the documentation a reader finds, in the repository and through `pkg docs search`, and a guide would repeat its new section.
+- Tests in `pkg-core`: the order and thread of the new events, that no plan query runs unless the request asks, and that a failing plan query changes nothing else.
+- Tests in the CLI: recognition against output recorded from mise 2026.11.9 for tool installs, Homebrew pours, an upgrade, a sync, a remove and a failure; the display against indicatif's in-memory terminal; the existing binary tests, unmodified, as the proof that nothing changes with the display off; and runs of the binary under a pseudo-terminal on Unix proving that the display turns on, the plan query is issued, stdout holds only the result, and a failure leaves the withheld lines on stderr.
+- No new guide in `guides/` for the display. [Packages](../crates/pkg/docs/packages.md) is the documentation a reader finds, in the repository and through `pkg docs search`, and a guide would repeat its new section. The Rust consumer guide changes as listed under Detailed design.
 
 ### Out of scope
 
@@ -246,7 +263,7 @@ For maintainers, the recognized shapes are tied to mise's wording. Raising the m
 
 ## Preview
 
-- Repository shape: CLI.
+- Repository shape: a CLI and the library it consumes. A person can exercise the library's new events only through the CLI; its tests cover them directly.
 - Artifact: the installable executable built from the reviewed revision, delivered locally with its path in the review report. This repository is public, so the build is not uploaded.
 - Reason: the change is what a person sees in a terminal over time. Only running it in one shows that.
 - Exercise, in a real terminal, against a disposable home and a disposable Homebrew prefix so that real downloads and pours happen without touching the machine: a formula with dependencies; two tools; one request naming a package and a tool; something already installed; an upgrade of a tool held at an old version; a sync with something missing; a remove; a prune; an unknown package, for the failure path; and Ctrl-C in the middle of a download. Then the same commands with stderr redirected, with `--output json` and with `CI` set, compared with a build of `main`. On the real machine, the five commands with `--dry-run` only.
@@ -261,6 +278,7 @@ No policy or decision records exist; `policies/` and `decisions/` hold only thei
 - **mise decides, pkg translates** — mise still installs and still reports. pkg presents what mise reported and adds only what pkg itself knows. The plan query is a read mise already offers and pkg already uses.
 - **Keep mise the single owner, so pkg adds no state** — the display keeps nothing after the run.
 - **No prompts** — none are added.
+- **The same operations through `pkg-core`** — steps and plans are typed progress that any frontend receives. Drawing and the reading of mise's wording stay in the CLI, so the library still writes nothing to the terminal.
 
 ## Future directions
 
@@ -272,7 +290,8 @@ No policy or decision records exist; `policies/` and `decisions/` hold only thei
 
 ## Alternatives considered
 
-- **Hand the terminal to mise, and use indicatif only for pkg's own steps.** mise's display has byte counts, estimated time and a bar for formulae and casks as well as tools (observed), and pkg would recognize nothing. But on a terminal pkg could no longer read mise's error line for its own error sentence; mise would switch to interactive sudo, which can ask for a password where it fails fast today; and with PR #1 the library would need an explicit option for a child that owns the terminal. The human chose one display owned by pkg across its own steps and mise's.
+- **Hand the terminal to mise, and use indicatif only for pkg's own steps.** mise's display has byte counts, estimated time and a bar for formulae and casks as well as tools (observed), and pkg would recognize nothing. But on a terminal pkg could no longer read mise's error line for its own error sentence; mise would switch to interactive sudo, which can ask for a password where it fails fast today; and `pkg-core` would need an explicit option for a child that owns the terminal. The human chose one display owned by pkg across its own steps and mise's.
+- **Recognize mise's lines inside `pkg-core` and report item progress as typed events.** Every frontend would get phases and byte counts without reading text. But the library would be presenting wording mise can change in any release as an interface, and the CLI is the only consumer today. It stays possible later; see Future directions.
 - **Run mise inside a pseudo-terminal and relay it.** This keeps the capture and gets mise's display, at the cost of platform-specific code or a dependency on Unix and on Windows, forwarding the window size and signals, and stripping escape sequences to find error lines. It also leaves no room for pkg's own display while mise's is up.
 - **No extra queries, or a plan before every command.** Without the plan, Homebrew installs show a count as formulae appear and no bar. With a plan everywhere, `upgrade` and `sync` wait 2.2–5.8 s before starting. The human chose the plan for `install` only.
 - **Only `install`, or only `install`, `upgrade` and `sync`.** The human chose every command that changes installed software.
