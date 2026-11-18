@@ -204,6 +204,9 @@ fn link(path: &Path, shim: &Path) -> Result<(), Error> {
     let _ = std::fs::remove_file(&staged);
     #[cfg(unix)]
     std::os::unix::fs::symlink(shim, &staged).map_err(|error| cannot_write(&staged, &error))?;
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_file(shim, &staged)
+        .map_err(|error| cannot_write(&staged, &error))?;
     std::fs::rename(&staged, path).map_err(|error| cannot_write(path, &error))
 }
 

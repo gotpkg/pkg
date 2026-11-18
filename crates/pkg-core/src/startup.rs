@@ -185,6 +185,7 @@ mod tests {
         assert!(!is_only_block(&format!("{BEGIN}\nexport PATH=x\n")), "an unterminated block");
     }
 
+    #[cfg(unix)]
     #[test]
     fn zsh_honors_zdotdir_and_bash_prefers_an_existing_bash_profile() {
         let mut environment = BTreeMap::new();

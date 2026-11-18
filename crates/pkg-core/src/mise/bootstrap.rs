@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::Stdio;
 
 use super::{Mise, Output};
-use crate::{Error, ErrorKind, Progress};
+use crate::{Error, Progress};
 
 /// How `mise bootstrap` runs: from which directory, with which extra environment, and whether it
 /// may use the caller's terminal.
@@ -58,7 +58,8 @@ fn terminal_stdout() -> Result<Stdio, Error> {
     {
         use std::os::fd::AsFd;
         let stderr = std::io::stderr().as_fd().try_clone_to_owned().map_err(|error| {
-            Error::new(ErrorKind::Internal, format!("cannot share the terminal with mise: {error}"))
+            let message = format!("cannot share the terminal with mise: {error}");
+            Error::new(crate::ErrorKind::Internal, message)
         })?;
         Ok(Stdio::from(stderr))
     }
