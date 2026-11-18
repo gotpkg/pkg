@@ -2,7 +2,7 @@
 id: proposal.0002
 title: Reusable Package Library
 authors: [Mark]
-status: awaiting-implementation
+status: active-review
 pull-request: https://github.com/markmals/pkg/pull/1
 issues: []
 supersedes: []
