@@ -1,9 +1,12 @@
 //! Getting a new machine ready: mise, `PATH`, and pkg itself.
 
+pub(crate) mod bootstrap;
 pub(crate) mod handoff;
 pub(crate) mod mise;
+pub(crate) mod preview;
 pub(crate) mod setup;
 pub(crate) mod shims;
+pub(crate) mod startup_files;
 
 use crate::Error;
 

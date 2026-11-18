@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{Error, ErrorDetails, Recovery};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,6 +41,34 @@ pub struct SetupRequest {
     pub modify_path: bool,
     /// The running pkg's version, which the handoff never replaces with an older one.
     pub pkg_version: String,
+}
+
+#[derive(Debug)]
+pub struct BootstrapRequest {
+    pub source: BootstrapSource,
+    /// Configuration environments mise selects (`-E`).
+    pub environments: Vec<String>,
+    /// Make `environments` the default for later runs (`--save-env`); needs at least one.
+    pub save_environments: bool,
+    /// Pull new commits and refresh package metadata first (`--update`).
+    pub update: bool,
+    pub mode: Mode,
+    /// Whether mise may use the caller's terminal to ask for passwords and answers.
+    pub terminal: bool,
+    /// The running pkg's version, which the handoff never replaces with an older one.
+    pub pkg_version: String,
+}
+
+/// The configuration `bootstrap` applies.
+#[derive(Debug)]
+pub enum BootstrapSource {
+    /// The global configuration, as it is.
+    Global,
+    /// A dotfiles repository cloned into (or found at) `directory`, whose `config_dir` becomes
+    /// the global configuration directory.
+    Repository { url: String, directory: PathBuf, config_dir: String },
+    /// One existing config file, applied with the global configuration.
+    ConfigFile(PathBuf),
 }
 
 #[derive(Debug, Default)]

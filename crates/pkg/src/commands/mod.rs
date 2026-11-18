@@ -2,6 +2,7 @@
 
 use crate::registry::CommandSpec;
 
+pub mod bootstrap;
 pub mod cli;
 pub mod common;
 pub mod context;
@@ -34,6 +35,7 @@ pub static GROUPS: &[&[CommandSpec]] = &[
     locate::COMMANDS,
     tap::COMMANDS,
     setup::COMMANDS,
+    bootstrap::COMMANDS,
     cli::COMMANDS,
     schema::COMMANDS,
     docs::COMMANDS,

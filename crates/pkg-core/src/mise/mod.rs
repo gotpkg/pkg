@@ -1,5 +1,6 @@
 //! mise execution within a caller-supplied home and child environment.
 
+mod bootstrap;
 mod installer;
 mod plans;
 mod queries;
@@ -13,6 +14,7 @@ use std::process::{Command, Stdio};
 
 use crate::{Error, ErrorDetails, ErrorKind, Progress, Recovery, Settings};
 
+pub(crate) use bootstrap::BootstrapRun;
 pub(crate) use installer::run_installer;
 pub(crate) use plans::{removals, upgrade_plan};
 pub(crate) use queries::{ConfigTarget, OutdatedTool, PackageState, ToolState};
@@ -46,12 +48,17 @@ impl<'a> Mise<'a> {
     }
 
     fn command(&self, args: &[impl AsRef<OsStr>]) -> Command {
+        self.command_in(self.home, args)
+    }
+
+    /// `mise -C <directory> <args>`, run from `directory` in the caller's child environment.
+    fn command_in(&self, directory: &Path, args: &[impl AsRef<OsStr>]) -> Command {
         let mut command = Command::new(&self.settings.mise);
         command
             .arg("-C")
-            .arg(self.home)
+            .arg(directory)
             .args(args)
-            .current_dir(self.home)
+            .current_dir(directory)
             .env_clear()
             .envs(&self.settings.child_env)
             .env("HOME", self.home)
@@ -94,8 +101,17 @@ impl<'a> Mise<'a> {
         args: &[impl AsRef<OsStr>],
         progress: &mut dyn FnMut(Progress<'_>),
     ) -> Result<Output, Error> {
-        let mut child = self
-            .command(args)
+        self.run_command(self.command(args), args, progress)
+    }
+
+    /// Runs `command`, passing its output to `progress` as it arrives.
+    fn run_command(
+        &self,
+        mut command: Command,
+        args: &[impl AsRef<OsStr>],
+        progress: &mut dyn FnMut(Progress<'_>),
+    ) -> Result<Output, Error> {
+        let mut child = command
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()

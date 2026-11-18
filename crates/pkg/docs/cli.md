@@ -1631,6 +1631,305 @@ Result schema:
 }
 ```
 
+### `bootstrap`
+
+Restore a machine from your mise configuration.
+
+#### `pkg bootstrap`
+
+Restore a machine from your mise configuration with mise bootstrap.
+
+Runs `mise bootstrap`, which applies everything a configuration declares: packages, tools, dotfiles, settings, services, hooks, and the `bootstrap` task. Name a dotfiles repository with --from <url> --directory <checkout> --config-dir <directory>: mise clones it (or reuses a checkout whose origin is <url>) and links its global config directory, normally `~/.config/mise`, to <config-dir> inside the checkout; pkg refuses before changing anything when that directory already holds another configuration. Name one existing config file with --config, applied with the global configuration. With no source it applies the global configuration, as every run after the first does. --env selects configuration environments, --save-env makes them the default, and --update pulls new commits and refreshes package metadata first; pkg never prunes, forces, or answers for you. When mise is missing it is installed first, as `pkg setup` does. Startup files that hold only the installer's PATH block are moved aside while mise runs and put back where the configuration deployed nothing. With text output in a terminal, mise and the programs it runs may ask you for passwords and answers there; with --output json or without a terminal nothing waits, and a step that needs you fails. A successful run hands pkg to mise. A configuration can run any command, so name only one you have reviewed. --dry-run runs `mise bootstrap --dry-run`, without the `files` part when a templated `[bootstrap.files]` entry could run a command, and changes nothing. Fails on Windows.
+
+- **Effect:** modifies the whole machine as the configuration declares it, and pkg's own installation
+- **Requires:** `network`
+- **Dry run:** yes
+- **Idempotent:** no
+- **Errors:** `INVALID_ARGUMENT`, `NOT_FOUND`, `PRECONDITION_FAILED`, `UNAVAILABLE`, `MISE_FAILED`, `INTERNAL`
+
+| Argument | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--from <string>` | string | no | — | A dotfiles repository's Git URL; needs --directory and --config-dir |
+| `--directory <string>` | string | no | — | Where the repository's checkout is or goes, such as ~/.dotfiles |
+| `--config-dir <string>` | string | no | — | The checkout's directory that holds your global mise config, such as `mise` (`.` for the root) |
+| `--config <string>` | string | no | — | One existing mise config file to apply with the global configuration |
+| `--env <string>` | string, repeatable | no | — | A configuration environment to select, such as `work`; repeatable |
+| `--save-env` | boolean | no | — | Make the --env selection the default for later runs |
+| `--update` | boolean | no | — | Pull new commits and refresh package metadata first |
+| `--dry-run` | boolean | no | — | Show what would change without installing, removing, or writing anything |
+
+Examples:
+
+```sh
+# Preview applying your global configuration
+pkg bootstrap --dry-run
+# Apply your global configuration
+pkg bootstrap
+```
+
+Result schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "$ref": "#/$defs/ReceiptStatus"
+    },
+    "mise": {
+      "$ref": "#/$defs/MiseSetup"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceReport"
+    },
+    "configDir": {
+      "type": "string",
+      "description": "mise's global configuration directory, which `--from` links into the checkout."
+    },
+    "environments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The configuration environments selected."
+    },
+    "startupFiles": {
+      "$ref": "#/$defs/StartupFiles"
+    },
+    "notPreviewed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "For `dry-run`, what the preview leaves out, and why."
+    },
+    "followUp": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "The follow-up work mise listed; null when mise wrote to the terminal instead."
+    },
+    "handoff": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Handoff"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "What happened when pkg was handed to mise; null in a dry run from a repository, whose\nconfiguration does not exist yet."
+    }
+  },
+  "required": [
+    "status",
+    "mise",
+    "source",
+    "configDir",
+    "environments",
+    "startupFiles",
+    "notPreviewed"
+  ],
+  "description": "The outcome of `pkg bootstrap`.",
+  "title": "BootstrapReceipt",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ReceiptStatus": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "completed",
+          "description": "The change is made."
+        },
+        {
+          "type": "string",
+          "const": "dry-run",
+          "description": "Nothing changed; the receipt shows what running without --dry-run would do."
+        }
+      ],
+      "description": "Whether a modifying command made its change."
+    },
+    "MiseSetup": {
+      "type": "object",
+      "properties": {
+        "program": {
+          "type": "string",
+          "description": "The executable."
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Its version; null in a dry run that would install it."
+        },
+        "action": {
+          "$ref": "#/$defs/MiseAction",
+          "description": "`found` when pkg used the mise it found, `installed` when it ran mise's installer (for\n`dry-run`: would run)."
+        }
+      },
+      "required": [
+        "program",
+        "action"
+      ],
+      "description": "The mise `setup` and `bootstrap` use."
+    },
+    "MiseAction": {
+      "type": "string",
+      "enum": [
+        "found",
+        "installed"
+      ]
+    },
+    "SourceReport": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/SourceKind",
+          "description": "`global`, `repository`, or `config`."
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The repository's URL."
+        },
+        "directory": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The checkout."
+        },
+        "configDir": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The checkout's directory that is the global configuration."
+        },
+        "config": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The config file applied with the global configuration."
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "description": "The configuration bootstrap applied."
+    },
+    "SourceKind": {
+      "type": "string",
+      "enum": [
+        "global",
+        "repository",
+        "config"
+      ]
+    },
+    "StartupFiles": {
+      "type": "object",
+      "properties": {
+        "movedAside": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The files pkg deleted before mise applied the configuration (for `dry-run`: would delete)."
+        },
+        "restored": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The ones pkg wrote back because the configuration deployed nothing there."
+        }
+      },
+      "required": [
+        "movedAside",
+        "restored"
+      ],
+      "description": "Startup files that held nothing but pkg's `PATH` block."
+    },
+    "Handoff": {
+      "type": "object",
+      "properties": {
+        "declaration": {
+          "$ref": "#/$defs/Declaration",
+          "description": "`added` when pkg declared `github:gotpkg/pkg`, `existing` when a config already did."
+        },
+        "config": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The config file that declares it; null in a dry run that would add it."
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The version of pkg mise runs; null when it is not known."
+        },
+        "link": {
+          "$ref": "#/$defs/Link",
+          "description": "What happened to `~/.local/bin/pkg`: `linked` (replaced by a link to mise's shim),\n`already-linked`, `kept` (see `reason`), or `none` (nothing there)."
+        },
+        "path": {
+          "type": "string",
+          "description": "`~/.local/bin/pkg`."
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why `~/.local/bin/pkg` was kept."
+        },
+        "others": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Other pkg executables on `PATH`, which a shell may run instead."
+        }
+      },
+      "required": [
+        "declaration",
+        "link",
+        "path",
+        "others"
+      ],
+      "description": "What happened when pkg was handed to mise."
+    },
+    "Declaration": {
+      "type": "string",
+      "enum": [
+        "added",
+        "existing"
+      ]
+    },
+    "Link": {
+      "type": "string",
+      "enum": [
+        "linked",
+        "already-linked",
+        "kept",
+        "none"
+      ]
+    }
+  }
+}
+```
+
 ### `cli`
 
 Find the command for a task.

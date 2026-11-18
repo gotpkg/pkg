@@ -80,7 +80,6 @@ impl Shell {
 }
 
 /// Every file the installer or `setup` may have put pkg's block in, whatever the login shell.
-#[expect(dead_code, reason = "`bootstrap` moves these files aside")]
 pub(crate) fn candidate_files(
     home: &Path,
     environment: &BTreeMap<OsString, OsString>,
@@ -105,7 +104,6 @@ pub(crate) fn with_block(contents: &str, block: &str) -> String {
 }
 
 /// Whether `contents` is pkg's block and nothing else but whitespace: a file the installer made.
-#[cfg_attr(not(test), expect(dead_code, reason = "`bootstrap` moves these files aside"))]
 pub(crate) fn is_only_block(contents: &str) -> bool {
     split_block(contents)
         .is_some_and(|(before, after)| before.trim().is_empty() && after.trim().is_empty())

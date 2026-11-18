@@ -6,8 +6,10 @@
 //! a mise executable, catalog URLs, and an explicit child-environment snapshot. Construction
 //! validates settings without running mise. Each operation reads current declarations and
 //! installation state; the client is not an inventory snapshot. Child processes receive only
-//! that snapshot plus the explicit home/configuration selection, with stdin closed. The host's
-//! environment, current directory, signal policy, and standard streams are never changed.
+//! that snapshot plus the explicit home/configuration selection, with stdin closed, except that
+//! `bootstrap` with `terminal: true` lets mise read the caller's stdin and write to its stderr.
+//! The host's environment, current directory, signal policy, and standard streams are never
+//! changed.
 //!
 //! The caller supplies credentials through the child environment, which is omitted from Debug
 //! output. This is process isolation, not a sandbox: mise and the selected packages still run
@@ -21,17 +23,19 @@
 //! # Operations
 //!
 //! `Client` exposes `install`, `remove`, `list`, `search`, `info`, `outdated`, `update`, `sync`,
-//! `prune`, `locate`, `tap_list`, `tap_add`, `tap_remove`, `context`, and `setup`. Requests are
-//! typed and validated before I/O: package names use mise syntax; install/remove need at least
-//! one name; pagination limits must be positive; search accepts the four catalog source variants
-//! and at most 50 results. Empty update selection means every declared package/tool.
-//! Construct search requests with `SearchRequest::new`, which validates and tokenizes the
-//! query before context resolution. Package/tap operands cannot begin with an option prefix.
+//! `prune`, `locate`, `tap_list`, `tap_add`, `tap_remove`, `context`, `setup`, and `bootstrap`.
+//! Requests are typed and validated before I/O: package names use mise syntax; install/remove
+//! need at least one name; pagination limits must be positive; search accepts the four catalog
+//! source variants and at most 50 results. Empty update selection means every declared
+//! package/tool. Construct search requests with `SearchRequest::new`, which validates and
+//! tokenizes the query before context resolution. Package/tap operands cannot begin with an
+//! option prefix.
 //!
-//! `setup` gets a machine ready rather than changing packages: it may download and run mise's
-//! installer script (`Settings::mise_installer`) with `sh`, edit pkg's block of `PATH` lines in the
-//! login shell's startup files, and replace `~/.local/bin/pkg` with a link to mise's shim. It
-//! supports macOS and Linux only.
+//! `setup` and `bootstrap` get a machine ready rather than changing packages: they may download
+//! and run mise's installer script (`Settings::mise_installer`) with `sh`, edit or move aside
+//! pkg's block of `PATH` lines in shell startup files, and replace `~/.local/bin/pkg` with a link
+//! to mise's shim. `bootstrap` runs `mise bootstrap`, which applies whatever the configuration
+//! declares and is not a transaction. Both support macOS and Linux only.
 //!
 //! Mutation requests choose `Mode::Apply` or `Mode::DryRun` explicitly. A preview uses the same
 //! decisions and refusals as apply without installing, uninstalling, or writing configuration.
@@ -101,19 +105,21 @@ pub use info::PackageInfo;
 pub use install::{InstallAction, InstallKind, InstallReceipt, Installed};
 pub use list::Listed;
 pub use locate::Location;
+pub use onboarding::bootstrap::{BootstrapReceipt, SourceKind, SourceReport};
 pub use onboarding::handoff::{Declaration, Handoff, Link, PkgOwner, pkg_owner};
 pub use onboarding::mise::{MiseAction, MiseSetup};
 pub use onboarding::setup::SetupReceipt;
 pub use onboarding::shims::{PathAction, PathChange};
+pub use onboarding::startup_files::StartupFiles;
 pub use outdated::{OutdatedPackage, OutdatedReport, Skipped};
 pub use package::is_package;
 pub use progress::{Outcome, OutputStream, Progress};
 pub use prune::PruneReceipt;
 pub use remove::{LeftInstalled, RemoveReceipt, Removed};
 pub use requests::{
-    InfoRequest, InstallRequest, ListRequest, LocateRequest, Mode, PruneRequest, RemoveRequest,
-    SearchRequest, SearchSource, SetupRequest, SyncRequest, TapAddRequest, TapRemoveRequest,
-    UpdateRequest,
+    BootstrapRequest, BootstrapSource, InfoRequest, InstallRequest, ListRequest, LocateRequest,
+    Mode, PruneRequest, RemoveRequest, SearchRequest, SearchSource, SetupRequest, SyncRequest,
+    TapAddRequest, TapRemoveRequest, UpdateRequest,
 };
 pub use search::Found;
 pub use settings::{

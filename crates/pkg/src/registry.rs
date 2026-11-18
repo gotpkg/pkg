@@ -181,6 +181,7 @@ pub const RESOURCES: &[(&str, &str, Audience)] = &[
         "Install mise and get pkg ready on a machine with nothing to restore",
         Audience::People,
     ),
+    ("bootstrap", "Restore a machine from your mise configuration", Audience::People),
     ("cli", "Find the command for a task", Audience::Agents),
     ("schema", "Inspect a command's full specification", Audience::Agents),
     ("docs", "Search and read pkg's documentation", Audience::Agents),
