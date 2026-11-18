@@ -219,8 +219,8 @@ each_startup_file() {
     fi
 }
 
-# Whether a startup file is a link, such as one a dotfiles checkout deploys: the installer leaves
-# the file it points to alone and prints the line instead.
+# Whether a startup file, or a directory between it and $HOME, is a link, such as one a dotfiles
+# checkout deploys: the installer leaves the file it points to alone and prints the line instead.
 linked_startup_file() {
     linked=false
     each_startup_file note_link
@@ -228,9 +228,13 @@ linked_startup_file() {
 }
 
 note_link() {
-    if [ -L "$1" ]; then
-        linked=true
-    fi
+    path=$1
+    while [ -n "$path" ] && [ "$path" != "$HOME" ]; do
+        if [ -L "$path" ]; then
+            linked=true
+        fi
+        path=${path%/*}
+    done
 }
 
 # Whether $1 holds pkg's whole block: its start line and, after it, its end line.

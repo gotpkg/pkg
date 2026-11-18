@@ -302,6 +302,21 @@ fn a_linked_startup_file_gets_the_line_to_add_instead() {
 }
 
 #[test]
+fn a_startup_file_in_a_linked_directory_gets_the_line_to_add_instead() {
+    let fixture = Fixture::new();
+    let checkout = fixture.home().join("dotfiles/zsh");
+    fs::create_dir_all(&checkout).unwrap();
+    fs::write(checkout.join(".zshenv"), "export EDITOR=vi\n").unwrap();
+    let zdotdir = fixture.home().join("zsh");
+    symlink(&checkout, &zdotdir).unwrap();
+
+    let stdout = succeed(fixture.installer("zsh").env("ZDOTDIR", &zdotdir));
+
+    assert_eq!(read(&checkout.join(".zshenv")), "export EDITOR=vi\n");
+    assert!(stdout.contains("    export PATH=\"$HOME/.local/bin:$PATH\"\n"), "{stdout}");
+}
+
+#[test]
 fn a_start_marker_without_its_end_still_gets_a_block() {
     let fixture = Fixture::new();
     let stray = "# >>> pkg >>>\nexport EDITOR=vi\n";

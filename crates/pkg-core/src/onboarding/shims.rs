@@ -79,8 +79,7 @@ pub(crate) fn put_on_path(
         return Ok(Some(printed(Shell::Zsh)));
     };
     let files = shell.files(home, &settings.child_env);
-    let linked =
-        files.iter().any(|file| file.symlink_metadata().is_ok_and(|meta| meta.is_symlink()));
+    let linked = files.iter().any(|file| linked(file, home));
     let readable = if modify_path && !linked { texts(&files) } else { None };
     let Some(texts) = readable else {
         return Ok(Some(printed(shell)));
@@ -104,6 +103,14 @@ pub(crate) fn put_on_path(
         files,
         line: shell.path_line(&directories, home),
     }))
+}
+
+/// Whether `file`, or a directory between it and the home directory, is a link, such as one a
+/// dotfiles checkout deploys.
+fn linked(file: &Path, home: &Path) -> bool {
+    file.ancestors()
+        .take_while(|path| *path != home)
+        .any(|path| path.symlink_metadata().is_ok_and(|meta| meta.is_symlink()))
 }
 
 /// Each file's text, empty for a missing file; `None` when one cannot be read as text, so that

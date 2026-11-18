@@ -159,6 +159,31 @@ fn a_linked_startup_file_is_left_alone() {
 }
 
 #[test]
+fn a_startup_file_in_a_linked_directory_is_left_alone() {
+    let fixture = new_machine();
+    let checkout = fixture.home().join("dotfiles/zsh");
+    std::fs::create_dir_all(&checkout).unwrap();
+    std::fs::write(checkout.join(".zshenv"), "export EDITOR=vi\n").unwrap();
+    std::fs::create_dir_all(fixture.home().join(".config")).unwrap();
+    let zdotdir = fixture.home().join(".config/zsh");
+    std::os::unix::fs::symlink(&checkout, &zdotdir).unwrap();
+    let installer = format!("{}/install", fixture.catalog_url());
+    let receipt = fixture
+        .run_with(
+            &["setup", "--output", "json"],
+            &[
+                ("PKG_MISE", None),
+                ("SHELL", Some(OsStr::new("/bin/zsh"))),
+                ("ZDOTDIR", Some(zdotdir.as_os_str())),
+                ("PKG_MISE_INSTALLER", Some(OsStr::new(&installer))),
+            ],
+        )
+        .success();
+    assert_eq!(receipt["path"]["action"], "printed", "{receipt}");
+    assert_eq!(std::fs::read_to_string(checkout.join(".zshenv")).unwrap(), "export EDITOR=vi\n");
+}
+
+#[test]
 fn setup_reuses_the_mise_it_finds_and_leaves_path_to_an_existing_config() {
     let fixture = Fixture::seeded();
     let receipt = fixture.json(&["setup"]).success();
