@@ -1,0 +1,17 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    // The Astro adapter supplies `main` and the static `assets` directory at build time. Keep
+    // `name` equal to `name` in package.json. No production domain is chosen yet, so a deploy
+    // would serve the site only at its workers.dev address.
+    "name": "pkg-site",
+    "compatibility_date": "2026-11-10",
+    "workers_dev": true,
+    "assets": {
+        // Unknown paths get the prerendered 404 page with a 404 status.
+        "not_found_handling": "404-page",
+        // Prerendered pages are `<route>/index.html`. The default, `auto-trailing-slash`, would
+        // answer `/docs/install` with a 307 to `/docs/install/`; canonical URLs are unslashed
+        // (`trailingSlash: "never"` in astro.config.ts), so slashed requests redirect instead.
+        "html_handling": "drop-trailing-slash",
+    },
+}

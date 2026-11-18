@@ -87,6 +87,18 @@ mise run check            # the gate CI runs: tests, rustdoc, formatting, Clippy
 
 The tests never run the real mise or reach the network: they run the binary against a fake mise script and a local catalog server in a temporary home.
 
+## Website
+
+The website lives in `site/`: an Astro site that builds for Cloudflare Workers, with pages and components in `site/app/`. Starlight serves the documentation under `/docs`, one Markdown file per page in `site/app/content/docs/docs/`. `mise install` provides the pinned Node and pnpm, and `site/` has its own pnpm lockfile. The repository has no deployment task.
+
+| Task                  | What it does                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `mise run site:dev`   | Install the site's dependencies and serve it at http://localhost:4327                 |
+| `mise run site:build` | Build the site, with the documentation search index, into `site/dist/`                |
+| `mise run site:check` | Build, run browser tests, check formatting, lint and types (`mise run check` runs it) |
+
+The documentation pages summarize this README and `crates/pkg/docs/`, which own the CLI's behavior. Change those first, then the pages that repeat them.
+
 ## Layout
 
 ```text

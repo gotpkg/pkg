@@ -1,0 +1,38 @@
+@import "@fontsource/barlow/400.css";
+@import "@fontsource/barlow/600.css";
+@import "@fontsource/barlow/800.css";
+@import "@fontsource-variable/jetbrains-mono";
+
+:root {
+    --sl-font: "Barlow", sans-serif;
+    --sl-font-mono: "JetBrains Mono Variable", monospace;
+    --sl-color-accent-low: #3d3500;
+    --sl-color-accent: #fed90a;
+    --sl-color-accent-high: #ffe97c;
+    --sl-color-bg: #161619;
+    --sl-color-bg-nav: #161619;
+    --sl-color-bg-sidebar: #1c1c20;
+}
+:root[data-theme="light"] {
+    --sl-color-accent-low: #fff1a4;
+    --sl-color-accent: #695700;
+    --sl-color-accent-high: #4b3e00;
+    --sl-color-bg: #f7f5ed;
+    --sl-color-bg-nav: #f7f5ed;
+    --sl-color-bg-sidebar: #f0eee5;
+}
+.site-title img {
+    height: 2.7rem;
+    width: auto;
+}
+.sl-markdown-content h2,
+.sl-markdown-content h3 {
+    letter-spacing: -0.025em;
+}
+h1 {
+    font-weight: 800;
+    letter-spacing: -0.035em;
+}
+:root {
+    --sl-text-body: 1.0625rem;
+}
