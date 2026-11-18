@@ -8,7 +8,7 @@ web
 
 ## Users
 
-Mac users and developers who want one place to install and manage their apps, system packages, and developer tools. The website introduces the CLI; its documentation supports daily use.
+People who want one place to install and manage their apps, system packages, and developer tools. The website introduces the CLI; its documentation supports daily use.
 
 ## Product Purpose
 
@@ -16,7 +16,7 @@ pkg installs software through mise's bootstrap packages and tools, records insta
 
 ## Positioning
 
-The Mac's missing package manager: the ultimate system package manager for Mac apps, command-line packages, and developer tools. The user explicitly chose this Mac-first marketing position. pkg remains a human-first command-line front end for mise; JSON output and built-in discovery also serve agents and scripts. The marketing emphasis does not remove support for other platforms from the current CLI contract.
+The unified system package manager: one command vocabulary for apps, system packages, and developer tools. Position the product without centering any one operating system. The long-term goal is availability on every platform; do not present that goal as current support. pkg remains a human-first command-line front end for mise; JSON output and built-in discovery also serve agents and scripts.
 
 The user also wants the copy to emphasize that pkg just works out of the box and its commands do what people expect. Support this with its shared command vocabulary and defaults; keep the required mise installation and current source-build steps explicit in the docs.
 

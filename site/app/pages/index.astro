@@ -12,9 +12,9 @@ import "../styles/global.css";
 ---
 
 <!--
-THESIS: The Mac's missing package manager, demonstrated through one index spanning apps, system packages, and developer tools.
+THESIS: A unified system package manager, demonstrated through one index spanning apps, system packages, and developer tools.
 OWN-WORLD: Logo-yellow parcel label, charcoal command strips, paper reading surface, heavy italic Barlow, the supplied campaign photograph.
-STORY: Recognize your Mac's software in one place, choose a package, see the command, then discover how mise records and restores it.
+STORY: Recognize your software in one place, choose a package, see the command, then discover how mise records and restores it.
 FIRST VIEWPORT: Left-aligned oversized headline and primary action; right-hand yellow package index with four examples and a working copy action.
 FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index carries concrete package choices; the poster anchors the closing campaign.
 -->
@@ -23,18 +23,18 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
         <meta charset="utf-8" />
         <meta content="width=device-width, initial-scale=1" name="viewport" />
         <meta
-            content="The Mac’s missing package manager. pkg brings Mac apps, system packages, and developer tools together through one friendly command, powered by mise."
+            content="The unified system package manager. pkg brings apps, system packages, and developer tools together through one friendly command, powered by mise."
             name="description"
         />
         <meta content="#f7f5ed" name="theme-color" />
-        <meta content="pkg: The Mac’s missing package manager" property="og:title" />
+        <meta content="pkg: The unified system package manager" property="og:title" />
         <meta
-            content="The ultimate system package manager for your Mac. Apps, command-line packages, and developer tools, all in one place."
+            content="Apps, system packages, and developer tools, all in one place. Familiar commands that just work."
             property="og:description"
         />
         <meta content="website" property="og:type" />
         <link href="/favicon.svg" rel="icon" type="image/svg+xml" />
-        <title>pkg: The Mac’s missing package manager</title>
+        <title>pkg: The unified system package manager</title>
     </head>
     <body>
         <a class="skip-link" href="#main">Skip to content</a>
@@ -42,7 +42,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             <a aria-label="pkg home" class="brand" href="/"
                 ><img alt="pkg" height="48" src={logo.src} width="76"
             /></a>
-            <span class="header-note">Your Mac.<br />One package manager.</span>
+            <span class="header-note">Your software.<br />One package manager.</span>
             <nav aria-label="Main navigation">
                 <a href="#how-it-works">How it works</a>
                 <a href="/docs">Docs</a>
@@ -57,10 +57,10 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                     <p class="intro">
                         <span aria-hidden="true">↳</span> APPS. PACKAGES. DEVELOPER TOOLS.
                     </p>
-                    <h1 id="hero-title">The Mac’s<br />missing package<br /><em>manager.</em></h1>
+                    <h1 id="hero-title">The unified<br />system package<br /><em>manager.</em></h1>
                     <p class="hero-description">
-                        The ultimate system package manager for your Mac. Apps, packages, and
-                        developer tools, with familiar commands that just work.
+                        One package manager for your whole system. Apps, packages, and developer
+                        tools, with familiar commands that just work.
                     </p>
                     <div class="hero-actions">
                         <a class="button button-dark" href="/docs/install"
@@ -92,7 +92,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                     </div>
                     <div class="parcel-brand">
                         <img alt="" height="120" src={logo.src} width="190" />
-                        <p>Your whole Mac.<br /><strong>One happy place.</strong></p>
+                        <p>Your whole system.<br /><strong>One happy place.</strong></p>
                     </div>
                     <PackageDemo client:load />
                 </div>
@@ -112,7 +112,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                     <h2 id="everyday-title">It just works.<br /><em>Like you expect.</em></h2>
                     <p>
                         Sensible defaults, right out of the box. Commands that do what you expect,
-                        from finding a package to keeping your Mac up to date.
+                        from finding a package to keeping your system up to date.
                     </p>
                 </div>
                 <div class="command-directory">
@@ -146,8 +146,8 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                             Got <img alt="pkg" height="126" src={reverseLogo.src} width="200" />?
                         </h2>
                         <p>
-                            From your first developer tool to your everyday Mac apps. Good things
-                            come in packages.
+                            From your first developer tool to your everyday apps. Good things come
+                            in packages.
                         </p>
                         <a class="text-link light-link" href="/docs/packages"
                             >Meet your new package manager <span aria-hidden="true">↗</span></a
@@ -183,7 +183,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                             widths={[160, 280, 420]}
                         />
                         <div>
-                            <p>YOUR MAC CALLED.</p>
+                            <p>YOUR SYSTEM CALLED.</p>
                             <h2 id="get-started-title">It’s missing a little <span>pkg.</span></h2>
                         </div>
                     </div>
@@ -197,7 +197,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             <a aria-label="pkg home" href="/"
                 ><img alt="pkg" height="36" src={logo.src} width="56"
             /></a>
-            <p>The Mac’s missing package manager.</p>
+            <p>The unified system package manager.</p>
             <nav aria-label="Footer navigation">
                 <a href="/docs">Documentation</a
                 ><a href="https://github.com/gotpkg/pkg"
