@@ -1,8 +1,8 @@
 ---
-id: proposal.0002
+id: proposal.0001
 title: Reusable Package Library
 authors: [Mark]
-status: active-review
+status: implemented
 pull-request: https://github.com/markmals/pkg/pull/1
 issues: []
 supersedes: []
@@ -47,7 +47,7 @@ No design question blocks this draft's selected two-crate direction. Foreign-lan
 
 [The workspace](../Cargo.toml) contains the shipped `crates/pkg` package and the unpublished `xtask` helper. [The pkg manifest](../crates/pkg/Cargo.toml) defines both `pkg` library and binary targets and marks the package unpublished. [The current library](../crates/pkg/src/lib.rs) exposes application, parser, registry, command, catalog, mise, and configuration modules.
 
-[Machine loading](../crates/pkg/src/commands/common.rs) accepts a CLI `Invocation`; operations return [Response](../crates/pkg/src/response.rs), which eagerly holds JSON and rendered text. [Environment](../crates/pkg/src/environment.rs) resolves process settings, while [the mise runner](../crates/pkg/src/mise/mod.rs) prints progress directly to stderr. [Failure](../crates/pkg/src/failure.rs) combines operation facts with CLI error serialization and exit statuses.
+[Machine loading](../crates/pkg/src/commands/common.rs) accepts a CLI `Invocation`; operations return [Response](../crates/pkg/src/response.rs), which eagerly holds JSON and rendered text. [Environment](../crates/pkg/src/environment.rs) resolves process settings, while [the mise runner at the baseline revision](https://github.com/markmals/pkg/blob/ce9e7dac8b8afffc6cc9480d8d41798b18d54d63/crates/pkg/src/mise/mod.rs) prints progress directly to stderr. [Failure](../crates/pkg/src/failure.rs) combines operation facts with CLI error serialization and exit statuses.
 
 Preserve the existing operation behavior and the real-binary fixture tests. Those are valuable evidence of package semantics and CLI compatibility. The broad public module surface and presentation coupling are implementation compromises, not APIs to preserve indefinitely. There is no published Rust library release to migrate at this baseline; any external Git/path consumers of the old implementation surface would need a source migration.
 
@@ -81,7 +81,7 @@ Keep package routing, declaration ownership/refusal, rollback of newly added dec
 
 ### Explicit context, no ambient frontend dependency
 
-Move the operational parts of [environment resolution](../crates/pkg/src/environment.rs), [Machine](../crates/pkg/src/commands/common.rs), [mise](../crates/pkg/src/mise/mod.rs), [declarations](../crates/pkg/src/declarations.rs), [package routing](../crates/pkg/src/package.rs), and [catalogs](../crates/pkg/src/catalog/) behind the core boundary. Keep implementation modules private unless a consumer genuinely needs their types.
+Move the operational parts of [environment resolution](../crates/pkg/src/environment.rs), [Machine](../crates/pkg/src/commands/common.rs), [mise](https://github.com/markmals/pkg/blob/ce9e7dac8b8afffc6cc9480d8d41798b18d54d63/crates/pkg/src/mise/mod.rs), [declarations](https://github.com/markmals/pkg/blob/ce9e7dac8b8afffc6cc9480d8d41798b18d54d63/crates/pkg/src/declarations.rs), [package routing](https://github.com/markmals/pkg/blob/ce9e7dac8b8afffc6cc9480d8d41798b18d54d63/crates/pkg/src/package.rs), and [catalogs](https://github.com/markmals/pkg/tree/ce9e7dac8b8afffc6cc9480d8d41798b18d54d63/crates/pkg/src/catalog/) behind the core boundary. Keep implementation modules private unless a consumer genuinely needs their types.
 
 The context receives home, selected mise executable, global-config location, catalog endpoints, cache location, and child-process environment as explicit settings. A child-environment snapshot can preserve real CLI behavior, including credentials and mise/XDG selection, without changing the host process environment. Keep sensitive environment values out of Debug output and error payloads. Read process defaults once at the CLI edge; do not make every operation reread them or require Rust clients to alter global variables.
 
@@ -178,4 +178,4 @@ A separate UniFFI adapter could export a deliberate app-facing subset without im
 
 ## Open questions
 
-None. The human approved this proposal for implementation on 2026-11-17.
+None. The human approved implementation and accepted the completed change on 2026-11-17, then requested renumbering this proposal from 0002 to 0001 before merging PR #1. The accepted implementation is recorded here before merge. Delivery is merge-only; no release is authorized. The human also authorized deleting PR #1's local/remote branch, worktree, and private preview artifacts after merge.
