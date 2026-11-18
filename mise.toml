@@ -132,8 +132,16 @@ run = "git archive --format=tar.gz --prefix=pkg-source/ --output=artifacts/pkg-c
 description = "Write the Homebrew formula for the archives in artifacts/ to artifacts/pkg.rb"
 run = "cargo xtask formula"
 
+[tasks."release:installer"]
+description = "Write the installer for this version, which gotpkg.dev serves, to artifacts/install.sh"
+run = "cargo xtask installer"
+
+[tasks."release:checksums"]
+description = "Write the SHA-256 manifest of the archives in artifacts/ to artifacts/SHA256SUMS"
+run = "cargo xtask checksums"
+
 [tasks.release]
-description = "Publish the GitHub release with the archives in artifacts/ (release.yml runs this)"
+description = "Publish the GitHub release with the archives, installer and SHA256SUMS in artifacts/ (release.yml runs this)"
 # `knope release` reads GITHUB_TOKEN; Varlock checks it against .env.schema and redacts it.
 # `--filter` loads that item alone, so another component's required items in a merged
 # .env.schema never block a release.

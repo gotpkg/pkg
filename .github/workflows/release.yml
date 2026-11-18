@@ -1,10 +1,13 @@
 # Merging Knope's release pull request is the explicit release authorization the process
-# requires. This workflow runs the gate and builds, smoke-tests and attests the five archives;
+# requires. This workflow runs the gate and builds, smoke-tests and attests the five archives,
+# then writes the installer and the archives' SHA256SUMS manifest and installs pkg with them;
 # only when all of that passes does `knope release` tag `v<version>` and publish the GitHub
-# release with the archives and the changelog entry. This CLI has no irreversible registry
-# publish, so the GitHub release is the last irreversible step. The Homebrew formula update
-# follows it because the formula points at the release's archives; it runs only when the
-# repository variable HOMEBREW_TAP is `true`, and can be re-run.
+# release with the archives, the installer, the manifest and the changelog entry. This CLI has no
+# irreversible registry publish, so the GitHub release is the last irreversible step. The
+# Homebrew formula update follows it because the formula points at the release's archives; it
+# runs only when the repository variable HOMEBREW_TAP is `true`, and can be re-run. The check
+# that gotpkg.dev serves the new installer also follows it, only when the repository variable
+# GOTPKG_DOMAIN is `true`.
 #
 # Credentials: `knope release` uses the workflow's built-in GITHUB_TOKEN (contents: write on that
 # job only). HOMEBREW_TAP_TOKEN lives in the `homebrew` environment, restricted to `main`, and
@@ -68,6 +71,8 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: write
+        outputs:
+            version: ${{ steps.installer.outputs.version }}
         steps:
             - uses: actions/checkout@v7
               with:
@@ -80,6 +85,24 @@ jobs:
             - uses: jdx/mise-action@v5
               with:
                   cache: false
+            # install.sh embeds this release's version; SHA256SUMS covers the archives it installs.
+            - name: Write the installer and SHA256SUMS
+              id: installer
+              run: |
+                  mise run release:installer
+                  mise run release:checksums
+                  echo "version=$(sed -n 's/^release_version="\(.*\)"$/\1/p' artifacts/install.sh)" >> "$GITHUB_OUTPUT"
+            # The installer as a new Linux user runs it, against these assets served from disk:
+            # it checks the archive against SHA256SUMS and runs the installed pkg.
+            - name: Install pkg with the installer
+              env:
+                  VERSION: ${{ steps.installer.outputs.version }}
+              run: |
+                  releases="$RUNNER_TEMP/releases"
+                  mkdir -p "$releases/download" "$RUNNER_TEMP/home"
+                  ln -s "$PWD/artifacts" "$releases/download/v$VERSION"
+                  HOME="$RUNNER_TEMP/home" SHELL=/bin/bash PKG_RELEASES_URL="file://$releases" \
+                      sh artifacts/install.sh
             - run: mise run release
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -132,3 +155,40 @@ jobs:
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
                   git commit -m "pkg ${version}"
                   git push
+
+    # Opt in with the repository variable GOTPKG_DOMAIN = `true` once the site serving gotpkg.dev
+    # is deployed. The site serves the latest release's install.sh and may cache it for five
+    # minutes, so this job waits that long for both routes to serve this release's installer.
+    # Without the variable this job is skipped, not failed.
+    installer-domain:
+        name: Check the installer at gotpkg.dev
+        needs: release
+        if: vars.GOTPKG_DOMAIN == 'true'
+        runs-on: ubuntu-latest
+        permissions: {}
+        steps:
+            - name: Wait for gotpkg.dev to serve this release's installer
+              env:
+                  VERSION: ${{ needs.release.outputs.version }}
+              run: |
+                  if [ -z "$VERSION" ]; then
+                      echo "::error::The release job reported no version."
+                      exit 1
+                  fi
+                  embedded_version() {
+                      curl -fsSL "$1" | sed -n 's/^release_version="\(.*\)"$/\1/p'
+                  }
+                  deadline=$(($(date +%s) + 300))
+                  while :; do
+                      root="$(embedded_version https://gotpkg.dev || true)"
+                      script="$(embedded_version https://gotpkg.dev/install.sh || true)"
+                      if [ "$root" = "$VERSION" ] && [ "$script" = "$VERSION" ]; then
+                          echo "gotpkg.dev serves the installer for pkg $VERSION."
+                          exit 0
+                      fi
+                      if [ "$(date +%s)" -ge "$deadline" ]; then
+                          echo "::error::After five minutes, https://gotpkg.dev serves the installer for '${root:-nothing}' and https://gotpkg.dev/install.sh for '${script:-nothing}', not pkg $VERSION."
+                          exit 1
+                      fi
+                      sleep 15
+                  done

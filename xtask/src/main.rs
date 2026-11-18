@@ -8,6 +8,12 @@
 //!   in `crates/pkg/Cargo.toml`, pointing at the release's macOS and Linux archives in
 //!   `<dir>` (default `artifacts/`) with their SHA-256 digests. Default output:
 //!   `artifacts/pkg.rb`.
+//! - `installer [--output <file>]` writes the release's installer: `installer/install.sh` with
+//!   the version in `crates/pkg/Cargo.toml` written in, so it downloads that release's archives.
+//!   Default output: `artifacts/install.sh`.
+//! - `checksums [--artifacts <dir>]` writes `<dir>/SHA256SUMS` (default `artifacts/`): one
+//!   `<sha256>  <archive>` line, as `sha256sum` prints it, per release archive in `<dir>`. The
+//!   installer checks its download against it.
 
 use std::fmt::Write as _;
 use std::fs::{self, File};
@@ -31,6 +37,19 @@ const FORMULA_TARGETS: &[(&str, &str, &str)] = &[
     ("x86_64-unknown-linux-musl", "on_linux", "on_intel"),
 ];
 
+/// Every target a release ships an archive for.
+const RELEASE_TARGETS: &[&str] = &[
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "aarch64-unknown-linux-musl",
+    "x86_64-unknown-linux-musl",
+    "x86_64-pc-windows-msvc",
+];
+
+/// What `installer/install.sh` assigns to `release_version`; `installer` writes the version over
+/// it.
+const INSTALLER_VERSION_PLACEHOLDER: &str = "@PKG_RELEASE_VERSION@";
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let outcome = match args.first().map(String::as_str) {
@@ -40,6 +59,8 @@ fn main() -> ExitCode {
             _ => Err(usage()),
         },
         Some("formula") => formula(&args[1..]),
+        Some("installer") => installer(&args[1..]),
+        Some("checksums") => checksums(&args[1..]),
         _ => Err(usage()),
     };
     match outcome {
@@ -52,8 +73,25 @@ fn main() -> ExitCode {
 }
 
 fn usage() -> String {
-    "usage: cargo xtask package [<target>] | cargo xtask formula [--artifacts <dir>] [--output <file>]"
+    "usage: cargo xtask package [<target>]\n       \
+     cargo xtask formula [--artifacts <dir>] [--output <file>]\n       \
+     cargo xtask installer [--output <file>]\n       \
+     cargo xtask checksums [--artifacts <dir>]"
         .to_string()
+}
+
+/// Reads `--<name> <path>` pairs into the slot of each name in `names`.
+fn path_options<const N: usize>(
+    args: &[String],
+    names: [&str; N],
+) -> Result<[Option<PathBuf>; N], String> {
+    let mut values = [const { None }; N];
+    let mut rest = args.iter();
+    while let Some(name) = rest.next() {
+        let slot = names.iter().position(|known| known == name).ok_or_else(usage)?;
+        values[slot] = Some(PathBuf::from(rest.next().ok_or_else(usage)?));
+    }
+    Ok(values)
 }
 
 /// The target triple `rustc` builds for by default on this machine.
@@ -175,18 +213,9 @@ fn write_archive(binary: &Path, target: &str, archive: &Path) -> io::Result<()> 
 }
 
 fn formula(args: &[String]) -> Result<(), String> {
+    let [artifacts, output] = path_options(args, ["--artifacts", "--output"])?;
     let metadata = metadata()?;
-    let mut artifacts = metadata.workspace_root.join("artifacts");
-    let mut output = None;
-    let mut rest = args.iter();
-    while let Some(arg) = rest.next() {
-        let value = rest.next().ok_or_else(usage)?;
-        match arg.as_str() {
-            "--artifacts" => artifacts = PathBuf::from(value),
-            "--output" => output = Some(PathBuf::from(value)),
-            _ => return Err(usage()),
-        }
-    }
+    let artifacts = artifacts.unwrap_or_else(|| metadata.workspace_root.join("artifacts"));
     let output = output.unwrap_or_else(|| artifacts.join(format!("{PACKAGE}.rb")));
     let mut digests = Vec::new();
     for (target, _, _) in FORMULA_TARGETS {
@@ -201,6 +230,68 @@ fn formula(args: &[String]) -> Result<(), String> {
         .map_err(|error| format!("cannot write {}: {error}", output.display()))?;
     println!("{}", output.display());
     Ok(())
+}
+
+fn installer(args: &[String]) -> Result<(), String> {
+    let [output] = path_options(args, ["--output"])?;
+    let metadata = metadata()?;
+    let template = metadata.workspace_root.join("installer").join("install.sh");
+    let script = fs::read_to_string(&template)
+        .map_err(|error| format!("cannot read {}: {error}", template.display()))
+        .and_then(|template| render_installer(&template, &metadata.version))?;
+    let output =
+        output.unwrap_or_else(|| metadata.workspace_root.join("artifacts").join("install.sh"));
+    if let Some(directory) = output.parent() {
+        fs::create_dir_all(directory)
+            .map_err(|error| format!("cannot create {}: {error}", directory.display()))?;
+    }
+    fs::write(&output, script)
+        .map_err(|error| format!("cannot write {}: {error}", output.display()))?;
+    println!("{}", output.display());
+    Ok(())
+}
+
+/// The installer for `version`: the template with its one version placeholder replaced.
+fn render_installer(template: &str, version: &str) -> Result<String, String> {
+    match template.matches(INSTALLER_VERSION_PLACEHOLDER).count() {
+        1 => Ok(template.replacen(INSTALLER_VERSION_PLACEHOLDER, version, 1)),
+        count => Err(format!(
+            "installer/install.sh must assign {INSTALLER_VERSION_PLACEHOLDER} once, not {count} \
+             times"
+        )),
+    }
+}
+
+fn checksums(args: &[String]) -> Result<(), String> {
+    let [artifacts] = path_options(args, ["--artifacts"])?;
+    let artifacts = match artifacts {
+        Some(artifacts) => artifacts,
+        None => metadata()?.workspace_root.join("artifacts"),
+    };
+    let mut digests = Vec::new();
+    for target in RELEASE_TARGETS {
+        let archive = archive_name(target);
+        let path = artifacts.join(&archive);
+        match fs::read(&path) {
+            Ok(contents) => digests.push((archive, sha256(&contents))),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(format!("cannot read {}: {error}", path.display())),
+        }
+    }
+    if digests.is_empty() {
+        return Err(format!("{} holds no release archives", artifacts.display()));
+    }
+    let output = artifacts.join("SHA256SUMS");
+    fs::write(&output, render_checksums(digests))
+        .map_err(|error| format!("cannot write {}: {error}", output.display()))?;
+    println!("{}", output.display());
+    Ok(())
+}
+
+/// One `<sha256>  <archive>` line per `(archive, digest)` pair, sorted by archive name.
+fn render_checksums(mut digests: Vec<(String, String)>) -> String {
+    digests.sort();
+    digests.iter().map(|(archive, digest)| format!("{digest}  {archive}\n")).collect()
 }
 
 fn sha256(contents: &[u8]) -> String {
@@ -350,6 +441,37 @@ mod tests {
         assert_eq!(
             sha256(b"abc"),
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    fn the_installer_names_its_release_on_the_line_release_yml_reads() {
+        let installer =
+            render_installer(include_str!("../../installer/install.sh"), "1.2.3").unwrap();
+        assert!(installer.lines().any(|line| line == r#"release_version="1.2.3""#));
+        assert!(!installer.contains(INSTALLER_VERSION_PLACEHOLDER));
+    }
+
+    #[test]
+    fn an_installer_template_must_hold_the_placeholder_once() {
+        assert!(render_installer("release_version=\"\"\n", "1.2.3").is_err());
+        let twice = INSTALLER_VERSION_PLACEHOLDER.repeat(2);
+        assert!(render_installer(&twice, "1.2.3").is_err());
+    }
+
+    #[test]
+    fn the_checksum_manifest_reads_like_sha256sum_output_sorted_by_archive() {
+        let manifest = render_checksums(vec![
+            ("pkg-x86_64-pc-windows-msvc.zip".into(), "1".repeat(64)),
+            ("pkg-aarch64-apple-darwin.tar.gz".into(), "2".repeat(64)),
+        ]);
+        assert_eq!(
+            manifest,
+            format!(
+                "{}  pkg-aarch64-apple-darwin.tar.gz\n{}  pkg-x86_64-pc-windows-msvc.zip\n",
+                "2".repeat(64),
+                "1".repeat(64)
+            )
         );
     }
 }
