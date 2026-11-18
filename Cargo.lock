@@ -738,6 +738,7 @@ dependencies = [
 name = "pkg-core"
 version = "0.0.0"
 dependencies = [
+ "libc",
  "schemars",
  "serde",
  "serde_json",

@@ -6,15 +6,29 @@
 
 ## Install
 
+On macOS or Linux:
+
+```sh
+curl -fsSL https://gotpkg.dev | sh
+```
+
+The installer puts `pkg` at `~/.local/bin/pkg` and, when `~/.local/bin` is not on `PATH` yet, adds it in your shell's startup file (zsh, bash or fish; for another shell it prints the line to add). It ends with the command that loads the change in the current terminal, then `pkg bootstrap` to restore your configuration or `pkg setup` to start fresh, both described in [Setting up a machine](crates/pkg/docs/setup.md). Pass options after `sh -s --`, as in `curl -fsSL https://gotpkg.dev | sh -s -- --dry-run`:
+
+| Option                | Effect                                                                              |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `--version <version>` | Install that released version, such as `0.3.0`, instead of the latest               |
+| `--no-modify-path`    | Leave startup files alone and print the line to add                                 |
+| `--dry-run`           | Report the version, platform, destination and files it would change; change nothing |
+
+Downloading `https://gotpkg.dev/install.sh`, reading it, and running it with `sh install.sh` is the same installation. The installer checks the archive against the release's `SHA256SUMS`, which catches a corrupted download but not a compromised release, because both come from that release; verify an archive independently with `gh attestation verify <archive> --repo gotpkg/pkg`.
+
+The installer supports macOS and Linux only. Release archives for macOS (Apple silicon and Intel), Linux (arm64 and x64, static musl builds) and Windows (x64) are attached to every [GitHub release](https://github.com/gotpkg/pkg/releases), each with a build attestation; on Windows, unpack `pkg-x86_64-pc-windows-msvc.zip` from there. pkg also installs with mise (`mise use -g github:gotpkg/pkg`) or Homebrew (`brew install markmals/tap/pkg`).
+
 From a checkout:
 
 ```sh
 cargo install --locked --path crates/pkg --root ~/.local
 ```
-
-Once a release is published, with mise (`mise use -g github:markmals/pkg`) or Homebrew (`brew install markmals/tap/pkg`).
-
-Release archives for macOS (Apple silicon and Intel), Linux (arm64 and x64, static musl builds) and Windows (x64) are attached to every [GitHub release](https://github.com/markmals/pkg/releases), each with a build attestation: `gh attestation verify <archive> --repo markmals/pkg`.
 
 ## Use
 
@@ -25,7 +39,7 @@ pkg install brew:wget brew-cask:iina  # install and record both
 pkg install ripgrep npm:prettier      # tools from mise's registry and its backends
 pkg list                              # everything your config declares, with versions
 pkg outdated                          # what has a newer version
-pkg upgrade                           # upgrade everything
+pkg update                            # update everything, mise itself first
 pkg remove brew:wget                  # uninstall and take it out of your config
 pkg sync                              # install whatever the config declares that is missing
 ```
@@ -78,7 +92,7 @@ The tests never run the real mise or reach the network: they run the binary agai
 ```text
 crates/pkg/
   src/registry.rs       the command contract every interface is generated from
-  src/commands/         each command: install, remove, list, search, info, outdated, upgrade,
+  src/commands/         each command: install, remove, list, search, info, outdated, update,
                         sync, prune, where, tap, and the discovery commands
   docs/                 Markdown built into the binary for `docs search`
   tests/cli/            tests that run the binary
@@ -89,11 +103,13 @@ crates/pkg-core/
   src/declarations.rs   reading config and removing an entry from its write target
   src/catalog/          Homebrew's API and the App Store
   tests/                direct library isolation and progress tests
-xtask/                  release helper: archives and the Homebrew formula
+xtask/                  release helper: archives, the installer and its checksums
 ```
 
 ## Releasing
 
-Every pull request carries a Knope change file (`workbench change-files create`) or a `Release-Note: none` trailer. On `main`, the Prepare release workflow keeps a release pull request open; merging it runs the gate, builds, smoke-tests and attests the five archives, runs `knope release` to tag `v<version>` and publish the GitHub release with the archives, and then pushes the Homebrew formula to `markmals/homebrew-tap` when the repository variable `HOMEBREW_TAP` is `true` (otherwise that job is skipped).
+Every pull request carries a Knope change file (`workbench change-files create`) or a `Release-Note: none` trailer. On `main`, the Prepare release workflow keeps a release pull request open; merging it runs the gate, builds, smoke-tests and attests the five archives, writes `install.sh` (the installer, which embeds the release's version) and `SHA256SUMS` (the archives' checksums) and installs pkg with them, then runs `knope release` to tag `v<version>` and publish the GitHub release with the archives, `install.sh` and `SHA256SUMS`.
 
-Credentials: publishing the GitHub release uses the workflow's built-in `GITHUB_TOKEN`; no stored secret is needed. The Homebrew job alone uses the `homebrew` GitHub environment, which holds `HOMEBREW_TAP_TOKEN`: create that environment under Settings → Environments, restrict its deployment branches to `main`, add a fine-grained token with contents write access to `markmals/homebrew-tap` only as its `HOMEBREW_TAP_TOKEN` secret, then set the repository variable `HOMEBREW_TAP` to `true`.
+`https://gotpkg.dev` serves the latest release's `install.sh`. Until the site's Worker takes the domain over, the stub Worker in `installer/worker/` serves it: `/install.sh` is always the script, and `/` is the script for `curl` and a placeholder page for a browser. With `GOTPKG_DOMAIN` set to `true`, each release waits up to five minutes for `https://gotpkg.dev` and `https://gotpkg.dev/install.sh` to serve the new installer, and fails if they do not. Without the variable that job is skipped.
+
+Credentials: publishing the GitHub release uses the workflow's built-in `GITHUB_TOKEN`; no stored secret is needed. Deploying the stub Worker, `mise run installer:worker:deploy`, needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment.

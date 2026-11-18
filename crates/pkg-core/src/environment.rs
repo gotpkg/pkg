@@ -6,7 +6,6 @@ use crate::Settings;
 use crate::mise::Mise;
 
 pub(crate) struct Environment<'a> {
-    pub home: &'a Path,
     pub mise: Mise<'a>,
     pub global_config: PathBuf,
     pub homebrew_api: &'a str,
@@ -18,7 +17,6 @@ pub(crate) struct Environment<'a> {
 impl<'a> Environment<'a> {
     pub(crate) fn new(settings: &'a Settings) -> Self {
         Self {
-            home: &settings.home,
             mise: Mise::new(settings),
             global_config: settings.global_config(),
             homebrew_api: &settings.homebrew_api,

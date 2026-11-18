@@ -23,6 +23,15 @@ path = "artifacts/pkg-x86_64-unknown-linux-musl.tar.gz"
 [[package.assets]]
 path = "artifacts/pkg-x86_64-pc-windows-msvc.zip"
 
+# The installer gotpkg.dev serves, which embeds this release's version, and the SHA-256 manifest
+# of the archives above that it checks its download against. release.yml writes both with
+# `mise run release:installer` and `mise run release:checksums` once the archives are built.
+[[package.assets]]
+path = "artifacts/install.sh"
+
+[[package.assets]]
+path = "artifacts/SHA256SUMS"
+
 [changes]
 ignore_conventional_commits = true
 
@@ -34,7 +43,7 @@ change_templates = [
 ]
 
 [github]
-owner = "markmals"
+owner = "gotpkg"
 repo = "pkg"
 
 # `.github/workflows/prepare-release.yml` runs this on every push to `main`: it keeps one release
@@ -65,7 +74,7 @@ base = "main"
 template = "release: prepare $version"
 
 [workflows.steps.body]
-template = "Merging this pull request releases pkg $version: it builds the five archives, tags `v$version`, publishes the GitHub release with these notes, and updates the Homebrew formula when the tap token is configured.\n\n$changelog"
+template = "Merging this pull request releases pkg $version: it builds the five archives, their SHA256SUMS manifest and the installer, tags `v$version`, publishes the GitHub release with these notes, and checks that gotpkg.dev serves the new installer when the domain is configured.\n\n$changelog"
 
 # `.github/workflows/release.yml` runs this (through `mise run release`) when the release pull
 # request merges, after it has built the archives into `artifacts/`.

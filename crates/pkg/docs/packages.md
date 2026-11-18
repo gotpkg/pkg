@@ -49,8 +49,8 @@ A formula that a declared package still depends on stays installed and is listed
 
 ## Keeping up to date
 
-- `pkg outdated` lists what has a newer version: Homebrew formulae and casks from mise's upgrade plan, App Store apps compared with the App Store, and tools from `mise outdated`. Casks mise will not upgrade, such as apps that update themselves, appear under `skipped`.
-- `pkg upgrade` upgrades everything, or the packages you name, and lists each version that changed.
+- `pkg outdated` lists what has a newer version: Homebrew formulae and casks from mise's upgrade plan, App Store apps compared with the App Store, tools from `mise outdated`, and mise itself, from the newest release `mise version` reports. Casks mise will not update, such as apps that update themselves, appear under `skipped`, and so does a newer mise that a package manager installed.
+- `pkg update` updates everything, or the packages you name, and lists each version that changed. With no names it first runs `mise self-update`, so packages and tools then update with the new mise; if that fails, pkg stops before changing anything else. A mise installed by Homebrew, apt or another package manager refuses to update itself, so pkg leaves it to that package manager and lists it under `skipped`. mise waits until a release has reached its minimum release age, a day unless you set `minimum_release_age`, so `pkg outdated` can list a mise release that `pkg update` leaves for later. Once pkg is handed to mise ([Setting up a machine](setup.md#handing-pkg-to-mise)), `pkg update` updates pkg too.
 - `pkg sync` installs whatever the config declares that is missing, for example after pulling config changes made on another machine. Unlike `mise bootstrap`, it leaves dotfiles, services and settings alone.
 - `pkg prune` uninstalls Homebrew packages no config declares. `--force` also removes casks mise cannot prove are unchanged.
 - `pkg where brew:<formula>` prints a formula's `opt` directory, which keg-only formulae need on `PATH`; `pkg where <tool>` prints a tool's install directory.
@@ -65,4 +65,4 @@ Every command that changes something accepts `--dry-run`. A dry run makes the sa
 
 ## Output for scripts and agents
 
-Text is the default. `--output json` writes the result as one JSON document on stdout and, on failure, one JSON document on stderr: `{"error": {"code", "message", "retryable", "details", "suggestions"}}`. Exit statuses are stable: `INVALID_ARGUMENT` 2, `NOT_FOUND` 3, `PRECONDITION_FAILED` 3, `UNAVAILABLE` 5 (retryable), `MISE_FAILED` 6, `INTERNAL` 70. mise's progress and pkg's warnings go to stderr in both formats. No command prompts.
+Text is the default. `--output json` writes the result as one JSON document on stdout and, on failure, one JSON document on stderr: `{"error": {"code", "message", "retryable", "details", "suggestions"}}`. Exit statuses are stable: `INVALID_ARGUMENT` 2, `NOT_FOUND` 3, `PRECONDITION_FAILED` 3, `UNAVAILABLE` 5 (retryable), `MISE_FAILED` 6, `INTERNAL` 70. mise's progress and pkg's warnings go to stderr in both formats. pkg never prompts. The one exception is `pkg bootstrap` with text output in a terminal: mise and the programs it runs may ask you for passwords and answers there ([Setting up a machine](setup.md#in-a-terminal-and-in-scripts)).

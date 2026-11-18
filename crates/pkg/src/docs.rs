@@ -11,6 +11,7 @@ pub struct Document {
 /// Every shipped document. A test fails when a file in `docs/` is missing here.
 pub const DOCUMENTS: &[Document] = &[
     Document { path: "docs/packages.md", source: include_str!("../docs/packages.md") },
+    Document { path: "docs/setup.md", source: include_str!("../docs/setup.md") },
     Document { path: "docs/catalogs.md", source: include_str!("../docs/catalogs.md") },
     Document { path: "docs/cli.md", source: include_str!("../docs/cli.md") },
 ];

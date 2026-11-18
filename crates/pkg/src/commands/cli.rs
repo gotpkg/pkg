@@ -182,7 +182,7 @@ mod tests {
         assert_eq!(top("show everything that is installed"), "list");
         assert_eq!(top("find a package"), "search");
         assert_eq!(top("what version is available, homepage"), "info");
-        assert_eq!(top("update everything to the newest version"), "upgrade");
+        assert_eq!(top("update everything to the newest version"), "update");
         assert_eq!(top("which packages are outdated"), "outdated");
         assert_eq!(top("install what is missing after pulling my dotfiles"), "sync");
         assert_eq!(top("remove leftover undeclared packages"), "prune");
