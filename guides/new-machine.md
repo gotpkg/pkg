@@ -38,6 +38,7 @@ mise clones the repository into `~/.dotfiles`, links `~/.config/mise` to `~/.dot
 
 ## Limits and edge cases
 
+- Use `https://gotpkg.dev/install.sh` when downloading with a custom HTTP client or overriding curl's user agent. That endpoint returns the script regardless of headers; the root serves the website to other clients by default, as the [installation contract](../crates/pkg/docs/setup.md#installing-pkg) describes.
 - `--config-dir` is required with `--from`: without it, mise would apply the repository's root `mise.toml` as a bootstrap project and link nothing.
 - mise links its configuration directory only into an empty place. When `~/.config/mise` already holds something, such as the configuration `pkg setup` creates, `pkg bootstrap --from` stops before changing anything and asks you to move it aside. Restore with `pkg bootstrap` instead of running `pkg setup` first.
 - A bootstrap is not a transaction. When it fails, the error says which step failed and whether mise had started; fix the cause and run the same command again. Parts that already match are left alone, but hooks and the `bootstrap` task run again.

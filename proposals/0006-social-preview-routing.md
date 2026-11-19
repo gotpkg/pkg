@@ -2,7 +2,7 @@
 id: proposal.0006
 title: Shareable Homepage Routing
 authors: [Mark]
-status: draft
+status: awaiting-implementation
 pull-request: https://github.com/gotpkg/pkg/pull/10
 issues: []
 supersedes: []
@@ -121,4 +121,4 @@ None required for this change.
 
 ## Open questions
 
-None. The proposal remains a draft until Mark approves implementation.
+None.

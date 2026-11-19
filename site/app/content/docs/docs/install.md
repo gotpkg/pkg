@@ -33,7 +33,7 @@ curl -fsSL https://gotpkg.dev | sh -s -- --dry-run
 | `--no-modify-path`    | Leave startup files alone and print the line to add                                 |
 | `--dry-run`           | Report the version, platform, destination and files it would change; change nothing |
 
-`https://gotpkg.dev/install.sh` is the same script. To read it before it runs, download it first:
+`https://gotpkg.dev/install.sh` returns the same script regardless of request headers. Use it for custom HTTP clients or if you override curl's user agent. To read it before it runs, download it first:
 
 ```sh
 curl -fsSL https://gotpkg.dev/install.sh -o install.sh
@@ -42,7 +42,7 @@ sh install.sh --dry-run
 sh install.sh
 ```
 
-A browser that opens `https://gotpkg.dev` gets this website instead.
+The root serves this website to browsers and sharing crawlers by default. Ordinary curl and wget requests receive the installer unless they explicitly request HTML.
 
 ## What the installer changes
 
