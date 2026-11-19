@@ -8,7 +8,7 @@ pkg can be the first thing you install on a new Mac or Linux machine. Its instal
 curl -fsSL https://gotpkg.dev | sh
 ```
 
-`https://gotpkg.dev/install.sh` is the same script; a browser opening `https://gotpkg.dev` gets the website instead. The script comes from the latest GitHub release, and the archives and their `SHA256SUMS` manifest come from that same release, so one installation never mixes versions. Pass options after `sh -s --`:
+`https://gotpkg.dev/install.sh` is the same script and returns it regardless of request headers. Use that explicit endpoint for custom HTTP clients or an overridden user agent. Ordinary curl and wget requests to `https://gotpkg.dev` receive the installer unless they explicitly request HTML; browsers and other clients receive the website by default. The script comes from the latest GitHub release, and the archives and their `SHA256SUMS` manifest come from that same release, so one installation never mixes versions. Pass options after `sh -s --`:
 
 | Option                | Effect                                                                              |
 | --------------------- | ----------------------------------------------------------------------------------- |

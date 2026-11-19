@@ -36,6 +36,17 @@ hk.local.pkl
 .env
 .env.*
 !.env.schema
+# Wrangler's local Worker secrets.
+.dev.vars*
+
+# The website's npm packages, and its Astro, Wrangler and Playwright output. No trailing slash on
+# node_modules: a worktree may link it from the main checkout.
+node_modules
+/site/dist/
+.astro/
+/site/.wrangler/
+/site/test-results/
+/site/playwright-report/
 
 # Logs and temp
 *.log

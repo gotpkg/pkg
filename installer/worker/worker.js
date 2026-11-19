@@ -1,5 +1,7 @@
 // Serves gotpkg.dev until the site's Worker takes it over: the latest release's installer for
-// `curl -fsSL https://gotpkg.dev | sh` and `/install.sh`, and a placeholder page for browsers.
+// `curl -fsSL https://gotpkg.dev | sh` and `/install.sh`, and a placeholder page otherwise.
+
+import { ROOT_VARIATION, wantsInstaller } from "../../site/app/installer-routing.js";
 
 const INSTALLER = "https://github.com/gotpkg/pkg/releases/latest/download/install.sh";
 
@@ -21,9 +23,8 @@ export async function route(request, fetchInstaller) {
     if (pathname !== "/") {
         return text("Not found\n", 404, "no-store");
     }
-    const accept = request.headers.get("Accept") ?? "";
-    const response = accept.includes("text/html") ? page() : await installer(fetchInstaller);
-    response.headers.set("Vary", "Accept");
+    const response = wantsInstaller(request.headers) ? await installer(fetchInstaller) : page();
+    response.headers.append("Vary", ROOT_VARIATION);
     return response;
 }
 
