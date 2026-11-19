@@ -6,7 +6,8 @@
     padding: 24px;
     transform: rotate(2deg);
     box-shadow: 8px 12px 0 var(--parcel-shadow);
-    animation: parcel-arrive 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+    /* Let the base shadow follow theme changes after the entrance animation. */
+    animation: parcel-arrive 0.85s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 .parcel-top {
     display: flex;

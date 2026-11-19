@@ -39,7 +39,7 @@ The supplied identity becomes a software packing list: oversized, tightly set le
 
 ## Colors
 
-Yellow owns the package demonstration and the closing installation section in both themes. Light mode uses paper with ink text; dark mode uses charcoal with paper text and muted warm gray supporting copy. Yellow panels retain dark text, and code examples retain light text on dark surfaces. The header and footer switch to the supplied reverse logo in dark mode. The logo's actual yellow takes precedence over the approximate yellow in the reference image.
+Yellow owns the package demonstration and the closing installation section in both themes. Light mode uses paper with ink text; dark mode uses charcoal with paper text and muted warm gray supporting copy. Yellow panels retain dark text and use the supplied monochrome logo. Code examples retain light text on dark surfaces. The header and footer switch to the supplied reverse logo in dark mode. The logo's actual yellow takes precedence over the approximate yellow in the reference image.
 
 ## Typography
 

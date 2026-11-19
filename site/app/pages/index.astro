@@ -5,6 +5,7 @@ import poster from "../assets/got-pkg.webp";
 import movingBox from "../assets/moving-box.webp";
 import reverseLogo from "../assets/pkg-logo-dark-mode.svg";
 import logo from "../assets/pkg-logo-light-mode.svg";
+import monochromeLogo from "../assets/pkg-logo-monochrome.svg";
 import Icon from "../components/icon/Icon.astro";
 import PackageDemo from "../components/PackageDemo.tsx";
 import initializeTheme from "../components/theme/initialize.js?raw";
@@ -65,7 +66,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                     <p class="intro">
                         <Icon name="arrow-right" /> APPS. PACKAGES. DEVELOPER TOOLS.
                     </p>
-                    <h1 id="hero-title">The unified<br />system package<br /><em>manager.</em></h1>
+                    <h1 id="hero-title">The <em>unified</em><br />system package<br />manager.</h1>
                     <p class="hero-description">
                         One package manager for your whole system. Apps, packages, and developer
                         tools, with familiar commands that just work.
@@ -88,7 +89,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                         <span>HANDLE WITH CURIOSITY</span><Icon name="package" />
                     </div>
                     <div class="parcel-brand">
-                        <img alt="" height="120" src={logo.src} width="190" />
+                        <img alt="" height="120" src={monochromeLogo.src} width="190" />
                         <p>Your whole system.<br /><strong>One happy place.</strong></p>
                     </div>
                     <PackageDemo client:load />
