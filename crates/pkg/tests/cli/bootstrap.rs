@@ -5,7 +5,9 @@ use std::path::PathBuf;
 
 use serde_json::json;
 
-use crate::support::{Fixture, INSTALLS_PKG, Outcome, assert_matches_output_schema, mise_version};
+use crate::support::{
+    Fixture, INSTALLS_PKG, Outcome, PKG_VERSION, assert_matches_output_schema, mise_version,
+};
 
 const DOTFILES: &str = "https://github.com/example/dotfiles.git";
 const ZSH_BLOCK: &str = "# >>> pkg >>>\nexport PATH=\"$HOME/.local/bin:$PATH\"\n# <<< pkg <<<\n";
@@ -31,7 +33,7 @@ fn new_mac() -> Fixture {
     std::fs::write(fixture.home().join(".zshenv"), ZSH_BLOCK).unwrap();
     let pkg = fixture.home().join(".local/bin/pkg");
     std::fs::create_dir_all(pkg.parent().unwrap()).unwrap();
-    std::fs::write(&pkg, "#!/bin/sh\necho 'pkg 0.0.0'\n").unwrap();
+    std::fs::write(&pkg, format!("#!/bin/sh\necho 'pkg {PKG_VERSION}'\n")).unwrap();
     use std::os::unix::fs::PermissionsExt;
     std::fs::set_permissions(&pkg, std::fs::Permissions::from_mode(0o755)).unwrap();
     fixture

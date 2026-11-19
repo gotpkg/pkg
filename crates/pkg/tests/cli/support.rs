@@ -19,13 +19,20 @@ use tempfile::TempDir;
 /// The only directories on `PATH` when pkg runs: enough for the fake mise's shell script.
 pub(crate) const SYSTEM_PATH: &str = "/usr/bin:/bin:/usr/sbin:/sbin";
 
+/// The version of the pkg under test, which the installer's copy and mise's pkg report too.
+pub(crate) const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// What `mise use -g github:gotpkg/pkg@latest` leaves behind: mise's shim for pkg, which runs a
 /// pkg that reports the version pkg itself was built as.
-pub(crate) const INSTALLS_PKG: &str = r#"shims="$HOME/.local/share/mise/shims"
+pub(crate) const INSTALLS_PKG: &str = concat!(
+    r#"shims="$HOME/.local/share/mise/shims"
 mkdir -p "$shims"
-printf '#!/bin/sh\necho "pkg 0.0.0"\n' > "$shims/pkg"
+printf '#!/bin/sh\necho "pkg "#,
+    env!("CARGO_PKG_VERSION"),
+    r#""\n' > "$shims/pkg"
 chmod +x "$shims/pkg"
-"#;
+"#
+);
 
 /// A stand-in for mise's installer at https://mise.run: it puts the fake mise where
 /// `MISE_INSTALL_PATH` says.
