@@ -114,9 +114,7 @@ jobs:
                   probe() {
                       curl --silent --max-time 10 --header 'Accept: text/html' \
                           --output /dev/null --dump-header - "$1" |
-                          tr -d '\r' |
-                          awk 'NR == 1 { status = $2 } tolower($1) == "x-build:" { build = $2 }
-                               END { print (status ? status : "000"), build }'
+                          awk -f site/scripts/deployment-headers.awk
                   }
 
                   stale_routes() {
