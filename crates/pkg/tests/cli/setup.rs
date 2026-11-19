@@ -6,7 +6,8 @@ use std::path::PathBuf;
 use serde_json::json;
 
 use crate::support::{
-    FAKE_MISE_INSTALLER, Fixture, INSTALLS_PKG, Outcome, assert_matches_output_schema, mise_version,
+    FAKE_MISE_INSTALLER, Fixture, INSTALLS_PKG, Outcome, PKG_VERSION, assert_matches_output_schema,
+    mise_version,
 };
 
 const PKG_TOOL: [&str; 3] = ["use", "-g", "github:gotpkg/pkg@latest"];
@@ -27,14 +28,14 @@ fn new_machine() -> Fixture {
     fixture.mise(&["ls", "--global", "--json"]).json(&json!({}));
     let config = fixture.home().join(".config/mise/config.toml");
     let declared = json!({ "github:gotpkg/pkg": [{
-        "version": "0.0.0", "requested_version": "latest", "installed": true, "active": true,
+        "version": PKG_VERSION, "requested_version": "latest", "installed": true, "active": true,
         "source": { "type": "mise.toml", "path": config },
     }]});
     fixture.mise(&["ls", "--global", "--json"]).nth(2).json(&declared);
     fixture.mise(&PKG_TOOL).runs(&format!(
         "{INSTALLS_PKG}mkdir -p \"$HOME/.config/mise\"\nprintf '[tools]\\n\"github:gotpkg/pkg\" = \"latest\"\\n' > \"$HOME/.config/mise/config.toml\"\n"
     ));
-    installer_copy(&fixture, "echo 'pkg 0.0.0'");
+    installer_copy(&fixture, &format!("echo 'pkg {PKG_VERSION}'"));
     fixture
 }
 
@@ -98,7 +99,7 @@ fn setup_again_changes_nothing() {
     let config = fixture.home().join(".config/mise/config.toml");
     fixture.mise(&["config", "ls", "--json"]).json(&json!([{ "path": config, "tools": [] }]));
     fixture.mise(&["ls", "--global", "--json"]).nth(3).json(&json!({ "github:gotpkg/pkg": [{
-        "version": "0.0.0", "requested_version": "latest", "installed": true, "active": true,
+        "version": PKG_VERSION, "requested_version": "latest", "installed": true, "active": true,
         "source": { "type": "mise.toml", "path": config },
     }]}));
     let before = fixture.snapshot();
