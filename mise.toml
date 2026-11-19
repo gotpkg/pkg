@@ -130,8 +130,7 @@ run = "cargo test --package pkg --test cli reference"
 
 # ── The website (site/) ──────────────────────────────────────────────────────
 # The landing page and the Starlight docs under /docs: Astro on Cloudflare Workers, its own pnpm
-# project. Its tasks run in site/ and find its CLIs through `_.path`. None deploys: a deployment
-# waits for a human's go-ahead, a Cloudflare account and a chosen domain.
+# project. Its tasks run in site/ and find its CLIs through `_.path`.
 
 [tasks."site:deps"]
 description = "Install the website's npm packages from site/pnpm-lock.yaml"
@@ -158,9 +157,22 @@ depends = ["site:build"]
 dir = "{{config_root}}/site"
 run = "astro preview --host 0.0.0.0 --port 4328 --ignore-lock"
 
+[tasks."site:deploy:check"]
+description = "Validate the built website's Worker upload without deploying"
+depends = ["site:build"]
+dir = "{{config_root}}/site"
+run = "wrangler deploy --dry-run"
+
+[tasks."site:deploy"]
+description = "Deploy the website and installer routes to gotpkg.dev"
+depends = ["site:build"]
+dir = "{{config_root}}/site"
+confirm = "Deploy pkg-site to gotpkg.dev?"
+run = "varlock run --filter CLOUDFLARE_API_TOKEN,CLOUDFLARE_ACCOUNT_ID -- wrangler deploy"
+
 [tasks."site:check"]
 description = "The website's gate: the production build, Playwright against it in workerd, then Oxfmt, Oxlint, ESLint and the type checks"
-depends = ["site:build", "site:e2e"]
+depends = ["site:build", "site:e2e", "site:worker:test"]
 dir = "{{config_root}}/site"
 run = ["oxfmt --check", { task = "site:lint" }, { task = "site:typecheck" }]
 
@@ -169,6 +181,12 @@ description = "Run Playwright against the website's production build served by w
 depends = ["site:build", "site:e2e:install"]
 dir = "{{config_root}}/site"
 run = "playwright test"
+
+[tasks."site:worker:test"]
+description = "Test the built Worker and static assets with isolated upstream responses"
+depends = ["site:build"]
+dir = "{{config_root}}/site"
+run = "node --test 'tests/*.test.ts'"
 
 [tasks."site:e2e:install"]
 description = "Install Playwright's Chromium (and, in CI, its system libraries)"

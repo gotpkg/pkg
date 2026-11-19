@@ -28,6 +28,7 @@
         "eslint": "^10.15.0",
         "eslint-plugin-astro": "^3.2.1",
         "eslint-plugin-perfectionist": "^5.14.0",
+        "miniflare": "5.20261116.0-beta",
         "oxfmt": "^0.79.0",
         "oxlint": "^1.94.0",
         "oxlint-tsgolint": "^7.0.2007",

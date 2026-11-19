@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 const docsRoutes = [
     "/docs",
     "/docs/install",
+    "/docs/setup",
     "/docs/packages",
     "/docs/configuration",
     "/docs/automation",
@@ -51,7 +52,7 @@ test("installation remains reachable without JavaScript", async ({ browser, base
     await expect(page.getByRole("button", { name: "Prettier npm package" })).toBeDisabled();
     await page.getByRole("link", { name: "Get pkg", exact: false }).click();
     await expect(page).toHaveURL(/\/docs\/install\/?$/);
-    await expect(page.getByRole("main")).toContainText("cargo install");
+    await expect(page.getByRole("main")).toContainText("curl -fsSL https://gotpkg.dev | sh");
     await context.close();
 });
 

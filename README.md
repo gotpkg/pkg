@@ -22,7 +22,7 @@ The installer puts `pkg` at `~/.local/bin/pkg` and, when `~/.local/bin` is not o
 
 Downloading `https://gotpkg.dev/install.sh`, reading it, and running it with `sh install.sh` is the same installation. The installer checks the archive against the release's `SHA256SUMS`, which catches a corrupted download but not a compromised release, because both come from that release; verify an archive independently with `gh attestation verify <archive> --repo gotpkg/pkg`.
 
-The installer supports macOS and Linux only. Release archives for macOS (Apple silicon and Intel), Linux (arm64 and x64, static musl builds) and Windows (x64) are attached to every [GitHub release](https://github.com/gotpkg/pkg/releases), each with a build attestation; on Windows, unpack `pkg-x86_64-pc-windows-msvc.zip` from there. pkg also installs with mise (`mise use -g github:gotpkg/pkg`) or Homebrew (`brew install markmals/tap/pkg`).
+The installer supports macOS and Linux only. Release archives for macOS (Apple silicon and Intel), Linux (arm64 and x64, static musl builds) and Windows (x64) are attached to every [GitHub release](https://github.com/gotpkg/pkg/releases), each with a build attestation; on Windows, unpack `pkg-x86_64-pc-windows-msvc.zip` from there. With mise already installed, `mise use -g github:gotpkg/pkg` installs pkg directly.
 
 From a checkout:
 
@@ -89,15 +89,25 @@ The tests never run the real mise or reach the network: they run the binary agai
 
 ## Website
 
-The website lives in `site/`: an Astro site that builds for Cloudflare Workers, with pages and components in `site/app/`. Starlight serves the documentation under `/docs`, one Markdown file per page in `site/app/content/docs/docs/`. `mise install` provides the pinned Node and pnpm, and `site/` has its own pnpm lockfile. The repository has no deployment task.
+The website lives in `site/`: an Astro site that builds for Cloudflare Workers, with pages and components in `site/app/`. Starlight serves the documentation under `/docs`, one Markdown file per page in `site/app/content/docs/docs/`. `mise install` provides the pinned Node and pnpm, and `site/` has its own pnpm lockfile.
 
-| Task                  | What it does                                                                          |
-| --------------------- | ------------------------------------------------------------------------------------- |
-| `mise run site:dev`   | Install the site's dependencies and serve it at http://localhost:4327                 |
-| `mise run site:build` | Build the site, with the documentation search index, into `site/dist/`                |
-| `mise run site:check` | Build, run browser tests, check formatting, lint and types (`mise run check` runs it) |
+| Task                        | What it does                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------- |
+| `mise run site:dev`         | Install the site's dependencies and serve it at http://localhost:4327                 |
+| `mise run site:build`       | Build the site, with the documentation search index, into `site/dist/`                |
+| `mise run site:check`       | Build, run browser tests, check formatting, lint and types (`mise run check` runs it) |
+| `mise run site:worker:test` | Test the built Worker and static assets with an isolated GitHub fixture               |
+| `mise run site:deploy`      | Deploy the site and installer routes to gotpkg.dev after approval                     |
 
 The documentation pages summarize this README and `crates/pkg/docs/`, which own the CLI's behavior. Change those first, then the pages that repeat them.
+
+### Installer routing
+
+The site's Worker runs before static assets for `/` and `/install.sh` only. `/install.sh` always serves `https://github.com/gotpkg/pkg/releases/latest/download/install.sh` as plain text. `/` serves the prerendered home page when the request's `Accept` header includes `text/html`, and the same installer otherwise, including when `Accept` is absent. Both root responses include `Vary: Accept`; user-agent strings do not select the response. Other paths keep their normal static-asset routing.
+
+A successful installer response is `200` and may be cached for at most five minutes. If GitHub cannot provide the installer, including before the first release, the Worker returns `502` with `Cache-Control: no-store`; it never substitutes a placeholder script. The [installation contract](crates/pkg/docs/setup.md#installing-pkg) describes how to use the script.
+
+The live stub in `installer/worker/` remains in service until an approved site deployment takes over `gotpkg.dev` and both representations are verified. Only then remove the stub's domain binding, delete the `gotpkg-dev` Worker, and remove its source and tasks.
 
 ## Layout
 

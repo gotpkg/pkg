@@ -12,19 +12,19 @@ People who want one place to install and manage their apps, system packages, and
 
 ## Product Purpose
 
-pkg installs software through mise's bootstrap packages and tools, records installations in the global mise configuration, and lets mise bootstrap restore that configuration on another machine.
+pkg installs software through mise's bootstrap packages and tools, records installations in the global mise configuration, and restores that configuration on another machine with `pkg bootstrap`.
 
 ## Positioning
 
 The unified system package manager: one command vocabulary for apps, system packages, and developer tools. Position the product without centering any one operating system. The long-term goal is availability on every platform; do not present that goal as current support. pkg remains a human-first command-line front end for mise; JSON output and built-in discovery also serve agents and scripts.
 
-The user also wants the copy to emphasize that pkg just works out of the box and its commands do what people expect. Support this with its shared command vocabulary and defaults; keep the required mise installation and current source-build steps explicit in the docs.
+The user also wants the copy to emphasize that pkg just works out of the box and its commands do what people expect. Support this with its shared command vocabulary and defaults; explain the installer, starting fresh with `pkg setup`, and restoring with `pkg bootstrap` accurately.
 
 ## Capabilities and Constraints
 
-Current behavior is owned by README.md and crates/pkg/docs/cli.md. Unimplemented proposals are not product capabilities. No published release exists at the time this site is created; installation instructions must provide the working source-build route rather than promise an installer or published package.
+Current behavior is owned by README.md and crates/pkg/docs/{cli,setup,packages}.md. Unimplemented proposals are not product capabilities. Installation on macOS and Linux uses the release-owned script at gotpkg.dev; `pkg setup` and `pkg bootstrap` install mise when needed. Windows uses a release archive and supports the package commands, not the installer, setup, or bootstrap. Do not claim a release is available without checking it; installer routes return an uncached 502 when GitHub cannot provide the script.
 
-The website uses the local content-website template's Astro, React/Redact, Tailwind and Cloudflare stack. Starlight provides documentation under /docs. Deployment and the production domain are not yet chosen.
+The website uses the local content-website template's Astro, React/Redact, Tailwind and Cloudflare stack. Starlight provides documentation under /docs. Its production domain is gotpkg.dev. The site's Worker replaces the temporary installer Worker only after an explicitly approved deployment and verification.
 
 ## Brand Commitments
 

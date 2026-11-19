@@ -8,7 +8,10 @@ import { defineConfig } from "astro/config";
 import { codeThemes } from "./code-themes.ts";
 
 export default defineConfig({
+    site: "https://gotpkg.dev",
     srcDir: "./app",
+    // Keep the installer Worker in the output even though every page is prerendered.
+    output: "server",
     // Canonical URLs and every internal link use the unslashed form; `assets.html_handling` in
     // wrangler.jsonc serves prerendered pages there without a redirect.
     trailingSlash: "never",
@@ -34,6 +37,7 @@ export default defineConfig({
             sidebar: [
                 "docs",
                 "docs/install",
+                "docs/setup",
                 "docs/packages",
                 "docs/configuration",
                 "docs/automation",

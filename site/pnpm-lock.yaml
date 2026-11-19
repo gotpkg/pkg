@@ -236,6 +236,9 @@ importers:
       eslint-plugin-perfectionist:
         specifier: ^5.14.0
         version: 5.14.0(eslint@10.15.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
+      miniflare:
+        specifier: 5.20261116.0-beta
+        version: 5.20261116.0-beta(@types/node@26.6.6)
       oxfmt:
         specifier: ^0.79.0
         version: 0.79.0(@astrojs/compiler-rs@0.5.3)

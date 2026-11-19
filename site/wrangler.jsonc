@@ -1,12 +1,13 @@
 {
     "$schema": "node_modules/wrangler/config-schema.json",
-    // The Astro adapter supplies `main` and the static `assets` directory at build time. Keep
-    // `name` equal to `name` in package.json. No production domain is chosen yet, so a deploy
-    // would serve the site only at its workers.dev address.
+    // Astro supplies the built entrypoint and assets directory when it writes the deploy config.
     "name": "pkg-site",
+    "main": "./app/worker.js",
     "compatibility_date": "2026-11-10",
     "workers_dev": true,
+    "routes": [{ "pattern": "gotpkg.dev", "custom_domain": true }],
     "assets": {
+        "run_worker_first": ["/", "/install.sh"],
         // Unknown paths get the prerendered 404 page with a 404 status.
         "not_found_handling": "404-page",
         // Prerendered pages are `<route>/index.html`. The default, `auto-trailing-slash`, would

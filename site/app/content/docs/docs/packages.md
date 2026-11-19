@@ -1,8 +1,8 @@
 ---
 title: Packages
-description: Name, find, install, remove, and upgrade packages and tools, previewing each change with --dry-run.
+description: Name, find, install, remove, and update packages and tools, previewing each change with --dry-run.
 sidebar:
-    order: 3
+    order: 4
 ---
 
 pkg names packages the way mise does, as `manager:name`, and records each one in your global mise config. This page covers the daily commands. The [package contract](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/packages.md) in the repository has the full rules.
@@ -99,13 +99,17 @@ Other kinds of package are removed differently:
 ## Keep packages up to date
 
 ```sh
-pkg outdated               # what has a newer version
-pkg upgrade --dry-run      # what an upgrade would change
-pkg upgrade                # everything
-pkg upgrade brew:wget      # only the packages you name
+pkg outdated            # what has a newer version, mise first
+pkg update --dry-run    # what an update would change
+pkg update              # mise itself, then everything else
+pkg update brew:wget    # only the packages you name
 ```
 
-`pkg outdated` compares Homebrew formulae and casks, App Store apps, and global tools against their newest versions. Casks mise will not upgrade, such as apps that update themselves, appear under `skipped`. `pkg upgrade` lists each version that changed. A package that is declared but not installed is left to [`pkg sync`](/docs/configuration#restore-another-machine).
+`pkg outdated` compares Homebrew formulae and casks, App Store apps, global tools, and mise itself against their newest versions. Casks mise will not update, such as apps that update themselves, appear under `skipped`, and so does a newer mise that a package manager installed.
+
+`pkg update` lists each version that changed. With no names, it first runs `mise self-update`, so packages and tools then update with the new mise. If that step fails, pkg stops before changing anything else. A mise installed by Homebrew, apt, or another package manager refuses to update itself, so pkg leaves it to that package manager and lists it under `skipped`. mise also waits until a release has reached its minimum release age, a day unless you set `minimum_release_age`, so `pkg outdated` can list a mise release that `pkg update` leaves for later.
+
+Once pkg is [handed to mise](/docs/setup#hand-pkg-to-mise), `pkg update` updates pkg too. A package that is declared but not installed is left to [`pkg sync`](/docs/configuration#restore-another-machine).
 
 ## Find where something is installed
 
@@ -118,4 +122,4 @@ Keg-only formulae need their `opt` directory on your `PATH` by hand, and `pkg wh
 
 ## Preview with dry run
 
-`--dry-run` works on every command that changes something: `install`, `remove`, `upgrade`, `sync`, `prune`, `tap add`, and `tap remove`. A dry run makes the same checks and decisions as the real run, including refusals, and installs, uninstalls, and writes nothing. With `--output json`, its receipt has `status` set to `dry-run`.
+`--dry-run` works on every command that changes something: `install`, `remove`, `update`, `sync`, `prune`, `tap add`, `tap remove`, `setup`, and `bootstrap`. A dry run makes the same checks and decisions as the real run, including refusals, and installs, uninstalls, and writes nothing. With `--output json`, its receipt has `status` set to `dry-run`. A bootstrap preview has [limits of its own](/docs/setup#preview-a-bootstrap), because a configuration can run commands.
