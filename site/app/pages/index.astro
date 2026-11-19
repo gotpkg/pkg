@@ -15,9 +15,6 @@ import "../styles/global.css";
 export const prerender = true;
 ---
 
-<!-- FIXME: All text written in literal ALL CAPS should be converted to use CSS instead -->
-<!-- All text should be written in Title Case and then applied the `uppercase` CSS class -->
-
 <!--
 THESIS: A unified system package manager, demonstrated through one index spanning apps, system packages, and developer tools.
 OWN-WORLD: Logo-yellow parcel label, charcoal command strips, paper reading surface, heavy italic Barlow, the supplied campaign photograph.
@@ -61,9 +58,8 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
         <main id="main">
             <section aria-labelledby="hero-title" class="hero wrap">
                 <div class="hero-copy">
-                    <!-- FIXME: This arrow and text don't look vertically aligned -->
-                    <p class="intro">
-                        <Icon name="arrow-right" /> PACKAGES. DEVELOPER TOOLS. APPS.
+                    <p class="intro uppercase">
+                        <Icon name="arrow-right" /> Packages. Developer Tools. Apps.
                     </p>
                     <h1 id="hero-title">The <em>unified</em><br />system package<br />manager.</h1>
                     <p class="hero-description">
@@ -80,13 +76,13 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                     </div>
                     <p class="built-with">
                         Built with Rust. Powered by
-                        <a href="https://mise.jdx.dev" target="_blank">mise</a>. Made for humand and
+                        <a href="https://mise.jdx.dev" target="_blank">mise</a>. Made for humans and
                         agents.
                     </p>
                 </div>
                 <div class="parcel">
                     <div class="parcel-top">
-                        <span>HANDLE WITH CURIOSITY</span><Icon name="package" />
+                        <span class="uppercase">Handle With Curiosity</span><Icon name="package" />
                     </div>
                     <div class="parcel-brand">
                         <img alt="" height="120" src={monochromeLogo.src} width="190" />
@@ -97,9 +93,10 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             </section>
             <div aria-label="Package sources supported through mise" class="manager-band">
                 <div class="wrap manager-list">
-                    <span>FAMILIAR TOOLS. <br /> ONE INTERFACE.</span><span>Homebrew</span
-                    ><span>apt</span><span>Mac App Store</span><span>Flatpak</span><span>npm</span
-                    ><span>Cargo</span><span>go</span><span>GitHub</span
+                    <span class="uppercase">Familiar Tools. <br /> One Interface.</span
+                    ><span>Homebrew</span><span>apt</span><span>Mac App Store</span
+                    ><span>Flatpak</span><span>npm</span><span>Cargo</span><span>go</span
+                    ><span>GitHub</span
                     ><a href="https://mise.jdx.dev/dev-tools/backends/#backends" target="_blank"
                         >&amp; the mise ecosystem <Icon name="arrow-ne"
                     /></a>
@@ -114,40 +111,38 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                         from finding a package to keeping your system up to date.
                     </p>
                 </div>
-                <!-- FIXME: Each of these arrow icons should be centered in the row -->
-                <!-- Not just centered with its own text, but between both text lines -->
                 <div class="command-directory">
-                    <a href="/docs/packages#find-a-package"
-                        ><code>pkg search ffmpeg</code
-                        ><span>Find your next favorite tool <Icon name="arrow-ne" /></span></a
-                    >
-                    <a href="/docs/packages#keep-packages-up-to-date"
-                        ><code>pkg update --dry-run</code
-                        ><span
-                            ><span>See what’s changing first with <code>--dry-run</code></span>
-                            <Icon name="arrow-ne"
-                        /></span></a
-                    >
-                    <a href="/docs/configuration"
-                        ><code>pkg sync</code
-                        ><span>Install packages from your config <Icon name="arrow-ne" /></span></a
-                    >
-                    <a href="/docs/automation"
-                        ><code>pkg list --output json</code
-                        ><span
-                            ><span
-                                >Agents get their own natural interface with
-                                <code>--output json</code></span
-                            >
-                            <Icon name="arrow-ne"
-                        /></span></a
-                    >
+                    <a href="/docs/packages#find-a-package">
+                        <code>pkg search ffmpeg</code>
+                        <span>Find your next favorite tool</span>
+                        <Icon name="arrow-ne" />
+                    </a>
+                    <a href="/docs/packages#keep-packages-up-to-date">
+                        <code>pkg update --dry-run</code>
+                        <span>See what’s changing first with <code>--dry-run</code></span>
+                        <Icon name="arrow-ne" />
+                    </a>
+                    <a href="/docs/configuration">
+                        <code>pkg sync</code>
+                        <span>Install packages from your config</span>
+                        <Icon name="arrow-ne" />
+                    </a>
+                    <a href="/docs/automation">
+                        <code>pkg list --output json</code>
+                        <span
+                            >Agents get their own natural interface with
+                            <code>--output json</code></span
+                        >
+                        <Icon name="arrow-ne" />
+                    </a>
                 </div>
             </section>
             <section aria-labelledby="campaign-title" class="campaign">
                 <div class="wrap campaign-grid">
                     <div class="campaign-copy">
-                        <p class="campaign-note">QUALITY SOFTWARE. PART OF A BALANCED BREAKFAST.</p>
+                        <p class="campaign-note uppercase">
+                            Quality Software. Part of a Balanced Breakfast.
+                        </p>
                         <h2 id="campaign-title">
                             Got <img alt="pkg" height="126" src={reverseLogo.src} width="200" />?
                         </h2>
@@ -188,7 +183,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                             widths={[160, 280, 420]}
                         />
                         <div>
-                            <p>YOU GOT A DELIVERY NOTICE.</p>
+                            <p class="uppercase">You Got a Delivery Notice.</p>
                             <h2 id="get-started-title">You're missing a <span>pkg.</span></h2>
                         </div>
                     </div>

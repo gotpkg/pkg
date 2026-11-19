@@ -6,15 +6,16 @@
     align-items: center;
 }
 .intro {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.055em;
     margin-bottom: 26px;
 }
 .intro .icon {
-    margin-right: 8px;
     font-size: 18px;
-    vertical-align: middle;
 }
 h1 {
     font-size: clamp(64px, 6.1vw, 86px);

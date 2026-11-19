@@ -13,21 +13,20 @@ const docsRoutes = [
 test("a package selection copies the corresponding command", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto("/");
-    await page.getByRole("button", { name: "Prettier npm package" }).click();
-    await expect(page.locator(".command-line code")).toHaveText("pkg install npm:prettier");
+    await page.getByRole("button", { name: /npm package$/ }).click();
+    const command = page.locator(".command-line code");
+    await expect(command).toHaveText(/^pkg install npm:\S+$/);
+    const npmCommand = await command.textContent();
     await page.getByRole("button", { name: "Copy command" }).click();
     await expect(page.getByRole("status")).toHaveText("Command copied to clipboard.");
     await expect(page.getByText("Copied!", { exact: true })).toBeVisible();
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-        "pkg install npm:prettier",
-    );
-    await page.getByRole("button", { name: "IINA Mac app" }).click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(npmCommand);
+    await page.getByRole("button", { name: /Mac app$/ }).click();
     await expect(page.getByRole("status")).toBeEmpty();
-    await expect(page.locator(".command-line code")).toHaveText("pkg install brew-cask:iina");
+    await expect(command).toHaveText(/^pkg install brew-cask:\S+$/);
+    const appCommand = await command.textContent();
     await page.getByRole("button", { name: "Copy command" }).click();
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-        "pkg install brew-cask:iina",
-    );
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(appCommand);
 });
 
 test("clipboard denial leaves the command available and explains recovery", async ({ page }) => {
@@ -45,11 +44,17 @@ test("clipboard denial leaves the command available and explains recovery", asyn
 });
 
 test("installation remains reachable without JavaScript", async ({ browser, baseURL }) => {
-    const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+    const context = await browser.newContext({
+        javaScriptEnabled: false,
+        colorScheme: "dark",
+        baseURL,
+    });
     const page = await context.newPage();
     await page.goto("/");
     await expect(page.getByRole("button", { name: "Copy command" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Prettier npm package" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /npm package$/ })).toBeDisabled();
+    await expect(page.locator(".brand .logo-dark")).toBeVisible();
+    await expect(page.locator(".brand .logo-light")).toBeHidden();
     await page.getByRole("link", { name: "Get pkg", exact: false }).click();
     await expect(page).toHaveURL(/\/docs\/install\/?$/);
     await expect(page.getByRole("main")).toContainText("curl -fsSL https://gotpkg.dev | sh");

@@ -35,7 +35,7 @@ spacing:
 
 ## Overview
 
-The supplied identity becomes a software packing list: oversized, tightly set lettering; a yellow parcel label; selectable package names; and dark command strips. The landing page follows the visitor's system color preference, with a light or dark override. The supplied school poster adds campaign humor without becoming product evidence.
+The supplied identity becomes a software packing list: oversized, tightly set lettering; a yellow parcel label; selectable package names; and dark command strips. The landing page follows the visitor's system color preference. The supplied school poster adds campaign humor without becoming product evidence.
 
 ## Colors
 
@@ -44,6 +44,8 @@ Yellow owns the package demonstration and the closing installation section in bo
 ## Typography
 
 Barlow's heavy italic display echoes the supplied forward-leaning logo. Upright Barlow supports prose and navigation. JetBrains Mono is reserved for executable commands, package identifiers, and configuration.
+
+Short labels use title case in source and the `uppercase` CSS class for their all-caps presentation.
 
 ## Layout
 
@@ -59,13 +61,13 @@ Rounded rectangles belong to actions and the package label. Broad rectangular co
 
 ## Iconography
 
-Interface icons come from the Primaries set: filled shapes on a 64-unit grid, drawn in the current text color so they follow both themes. Arrows mark links. In the package index each example has its own mark, and the theme picker shows a computer, sun, or moon for Auto, Light, and Dark. The docs repaint Starlight's search, menu, theme, page navigation, heading link, and code copy icons with the same set; the GitHub mark in the docs header stays because it is a brand logo. The pkg logo and the supplied photographs are artwork, not icons. To add an icon, copy its Primaries file unchanged into `site/app/assets/icons/`; never redraw one or use a text character in its place.
+Interface icons come from the Primaries set: filled shapes on a 64-unit grid, drawn in the current text color so they follow both themes. Arrows mark links. In the package index each example has its own mark. The docs repaint Starlight's search, menu, theme, page navigation, heading link, and code copy icons with the same set; the GitHub mark in the docs header stays because it is a brand logo. The pkg logo and the supplied photographs are artwork, not icons. To add an icon, copy its Primaries file unchanged into `site/app/assets/icons/`; never redraw one or use a text character in its place.
 
 ## Components
 
 Package choices are real buttons with an announced selected state. Choosing one changes an illustrative command without installing anything. Copy buttons announce success or actionable failure. Navigation is visible at mobile sizes. Starlight supplies search, theme selection, table of contents, and mobile navigation.
 
-The header's native theme picker offers Auto, Light, and Dark. It shares Starlight's saved preference so the landing page and docs agree. Auto follows changes to the system setting; without JavaScript the page follows the system theme and the picker is disabled. An explicit choice is applied before first paint, and blocked browser storage does not prevent changing the theme for the current page.
+The landing page follows system theme changes through CSS, including without JavaScript or browser storage. Starlight's theme picker controls the documentation separately.
 
 Code blocks use the `pkg-dark` and `pkg-light` Expressive Code themes in `site/code-themes.ts`. Charcoal and paper replace the default editor surfaces. Yellow commands, wheat strings, amber constants, and warm gray comments keep syntax within the brand; the light theme uses darker mustard and olive equivalents for readable contrast. Theme selection follows Starlight's light/dark control.
 

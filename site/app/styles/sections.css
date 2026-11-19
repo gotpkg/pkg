@@ -40,9 +40,9 @@
     border-top: 1px solid var(--border);
 }
 .command-directory > a {
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px 16px;
     border-bottom: 1px solid var(--border);
     padding: 19px 0;
 }
@@ -57,11 +57,11 @@
 .command-directory > a > span {
     font-size: 15px;
     color: var(--secondary);
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
 }
-.command-directory > a > span > .icon {
+.command-directory > a > .icon {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
     color: var(--page-foreground);
     font-size: 22px;
 }
