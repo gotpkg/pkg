@@ -6,9 +6,10 @@ import { redact } from "@tanstack/redact/vite";
 import { defineConfig } from "astro/config";
 
 import { codeThemes } from "./code-themes.ts";
+import { sharingHead, siteUrl } from "./sharing.ts";
 
 export default defineConfig({
-    site: "https://gotpkg.dev",
+    site: siteUrl,
     srcDir: "./app",
     // Keep the installer Worker in the output even though every page is prerendered.
     output: "server",
@@ -27,6 +28,7 @@ export default defineConfig({
         // under /docs) and adds MDX, Expressive Code and the Pagefind search index itself.
         starlight({
             title: "pkg",
+            head: sharingHead,
             logo: {
                 light: "./app/assets/pkg-logo-light-mode.svg",
                 dark: "./app/assets/pkg-logo-dark-mode.svg",
