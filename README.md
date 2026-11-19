@@ -101,6 +101,8 @@ The website lives in `site/`: an Astro site that builds for Cloudflare Workers, 
 
 The documentation pages summarize this README and `crates/pkg/docs/`, which own the CLI's behavior. Change those first, then the pages that repeat them.
 
+Oxc discovers `site/.oxfmtrc.jsonc`, which enables Astro formatting. If VS Code has an explicit user-level `oxc.fmt.configPath`, set `"oxc.fmt.configPath": null` in the workspace settings to restore project config discovery without changing other workspaces. Run **Oxc: Restart oxfmt Server** if it retains the old config. Workspace settings remain local and untracked.
+
 ### Installer routing
 
 The site's Worker runs before static assets for `/` and `/install.sh` only. `/install.sh` always serves `https://github.com/gotpkg/pkg/releases/latest/download/install.sh` as plain text. `/` serves the prerendered home page when the request's `Accept` header includes `text/html`, and the same installer otherwise, including when `Accept` is absent. Both root responses include `Vary: Accept`; user-agent strings do not select the response. Other paths keep their normal static-asset routing.
