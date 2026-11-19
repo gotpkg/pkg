@@ -67,7 +67,7 @@ alias = "c"
 # `hk check --all` runs every step in hk.pkl: whitespace, newlines, merge conflicts, actionlint,
 # dprint, rustfmt, Clippy over every target with warnings as errors, and the website's Oxfmt,
 # Oxlint, ESLint and type checks.
-depends = ["test", "doc", "installer:worker:test", "site:check"]
+depends = ["test", "doc", "site:check"]
 run = ["hk check --all", "mise run validate"]
 
 [tasks.fmt]
@@ -234,15 +234,6 @@ run = "cargo xtask installer"
 [tasks."release:checksums"]
 description = "Write the SHA-256 manifest of the archives in artifacts/ to artifacts/SHA256SUMS"
 run = "cargo xtask checksums"
-
-[tasks."installer:worker:test"]
-description = "Test the stub Worker that serves the installer at gotpkg.dev until the site does"
-run = "node --test 'installer/worker/*.test.js'"
-
-[tasks."installer:worker:deploy"]
-description = "Deploy the stub Worker to gotpkg.dev (needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID)"
-# wrangler reads both from the environment; Varlock checks them against .env.schema and redacts them.
-run = "varlock run --filter CLOUDFLARE_API_TOKEN,CLOUDFLARE_ACCOUNT_ID -- npx --yes wrangler@4.163.0 deploy --config installer/worker/wrangler.jsonc"
 
 [tasks.release]
 description = "Publish the GitHub release with the archives, installer and SHA256SUMS in artifacts/ (release.yml runs this)"
