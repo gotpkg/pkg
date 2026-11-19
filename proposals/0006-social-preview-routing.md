@@ -2,7 +2,7 @@
 id: proposal.0006
 title: Shareable Homepage Routing
 authors: [Mark]
-status: active-review
+status: implemented
 pull-request: https://github.com/gotpkg/pkg/pull/10
 issues: []
 supersedes: []
