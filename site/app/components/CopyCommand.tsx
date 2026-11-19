@@ -1,5 +1,7 @@
 import { useId, useState } from "react";
 
+import Icon from "./icon/Icon.tsx";
+
 export default function CopyCommand({ command, enabled }: { command: string; enabled: boolean }) {
     const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
     const statusId = useId();
@@ -23,18 +25,7 @@ export default function CopyCommand({ command, enabled }: { command: string; ena
                 onClick={copy}
                 type="button"
             >
-                <svg
-                    aria-hidden="true"
-                    fill="none"
-                    height="18"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    viewBox="0 0 24 24"
-                    width="18"
-                >
-                    <rect height="13" rx="2" width="12" x="8" y="8" />
-                    <path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" />
-                </svg>
+                <Icon name="copy" />
                 {status === "copied" && <span className="copy-confirmation">Copied!</span>}
             </button>
             <output className={status === "failed" ? "copy-error" : "sr-only"} id={statusId}>

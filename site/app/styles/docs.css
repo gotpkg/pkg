@@ -36,3 +36,61 @@ h1 {
 :root {
     --sl-text-body: 1.0625rem;
 }
+
+/*
+ * Starlight, Pagefind and Expressive Code draw their own interface icons. These rules repaint them
+ * with the Primaries icons the landing page uses: each icon keeps its box and color, and the
+ * Primaries shape becomes its mask. The GitHub mark in the header is a brand logo and stays.
+ */
+site-search button[data-open-modal] > svg,
+.sl-menu-button > svg,
+starlight-theme-select svg,
+:is(mobile-starlight-toc, .sidebar-content) summary .caret,
+.pagination-links svg,
+.sl-markdown-content .sl-anchor-icon > svg {
+    background-color: currentColor;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
+}
+site-search button[data-open-modal] > svg,
+#starlight__search .pagefind-ui__form::before {
+    mask-image: url("../assets/icons/Primaries-Search.svg");
+}
+#starlight__search .pagefind-ui__search-clear::before,
+.sl-menu-button > .close-menu {
+    mask-image: url("../assets/icons/Primaries-Close.svg");
+}
+#starlight__search .pagefind-ui__result-inner > .pagefind-ui__result-title::before {
+    mask-image: url("../assets/icons/Primaries-Document.svg");
+}
+.sl-menu-button > .open-menu {
+    mask-image: url("../assets/icons/Primaries-Menu.svg");
+}
+starlight-theme-select .sl-theme-icon-auto {
+    mask-image: url("../assets/icons/Primaries-Computer.svg");
+}
+starlight-theme-select .sl-theme-icon-light {
+    mask-image: url("../assets/icons/Primaries-BrightnessHigh.svg");
+}
+starlight-theme-select .sl-theme-icon-dark {
+    mask-image: url("../assets/icons/Primaries-Moon.svg");
+}
+starlight-theme-select .caret {
+    mask-image: url("../assets/icons/Primaries-ChevronDown.svg");
+}
+:is(mobile-starlight-toc, .sidebar-content) summary .caret {
+    mask-image: url("../assets/icons/Primaries-ChevronRight.svg");
+}
+.pagination-links [rel="prev"] > svg {
+    mask-image: url("../assets/icons/Primaries-ArrowLeft.svg");
+}
+.pagination-links [rel="next"] > svg {
+    mask-image: url("../assets/icons/Primaries-ArrowRight.svg");
+}
+.sl-markdown-content .sl-anchor-icon > svg {
+    mask-image: url("../assets/icons/Primaries-Link.svg");
+}
+.expressive-code .copy button::after {
+    mask-image: url("../assets/icons/Primaries-Copy.svg");
+}

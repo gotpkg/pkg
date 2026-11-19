@@ -1,0 +1,16 @@
+---
+import { type IconName, iconUrls } from "./icons.ts";
+
+interface Props {
+    name: IconName;
+    class?: string;
+}
+
+const { name, class: className } = Astro.props;
+---
+
+<span
+    aria-hidden="true"
+    class:list={["icon", className]}
+    style={`mask-image: url("${iconUrls[name]}")`}
+></span>

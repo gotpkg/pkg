@@ -57,6 +57,10 @@ The demonstration's label has a restrained offset shadow and a small rotation. E
 
 Rounded rectangles belong to actions and the package label. Broad rectangular color fields organize the page. The supplied handwritten underline remains part of the logo, not a repeated decoration.
 
+## Iconography
+
+Interface icons come from the Primaries set: filled shapes on a 64-unit grid, drawn in the current text color so they follow both themes. Arrows mark links. In the package index each example has its own mark, and the theme picker shows a computer, sun, or moon for Auto, Light, and Dark. The docs repaint Starlight's search, menu, theme, page navigation, heading link, and code copy icons with the same set; the GitHub mark in the docs header stays because it is a brand logo. The pkg logo and the supplied photographs are artwork, not icons. To add an icon, copy its Primaries file unchanged into `site/app/assets/icons/`; never redraw one or use a text character in its place.
+
 ## Components
 
 Package choices are real buttons with an announced selected state. Choosing one changes an illustrative command without installing anything. Copy buttons announce success or actionable failure. Navigation is visible at mobile sizes. Starlight supplies search, theme selection, table of contents, and mobile navigation.

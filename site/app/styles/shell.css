@@ -36,7 +36,7 @@
     padding: 10px 16px !important;
     border-radius: 6px;
 }
-.github-link span {
+.github-link .icon {
     margin-left: 10px;
 }
 .site-footer {
@@ -80,7 +80,7 @@
         border: 0;
         padding: 12px 0 !important;
     }
-    .github-link span {
+    .github-link .icon {
         margin-left: 2px;
     }
     .site-footer {

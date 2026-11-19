@@ -20,6 +20,10 @@
     font-weight: 600;
     letter-spacing: 0.09em;
 }
+.parcel-top .icon {
+    font-size: 40px;
+    margin-block: -2px;
+}
 .parcel-brand {
     display: flex;
     align-items: center;
@@ -63,9 +67,6 @@
 .package-mark {
     width: 26px;
     font-size: 26px;
-    line-height: 1;
-    text-align: center;
-    flex-shrink: 0;
 }
 .package-name {
     font-weight: 600;
@@ -90,10 +91,14 @@
 }
 .command-caption {
     display: flex;
+    align-items: center;
     justify-content: space-between;
     color: #c2c1bd;
     font-size: 11px;
     margin-bottom: 12px;
+}
+.command-caption .icon {
+    font-size: 14px;
 }
 .command-line {
     display: flex;
@@ -125,6 +130,9 @@
     color: var(--paper);
     background: transparent;
     border-radius: 4px;
+}
+.copy-button .icon {
+    font-size: 20px;
 }
 .copy-confirmation {
     position: absolute;

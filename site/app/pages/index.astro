@@ -5,6 +5,7 @@ import poster from "../assets/got-pkg.webp";
 import movingBox from "../assets/moving-box.webp";
 import reverseLogo from "../assets/pkg-logo-dark-mode.svg";
 import logo from "../assets/pkg-logo-light-mode.svg";
+import Icon from "../components/icon/Icon.astro";
 import PackageDemo from "../components/PackageDemo.tsx";
 import initializeTheme from "../components/theme/initialize.js?raw";
 import ThemeControl from "../components/theme/ThemeControl.astro";
@@ -51,8 +52,8 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                 <a href="#how-it-works">How it works</a>
                 <a href="/docs">Docs</a>
                 <a class="github-link" href="https://github.com/gotpkg/pkg"
-                    >GitHub <span aria-hidden="true">↗</span></a
-                >
+                    >GitHub <Icon name="arrow-ne"
+                /></a>
                 <ThemeControl />
             </nav>
         </header>
@@ -60,7 +61,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             <section aria-labelledby="hero-title" class="hero wrap">
                 <div class="hero-copy">
                     <p class="intro">
-                        <span aria-hidden="true">↳</span> APPS. PACKAGES. DEVELOPER TOOLS.
+                        <Icon name="arrow-right" /> APPS. PACKAGES. DEVELOPER TOOLS.
                     </p>
                     <h1 id="hero-title">The unified<br />system package<br /><em>manager.</em></h1>
                     <p class="hero-description">
@@ -69,11 +70,11 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                     </p>
                     <div class="hero-actions">
                         <a class="button button-dark" href="/docs/install"
-                            >Get pkg <span aria-hidden="true">↗</span></a
-                        >
+                            >Get pkg <Icon name="arrow-ne"
+                        /></a>
                         <a class="text-link" href="/docs"
-                            >Read the docs <span aria-hidden="true">→</span></a
-                        >
+                            >Read the docs <Icon name="arrow-right"
+                        /></a>
                     </div>
                     <p class="built-with">
                         Built with Rust. Powered by <a href="https://mise.jdx.dev">mise</a>. Made
@@ -82,18 +83,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                 </div>
                 <div class="parcel">
                     <div class="parcel-top">
-                        <span>HANDLE WITH CURIOSITY</span
-                        ><svg
-                            aria-hidden="true"
-                            fill="none"
-                            height="36"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 34 36"
-                            width="34"
-                        >
-                            <path d="m3 10 14-7 14 7v16l-14 7-14-7V10Zm0 0 14 8 14-8M17 18v15" />
-                        </svg>
+                        <span>HANDLE WITH CURIOSITY</span><Icon name="package" />
                     </div>
                     <div class="parcel-brand">
                         <img alt="" height="120" src={logo.src} width="190" />
@@ -106,9 +96,7 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                 <div class="wrap manager-list">
                     <span>FAMILIAR TOOLS. ONE FRONT DOOR.</span><span>Homebrew</span
                     ><span>App Store</span><span>npm</span><span>Cargo</span
-                    ><a href="/docs/packages"
-                        >&amp; the mise ecosystem <span aria-hidden="true">↗</span></a
-                    >
+                    ><a href="/docs/packages">&amp; the mise ecosystem <Icon name="arrow-ne" /></a>
                 </div>
             </div>
             <Workflow />
@@ -123,23 +111,19 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                 <div class="command-directory">
                     <a href="/docs/packages#find-a-package"
                         ><code>pkg search ffmpeg</code
-                        ><span
-                            >Find your next favorite tool <span aria-hidden="true">↗</span></span
-                        ></a
+                        ><span>Find your next favorite tool <Icon name="arrow-ne" /></span></a
                     >
                     <a href="/docs/packages#keep-packages-up-to-date"
-                        ><code>pkg upgrade --dry-run</code
-                        ><span>See what’s changing first <span aria-hidden="true">↗</span></span></a
+                        ><code>pkg update --dry-run</code
+                        ><span>See what’s changing first <Icon name="arrow-ne" /></span></a
                     >
                     <a href="/docs/configuration"
                         ><code>pkg sync</code
-                        ><span>Bring your config to life <span aria-hidden="true">↗</span></span></a
+                        ><span>Bring your config to life <Icon name="arrow-ne" /></span></a
                     >
                     <a href="/docs/automation"
                         ><code>pkg list --output json</code
-                        ><span
-                            >Give your scripts the same view <span aria-hidden="true">↗</span></span
-                        ></a
+                        ><span>Give your scripts the same view <Icon name="arrow-ne" /></span></a
                     >
                 </div>
             </section>
@@ -155,7 +139,8 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                             in packages.
                         </p>
                         <a class="text-link light-link" href="/docs/packages"
-                            >Meet your new package manager <span aria-hidden="true">↗</span></a
+                            >Meet your new package manager <Icon name="arrow-ne"
+                        /></a
                         ><span class="poster-caption"
                             >The unofficial official cafeteria campaign.</span
                         >
@@ -193,8 +178,8 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                         </div>
                     </div>
                     <a class="button button-dark" href="/docs/install"
-                        >Let’s get you set up <span aria-hidden="true">↗</span></a
-                    >
+                        >Let’s get you set up <Icon name="arrow-ne"
+                    /></a>
                 </div>
             </section>
         </main>
@@ -206,11 +191,9 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             <p>The unified system package manager.</p>
             <nav aria-label="Footer navigation">
                 <a href="/docs">Documentation</a
-                ><a href="https://github.com/gotpkg/pkg"
-                    >Source code <span aria-hidden="true">↗</span></a
-                >
+                ><a href="https://github.com/gotpkg/pkg">Source code <Icon name="arrow-ne" /></a>
             </nav>
-            <a class="back-top" href="#main">Back to top ↑</a>
+            <a class="back-top" href="#main">Back to top <Icon name="arrow-up" /></a>
         </footer>
     </body>
 </html>

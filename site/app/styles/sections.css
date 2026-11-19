@@ -61,10 +61,9 @@
     justify-content: space-between;
     gap: 16px;
 }
-.command-directory > a > span > span {
+.command-directory > a > span > .icon {
     color: var(--page-foreground);
     font-size: 22px;
-    line-height: 0.8;
 }
 .campaign {
     background: var(--campaign-background);
