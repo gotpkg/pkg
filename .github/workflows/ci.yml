@@ -13,9 +13,10 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-    # `mise run check` is the one definition of the blocking gate, and this job is the only place
-    # it runs automatically: no git hook runs it. Agents wait for this job to pass before marking
-    # a pull request ready or merging it.
+    # `mise run check` is the one definition of the blocking gate, and no git hook runs it. This
+    # job runs it on every pull request and push to `main`; release.yml and site.yml run it again
+    # before publishing or deploying. Agents wait for this job to pass before marking a pull
+    # request ready or merging it.
     check:
         name: Check
         runs-on: ubuntu-latest
