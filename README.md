@@ -117,6 +117,14 @@ A successful installer response is `200` and may be cached for at most five minu
 
 The live stub in `installer/worker/` remains in service until an approved site deployment takes over `gotpkg.dev` and both representations are verified. Only then remove the stub's domain binding, delete the `gotpkg-dev` Worker, and remove its source and tasks.
 
+### Website deployment
+
+The `Site` GitHub Actions workflow checks the exact revision before deploying relevant pushes to `main`, or a manual run on `main`. Set the repository variable `CLOUDFLARE_DEPLOY=true` to enable deployment. The `production` environment must allow only `main` and hold the `CLOUDFLARE_API_TOKEN` secret, `CLOUDFLARE_ACCOUNT_ID` variable, and `SITE_URL=https://gotpkg.dev`.
+
+The deployment job restores no dependency cache. It installs and builds without Cloudflare credentials, then `mise run site:deploy:built` deploys the existing `site/dist/` output without rebuilding. Only that deployment step receives the Cloudflare credentials. `mise run site:deploy` remains the local build-and-deploy entry point.
+
+Each built static response carries `X-Build`, using the first seven characters of `GITHUB_SHA` in CI and `dev` locally. After upload, the workflow checks every built page at its canonical URL with an explicit HTML Accept header and waits for the deployed build stamp. Installer responses are verified separately during the domain cutover; publishing a CLI release is independent of website deployment.
+
 ## Layout
 
 ```text

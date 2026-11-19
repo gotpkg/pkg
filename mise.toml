@@ -161,14 +161,20 @@ run = "astro preview --host 0.0.0.0 --port 4328 --ignore-lock"
 description = "Validate the built website's Worker upload without deploying"
 depends = ["site:build"]
 dir = "{{config_root}}/site"
-run = "wrangler deploy --dry-run"
+run = "wrangler deploy --config dist/server/wrangler.json --dry-run"
 
 [tasks."site:deploy"]
-description = "Deploy the website and installer routes to gotpkg.dev"
+description = "Build the website, then deploy it and the installer routes to gotpkg.dev"
 depends = ["site:build"]
+run = [{ task = "site:deploy:built" }]
+
+[tasks."site:deploy:built"]
+description = "Deploy the existing site/dist/ build and installer routes to gotpkg.dev without rebuilding (needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID)"
+# No build dependencies: CI exposes credentials only after producing this generated config.
+# Varlock resolves the schema from the repository root, not this task's site/ directory.
 dir = "{{config_root}}/site"
 confirm = "Deploy pkg-site to gotpkg.dev?"
-run = "varlock run --filter CLOUDFLARE_API_TOKEN,CLOUDFLARE_ACCOUNT_ID -- wrangler deploy"
+run = "varlock run --path ../ --filter CLOUDFLARE_API_TOKEN,CLOUDFLARE_ACCOUNT_ID -- wrangler deploy --config dist/server/wrangler.json"
 
 [tasks."site:check"]
 description = "The website's gate: the production build, Playwright against it in workerd, then Oxfmt, Oxlint, ESLint and the type checks"

@@ -7,6 +7,11 @@ import { defineConfig } from "astro/config";
 
 import { codeThemes } from "./code-themes.ts";
 import { sharingHead, siteUrl } from "./sharing.ts";
+import { stampBuild } from "./stamp-build.plugin.ts";
+
+// Names this build in an `X-Build` response header, so the deploy workflow can tell when every
+// page serves it. Not runtime configuration, so it is inlined rather than read through `astro:env`.
+const BUILD_SHA = (process.env.GITHUB_SHA ?? "dev").slice(0, 7);
 
 export default defineConfig({
     site: siteUrl,
@@ -55,6 +60,7 @@ export default defineConfig({
                 },
             },
         }),
+        stampBuild(BUILD_SHA),
     ],
     // Without this the adapter declares a `SESSION` KV binding that Wrangler provisions on
     // deploy. Enable sessions only with a route that uses them.
