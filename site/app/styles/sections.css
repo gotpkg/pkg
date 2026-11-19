@@ -148,7 +148,6 @@
 .moving-box {
     width: 140px;
     flex-shrink: 0;
-    transform: rotate(-8deg);
 }
 .get-started-inner > .button {
     flex-shrink: 0;

@@ -6,9 +6,14 @@ import type { IconName } from "./icon/icons.ts";
 
 const packages: { name: string; kind: string; id: string; icon: IconName }[] = [
     { name: "wget", kind: "Homebrew formula", id: "brew:wget", icon: "arrow-ne" },
-    { name: "IINA", kind: "Mac app", id: "brew-cask:iina", icon: "playback-play" },
+    { name: "Chrome", kind: "Mac app", id: "brew-cask:google-chrome", icon: "google-chrome" },
     { name: "ripgrep", kind: "Developer tool", id: "ripgrep", icon: "search" },
-    { name: "Prettier", kind: "npm package", id: "npm:prettier", icon: "code" },
+    {
+        name: "Chrome DevTools MCP",
+        kind: "npm package",
+        id: "npm:chrome-devtools-mcp",
+        icon: "code",
+    },
 ];
 
 const noSubscription = () => () => {};
@@ -50,10 +55,6 @@ export default function PackageDemo() {
                 ))}
             </fieldset>
             <div className="demo-command">
-                <div className="command-caption">
-                    <span>One command. Packed for later.</span>
-                    <Icon name="arrow-sw" />
-                </div>
                 <div className="command-line">
                     <span aria-hidden="true" className="prompt">
                         $
@@ -62,7 +63,6 @@ export default function PackageDemo() {
                     <CopyCommand command={command} enabled={hydrated} key={command} />
                 </div>
             </div>
-            <p className="demo-note">Pick a package to see its command. Nothing runs here.</p>
         </div>
     );
 }

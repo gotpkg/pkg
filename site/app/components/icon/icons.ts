@@ -1,3 +1,4 @@
+import chrome from "../../assets/icons/google-chrome.svg?url";
 import add from "../../assets/icons/Primaries-Add.svg?url";
 import arrowNe from "../../assets/icons/Primaries-ArrowNE.svg?url";
 import arrowRight from "../../assets/icons/Primaries-ArrowRight.svg?url";
@@ -28,6 +29,7 @@ export const iconUrls = {
     package: packageIcon,
     "playback-play": playbackPlay,
     search,
+    "google-chrome": chrome,
 };
 
 export type IconName = keyof typeof iconUrls;

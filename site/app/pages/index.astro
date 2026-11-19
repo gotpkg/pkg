@@ -8,14 +8,15 @@ import logo from "../assets/pkg-logo-light-mode.svg";
 import monochromeLogo from "../assets/pkg-logo-monochrome.svg";
 import Icon from "../components/icon/Icon.astro";
 import PackageDemo from "../components/PackageDemo.tsx";
-import initializeTheme from "../components/theme/initialize.js?raw";
-import ThemeControl from "../components/theme/ThemeControl.astro";
 import Workflow from "../components/Workflow.astro";
 
 import "../styles/global.css";
 
 export const prerender = true;
 ---
+
+<!-- FIXME: All text written in literal ALL CAPS should be converted to use CSS instead -->
+<!-- All text should be written in Title Case and then applied the `uppercase` CSS class -->
 
 <!--
 THESIS: A unified system package manager, demonstrated through one index spanning apps, system packages, and developer tools.
@@ -33,7 +34,6 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             name="description"
         />
         <meta content="#f7f5ed" name="theme-color" />
-        <script is:inline set:html={initializeTheme} />
         <meta content="pkg: The unified system package manager" property="og:title" />
         <meta
             content="Apps, system packages, and developer tools, all in one place. Familiar commands that just work."
@@ -52,24 +52,23 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             </a>
             <span class="header-note">Your software.<br />One package manager.</span>
             <nav aria-label="Main navigation">
-                <a href="#how-it-works">How it works</a>
                 <a href="/docs">Docs</a>
-                <a class="github-link" href="https://github.com/gotpkg/pkg"
+                <a class="github-link" href="https://github.com/gotpkg/pkg" target="_blank"
                     >GitHub <Icon name="arrow-ne"
                 /></a>
-                <ThemeControl />
             </nav>
         </header>
         <main id="main">
             <section aria-labelledby="hero-title" class="hero wrap">
                 <div class="hero-copy">
+                    <!-- FIXME: This arrow and text don't look vertically aligned -->
                     <p class="intro">
-                        <Icon name="arrow-right" /> APPS. PACKAGES. DEVELOPER TOOLS.
+                        <Icon name="arrow-right" /> PACKAGES. DEVELOPER TOOLS. APPS.
                     </p>
                     <h1 id="hero-title">The <em>unified</em><br />system package<br />manager.</h1>
                     <p class="hero-description">
-                        One package manager for your whole system. Apps, packages, and developer
-                        tools, with familiar commands that just work.
+                        One package manager for any package from any registry on any machine.
+                        Packages, developer tools, and apps, with familiar commands that just work.
                     </p>
                     <div class="hero-actions">
                         <a class="button button-dark" href="/docs/install"
@@ -80,8 +79,9 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                         /></a>
                     </div>
                     <p class="built-with">
-                        Built with Rust. Powered by <a href="https://mise.jdx.dev">mise</a>. Made
-                        for your terminal.
+                        Built with Rust. Powered by
+                        <a href="https://mise.jdx.dev" target="_blank">mise</a>. Made for humand and
+                        agents.
                     </p>
                 </div>
                 <div class="parcel">
@@ -90,16 +90,19 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                     </div>
                     <div class="parcel-brand">
                         <img alt="" height="120" src={monochromeLogo.src} width="190" />
-                        <p>Your whole system.<br /><strong>One happy place.</strong></p>
+                        <p>All package registries.<br /><strong>One package manager.</strong></p>
                     </div>
                     <PackageDemo client:load />
                 </div>
             </section>
             <div aria-label="Package sources supported through mise" class="manager-band">
                 <div class="wrap manager-list">
-                    <span>FAMILIAR TOOLS. ONE FRONT DOOR.</span><span>Homebrew</span
-                    ><span>App Store</span><span>npm</span><span>Cargo</span
-                    ><a href="/docs/packages">&amp; the mise ecosystem <Icon name="arrow-ne" /></a>
+                    <span>FAMILIAR TOOLS. <br /> ONE INTERFACE.</span><span>Homebrew</span
+                    ><span>apt</span><span>Mac App Store</span><span>Flatpak</span><span>npm</span
+                    ><span>Cargo</span><span>go</span><span>GitHub</span
+                    ><a href="https://mise.jdx.dev/dev-tools/backends/#backends" target="_blank"
+                        >&amp; the mise ecosystem <Icon name="arrow-ne"
+                    /></a>
                 </div>
             </div>
             <Workflow />
@@ -111,6 +114,8 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                         from finding a package to keeping your system up to date.
                     </p>
                 </div>
+                <!-- FIXME: Each of these arrow icons should be centered in the row -->
+                <!-- Not just centered with its own text, but between both text lines -->
                 <div class="command-directory">
                     <a href="/docs/packages#find-a-package"
                         ><code>pkg search ffmpeg</code
@@ -118,35 +123,41 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                     >
                     <a href="/docs/packages#keep-packages-up-to-date"
                         ><code>pkg update --dry-run</code
-                        ><span>See what’s changing first <Icon name="arrow-ne" /></span></a
+                        ><span
+                            ><span>See what’s changing first with <code>--dry-run</code></span>
+                            <Icon name="arrow-ne"
+                        /></span></a
                     >
                     <a href="/docs/configuration"
                         ><code>pkg sync</code
-                        ><span>Bring your config to life <Icon name="arrow-ne" /></span></a
+                        ><span>Install packages from your config <Icon name="arrow-ne" /></span></a
                     >
                     <a href="/docs/automation"
                         ><code>pkg list --output json</code
-                        ><span>Give your scripts the same view <Icon name="arrow-ne" /></span></a
+                        ><span
+                            ><span
+                                >Agents get their own natural interface with
+                                <code>--output json</code></span
+                            >
+                            <Icon name="arrow-ne"
+                        /></span></a
                     >
                 </div>
             </section>
             <section aria-labelledby="campaign-title" class="campaign">
                 <div class="wrap campaign-grid">
                     <div class="campaign-copy">
-                        <p class="campaign-note">GOOD SOFTWARE. QUESTIONABLE AD CAMPAIGN.</p>
+                        <p class="campaign-note">QUALITY SOFTWARE. PART OF A BALANCED BREAKFAST.</p>
                         <h2 id="campaign-title">
                             Got <img alt="pkg" height="126" src={reverseLogo.src} width="200" />?
                         </h2>
                         <p>
                             From your first developer tool to your everyday apps. Good things come
-                            in packages.
+                            in pkgs.
                         </p>
                         <a class="text-link light-link" href="/docs/packages"
                             >Meet your new package manager <Icon name="arrow-ne"
-                        /></a
-                        ><span class="poster-caption"
-                            >The unofficial official cafeteria campaign.</span
-                        >
+                        /></a>
                     </div>
                     <figure>
                         <Image
@@ -157,7 +168,8 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                             widths={[640, 960, 1448]}
                         />
                         <figcaption>
-                            For entertainment. Please don’t actually run “pkg install fun”.
+                            For entertainment purposes only. Please don’t actually run `pkg install
+                            fun`.
                         </figcaption>
                     </figure>
                 </div>
@@ -176,8 +188,8 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
                             widths={[160, 280, 420]}
                         />
                         <div>
-                            <p>YOUR SYSTEM CALLED.</p>
-                            <h2 id="get-started-title">It’s missing a little <span>pkg.</span></h2>
+                            <p>YOU GOT A DELIVERY NOTICE.</p>
+                            <h2 id="get-started-title">You're missing a <span>pkg.</span></h2>
                         </div>
                     </div>
                     <a class="button button-dark" href="/docs/install"
@@ -194,7 +206,9 @@ FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index ca
             <p>The unified system package manager.</p>
             <nav aria-label="Footer navigation">
                 <a href="/docs">Documentation</a
-                ><a href="https://github.com/gotpkg/pkg">Source code <Icon name="arrow-ne" /></a>
+                ><a href="https://github.com/gotpkg/pkg" target="_blank"
+                    >Source code <Icon name="arrow-ne"
+                /></a>
             </nav>
             <a class="back-top" href="#main">Back to top <Icon name="arrow-up" /></a>
         </footer>
