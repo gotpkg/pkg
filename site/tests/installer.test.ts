@@ -6,6 +6,8 @@ import { test, type TestContext } from "node:test";
 import { convertV4MiniflareOptions, Miniflare, type Response as WorkerResponse } from "miniflare";
 import { unstable_getMiniflareWorkerOptions } from "wrangler";
 
+import { htmlRequests, installerRequests } from "./routing-cases.ts";
+
 const INSTALLER = "https://github.com/gotpkg/pkg/releases/latest/download/install.sh";
 const SCRIPT = '#!/bin/sh\nrelease_version="1.2.3"\n';
 const BROWSER = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
@@ -62,46 +64,73 @@ function installerResponse(response: WorkerResponse) {
     assert.ok(Number(maxAge[1]) <= 300);
 }
 
+function rootVariation(response: WorkerResponse) {
+    const vary = (response.headers.get("Vary") ?? "")
+        .toLowerCase()
+        .split(",")
+        .map(field => field.trim());
+    assert.ok(vary.includes("accept"));
+    assert.ok(vary.includes("user-agent"));
+}
+
 await test("HTML root requests render the site without fetching an installer", async context => {
     const { worker, upstreamRequests } = runtime(context, 404);
     const response = await worker.dispatchFetch("https://gotpkg.dev/", {
-        headers: { Accept: BROWSER, "User-Agent": "curl" },
+        headers: { Accept: BROWSER, "User-Agent": "curl/8.7.1" },
     });
     assert.equal(response.status, 200);
     assert.match(response.headers.get("Content-Type") ?? "", /^text\/html/);
-    assert.match(response.headers.get("Vary") ?? "", /(?:^|,)\s*Accept(?:,|$)/i);
+    rootVariation(response);
     assert.match(await response.text(), /href="\/docs\/install"/);
     assert.deepEqual(upstreamRequests, []);
 });
 
-await test("non-HTML and absent Accept headers receive the latest installer at the root", async context => {
+await test("curl and wget receive the installer unless they explicitly accept HTML", async context => {
     const { worker, upstreamRequests } = runtime(context);
-    for (const headers of [{ Accept: "*/*", "User-Agent": "Mozilla/5.0" }, {}]) {
-        const response = await worker.dispatchFetch("https://gotpkg.dev/", { headers });
+    for (const { name, headers } of installerRequests) {
+        const response = await worker.dispatchFetch("https://gotpkg.dev/?accept=text/html", {
+            headers,
+        });
+        assert.equal(response.status, 200, name);
         installerResponse(response);
-        assert.match(response.headers.get("Vary") ?? "", /(?:^|,)\s*Accept(?:,|$)/i);
-        assert.equal(await response.text(), SCRIPT);
+        rootVariation(response);
+        assert.equal(await response.text(), SCRIPT, name);
     }
     assert.ok(upstreamRequests.every(url => url === INSTALLER));
 });
 
+await test("sharing crawlers and unknown clients receive metadata without a release", async context => {
+    const { worker, upstreamRequests } = runtime(context, 404);
+    for (const { name, headers } of htmlRequests) {
+        const response = await worker.dispatchFetch("https://gotpkg.dev/?accept=text/plain", {
+            headers,
+        });
+        assert.equal(response.status, 200, name);
+        assert.match(response.headers.get("Content-Type") ?? "", /^text\/html/, name);
+        rootVariation(response);
+        assert.match(await response.text(), /property="og:image"/, name);
+    }
+    assert.deepEqual(upstreamRequests, []);
+});
+
 await test("the explicit installer route returns the script even to a browser", async context => {
     const { worker } = runtime(context);
-    const response = await worker.dispatchFetch("https://gotpkg.dev/install.sh", {
-        headers: { Accept: BROWSER },
-    });
-    installerResponse(response);
-    assert.equal(await response.text(), SCRIPT);
+    for (const { name, headers } of [...htmlRequests, ...installerRequests]) {
+        const response = await worker.dispatchFetch("https://gotpkg.dev/install.sh", { headers });
+        installerResponse(response);
+        assert.equal(await response.text(), SCRIPT, name);
+    }
 });
 
 await test("unavailable releases fail without caching or substituting a script", async context => {
     const { worker } = runtime(context, 404);
     for (const path of ["/", "/install.sh"]) {
         const response = await worker.dispatchFetch(`https://gotpkg.dev${path}`, {
-            headers: { Accept: "*/*" },
+            headers: { Accept: "*/*", "User-Agent": "curl/8.7.1" },
         });
         assert.equal(response.status, 502);
         assert.equal(response.headers.get("Cache-Control"), "no-store");
+        if (path === "/") rootVariation(response);
         assert.match(await response.text(), /installer.*not available/i);
     }
 });

@@ -1,5 +1,7 @@
 import { handle } from "@astrojs/cloudflare/handler";
 
+import { ROOT_VARIATION, wantsInstaller } from "./installer-routing.js";
+
 const INSTALLER = "https://github.com/gotpkg/pkg/releases/latest/download/install.sh";
 const MAX_AGE_SECONDS = 300;
 
@@ -9,10 +11,11 @@ export default {
         if (pathname === "/install.sh") return installer();
         if (pathname !== "/") return handle(request, env, context);
 
-        const acceptsHtml = (request.headers.get("Accept") ?? "").includes("text/html");
-        const response = acceptsHtml ? await handle(request, env, context) : await installer();
+        const response = wantsInstaller(request.headers)
+            ? await installer()
+            : await handle(request, env, context);
         const varied = new Response(response.body, response);
-        varied.headers.append("Vary", "Accept");
+        varied.headers.append("Vary", ROOT_VARIATION);
         return varied;
     },
 };

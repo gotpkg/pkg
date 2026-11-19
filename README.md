@@ -107,11 +107,11 @@ Oxc discovers `site/.oxfmtrc.jsonc`, which enables Astro formatting. If VS Code 
 
 The landing page and documentation include OpenGraph metadata in the initial HTML, without JavaScript. They share the supplied PNG at `/og-image.png`, with its dimensions and alternative text, and request large-image Twitter cards. Documentation pages retain their own titles, descriptions, and canonical URLs.
 
-The root's [installer routing](#installer-routing) still determines whether a sharing crawler receives HTML; metadata does not change that contract.
+Sharing crawlers receive HTML by default under the [installer routing](#installer-routing) contract, without a crawler allowlist.
 
 ### Installer routing
 
-The site's Worker runs before static assets for `/` and `/install.sh` only. `/install.sh` always serves `https://github.com/gotpkg/pkg/releases/latest/download/install.sh` as plain text. `/` serves the prerendered home page when the request's `Accept` header includes `text/html`, and the same installer otherwise, including when `Accept` is absent. Both root responses include `Vary: Accept`; user-agent strings do not select the response. Other paths keep their normal static-asset routing.
+The site's Worker runs before static assets for `/` and `/install.sh` only. `/install.sh` always serves `https://github.com/gotpkg/pkg/releases/latest/download/install.sh` as plain text. The root selects HTML when `Accept` explicitly lists `text/html` with positive quality (case-insensitive; omitted quality means one; zero or malformed quality is not an override). Otherwise, a first `User-Agent` product of `curl/<version>` or `Wget/<version>` selects the installer, matching the product name case-insensitively and requiring a nonempty version. Every other root request gets HTML, including unknown clients, missing headers, and wildcard or non-HTML Accept values. A curl token later in another client's user agent does not qualify. This convenience endpoint introduces no `406` response; custom downloaders and overridden user agents should use `/install.sh`. Query parameters do not select a representation. Root responses include both `Accept` and `User-Agent` in `Vary`, preserving other variation fields. Other paths keep their normal static-asset routing.
 
 A successful installer response is `200` and may be cached for at most five minutes. If GitHub cannot provide the installer, including before the first release, the Worker returns `502` with `Cache-Control: no-store`; it never substitutes a placeholder script. The [installation contract](crates/pkg/docs/setup.md#installing-pkg) describes how to use the script.
 
