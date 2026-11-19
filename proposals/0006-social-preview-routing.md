@@ -42,7 +42,7 @@ Platforms choose their own presentation and caching policies. Correct HTML and r
 
 ## Existing baseline
 
-The [site Worker](../site/app/worker.js) and [temporary installer Worker](../installer/worker/worker.js) choose HTML only when `Accept` contains `text/html`. The [current routing contract](../README.md#installer-routing) explicitly excludes user-agent selection. The site in [PR #5](https://github.com/gotpkg/pkg/pull/5) supplies prerendered OpenGraph metadata and the shared PNG; the live temporary Worker still supplies its placeholder page.
+The [site Worker](https://github.com/gotpkg/pkg/blob/dc1957e015164a3ea4b8b9669cda099f229bd68d/site/app/worker.js) and [temporary installer Worker](https://github.com/gotpkg/pkg/blob/dc1957e015164a3ea4b8b9669cda099f229bd68d/installer/worker/worker.js) choose HTML only when `Accept` contains `text/html`. The [current routing contract](https://github.com/gotpkg/pkg/blob/dc1957e015164a3ea4b8b9669cda099f229bd68d/README.md#installer-routing) explicitly excludes user-agent selection. The site in [PR #5](https://github.com/gotpkg/pkg/pull/5) supplies prerendered OpenGraph metadata and the shared PNG; the live temporary Worker still supplies its placeholder page.
 
 Preserve the installer bytes, release lookup, cache lifetime, failure responses, explicit script route, and static-asset routing. Change only how the root chooses its representation and how that choice is documented and tested.
 
@@ -68,7 +68,7 @@ Revise [README: Installer routing](../README.md#installer-routing) to replace th
 2. Otherwise, a first `User-Agent` product of `curl/<version>` or `Wget/<version>` selects the installer. Match these product names case-insensitively and require a nonempty version. A token mentioned later in another client's user-agent string does not qualify.
 3. Every other root request selects HTML, including absent headers, custom clients, and non-HTML Accept values. This is a two-representation convenience endpoint, not a general media-negotiation API; it introduces no `406` response.
 
-Apply this rule to the [site Worker](../site/app/worker.js) and the [temporary Worker](../installer/worker/worker.js) while the latter remains in the repository. Do not restore the temporary Worker if an approved cutover has already removed it. The temporary Worker keeps its placeholder HTML; this proposal does not turn it into a second website.
+Apply this rule to the [site Worker](../site/app/worker.js) and the [temporary Worker](https://github.com/gotpkg/pkg/blob/505b0dbdfc724f47efcfa65f881121710b89d99a/installer/worker/worker.js) while the latter remains in the repository. Do not restore the temporary Worker if an approved cutover has already removed it. The temporary Worker keeps its placeholder HTML; this proposal does not turn it into a second website.
 
 Every root response adds both `Accept` and `User-Agent` to `Vary`, preserving other variation fields. Keep the [existing script caching and failure contract](../README.md#installer-routing): HTML does not require a release fetch, and an unavailable installer remains an uncached failure for script requests. `/install.sh` and every non-root asset path retain their existing behavior. Query parameters do not select a representation.
 
@@ -77,7 +77,7 @@ Every root response adds both `Accept` and `User-Agent` to `Vary`, preserving ot
 - [Installation contract](../crates/pkg/docs/setup.md#installing-pkg): retain the standard curl command and identify `/install.sh` as the endpoint for custom HTTP clients or overridden user agents.
 - [New-machine guide](../guides/new-machine.md#limits-and-edge-cases) and [site installation page](../site/app/content/docs/docs/install.md#installer-options): explain that explicit endpoint without changing the normal installation workflow.
 - [Sharing preview reference](../README.md#sharing-previews): remove the Accept-only limitation once the new routing is implemented.
-- Extend the [built site Worker tests](../site/tests/installer.test.ts) and [stub tests](../installer/worker/worker.test.js) with the request matrix above, HTML quality-zero and mixed-case cases, an unrelated user agent containing a curl token, and the new `Vary` fields. Crawler-shaped root requests must expose the site's existing metadata without fetching an installer. Keep the unavailable-release and explicit-script tests.
+- Extend the [built site Worker tests](../site/tests/installer.test.ts) and [stub tests](https://github.com/gotpkg/pkg/blob/505b0dbdfc724f47efcfa65f881121710b89d99a/installer/worker/worker.test.js) with the request matrix above, HTML quality-zero and mixed-case cases, an unrelated user agent containing a curl token, and the new `Vary` fields. Crawler-shaped root requests must expose the site's existing metadata without fetching an installer. Keep the unavailable-release and explicit-script tests.
 
 ## Compatibility
 

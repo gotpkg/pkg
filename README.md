@@ -115,8 +115,6 @@ The site's Worker runs before static assets for `/` and `/install.sh` only. `/in
 
 A successful installer response is `200` and may be cached for at most five minutes. If GitHub cannot provide the installer, including before the first release, the Worker returns `502` with `Cache-Control: no-store`; it never substitutes a placeholder script. The [installation contract](crates/pkg/docs/setup.md#installing-pkg) describes how to use the script.
 
-The live stub in `installer/worker/` remains in service until an approved site deployment takes over `gotpkg.dev` and both representations are verified. Only then remove the stub's domain binding, delete the `gotpkg-dev` Worker, and remove its source and tasks.
-
 ### Website deployment
 
 The `Site` GitHub Actions workflow checks the exact revision before deploying relevant pushes to `main`, or a manual run on `main`. Set the repository variable `CLOUDFLARE_DEPLOY=true` to enable deployment. The `production` environment must allow only `main` and hold the `CLOUDFLARE_API_TOKEN` secret, `CLOUDFLARE_ACCOUNT_ID` variable, and `SITE_URL=https://gotpkg.dev`.
@@ -148,6 +146,6 @@ xtask/                  release helper: archives, the installer and its checksum
 
 Every pull request carries a Knope change file (`workbench change-files create`) or a `Release-Note: none` trailer. On `main`, the Prepare release workflow keeps a release pull request open; merging it runs the gate, builds, smoke-tests and attests the five archives, writes `install.sh` (the installer, which embeds the release's version) and `SHA256SUMS` (the archives' checksums) and installs pkg with them, then runs `knope release` to tag `v<version>` and publish the GitHub release with the archives, `install.sh` and `SHA256SUMS`.
 
-`https://gotpkg.dev` serves the latest release's `install.sh`. Until the site's Worker takes the domain over, the stub Worker in `installer/worker/` serves it: `/install.sh` is always the script, and `/` is the script for `curl` and a placeholder page for a browser. With `GOTPKG_DOMAIN` set to `true`, each release waits up to five minutes for `https://gotpkg.dev` and `https://gotpkg.dev/install.sh` to serve the new installer, and fails if they do not. Without the variable that job is skipped.
+The site Worker serves the latest release's installer through the endpoints described in [installer routing](#installer-routing). With `GOTPKG_DOMAIN` set to `true`, each release waits up to five minutes for `https://gotpkg.dev` and `https://gotpkg.dev/install.sh` to serve the new installer, and fails if they do not. Without the variable that job is skipped.
 
-Credentials: publishing the GitHub release uses the workflow's built-in `GITHUB_TOKEN`; no stored secret is needed. Deploying the stub Worker, `mise run installer:worker:deploy`, needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment.
+Publishing the GitHub release uses the workflow's built-in `GITHUB_TOKEN`; no stored secret is needed. Website deployments use the protected `production` environment described in [website deployment](#website-deployment).
