@@ -14,9 +14,10 @@ concurrency:
 
 jobs:
     # `mise run check` is the one definition of the blocking gate, and no git hook runs it. This
-    # job runs it on every pull request and push to `main`; release.yml and site.yml run it again
-    # before publishing or deploying. Agents wait for this job to pass before marking a pull
-    # request ready or merging it.
+    # job runs it on every pull request and push to `main`; release.yml runs it again before
+    # publishing. Agents wait for this job to pass before marking a pull request ready or merging
+    # it. Its caches live here because it runs pull-request code; the workflows that publish or
+    # deploy restore none.
     check:
         name: Check
         runs-on: ubuntu-latest
@@ -29,6 +30,18 @@ jobs:
                   # Pull-request code runs here; it gets no token to push with.
                   persist-credentials: false
             - uses: jdx/mise-action@v5
+            # After mise-action: the cache key includes the Rust toolchain mise installed. A failed
+            # run still saves, so a lint failure does not discard a finished compile.
+            - uses: Swatinem/rust-cache@v2
+              with:
+                  cache-on-failure: true
+            # Browsers are keyed by the exact Playwright version site/package.json pins.
+            - id: playwright
+              run: echo "version=$(jq -r '.devDependencies["@playwright/test"]' site/package.json)" >> "$GITHUB_OUTPUT"
+            - uses: actions/cache@v6
+              with:
+                  path: ~/.cache/ms-playwright
+                  key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
             - run: mise run check
 
     # The gate runs on Linux. These jobs build and test the CLI on the other systems its archives
