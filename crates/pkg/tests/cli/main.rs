@@ -19,4 +19,6 @@ mod remove;
 mod setup;
 mod support;
 #[cfg(unix)]
+mod terminal;
+#[cfg(unix)]
 mod upkeep;

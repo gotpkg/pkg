@@ -4,7 +4,7 @@
 
 Every command follows one contract:
 
-- **Results** are text for people by default. `--output json` writes the same result as one JSON document on stdout, compact when piped and indented on a terminal. mise's progress, warnings, and errors go to stderr.
+- **Results** are text for people by default. `--output json` writes the same result as one JSON document on stdout, compact when piped and indented on a terminal. Progress, warnings, and errors go to stderr: with text output on a terminal, `install`, `update`, `sync`, `remove`, and `prune` show their progress there as a live display, and otherwise mise's progress lines go to stderr as they arrive.
 - **Collections** return `items`, `hasMore`, and `nextCursor`; pass `nextCursor` back as `--cursor` until `hasMore` is false.
 - **Modifying commands** accept `--dry-run`, which makes the same checks and decisions as the real run and installs, uninstalls, and writes nothing. Receipts carry a `status` (`completed` or `dry-run`) and what changed.
 - **Failures** write a message and hints to stderr, or with `--output json` one JSON document, and exit with the code's status (see below). Nothing is written to stdout.
@@ -130,7 +130,7 @@ Install packages and record them in your mise config.
 
 Install packages and record them in your mise config.
 
-Installs each package with mise and declares it in your global mise config, so `mise bootstrap` installs it again on a new machine. Homebrew formulae (`brew:`), casks (`brew-cask:`), App Store apps (`mas:`), and every other mise package manager go in `[bootstrap.packages]` of the file mise's `write_targets.packages` setting names; tools (`npm:prettier`, `github:cli/cli`, or a registry name such as `ripgrep`) go in `[tools]` of the `write_targets.tools` file, at `latest` unless you pass `@<version>`. A package some config already declares is installed where it is declared, and one that is already installed is left alone, so installing twice is safe. Packages install one at a time in the order given; when mise fails, pkg takes that package's new declaration back out and stops, and the error lists what was installed before it. mise's progress goes to stderr.
+Installs each package with mise and declares it in your global mise config, so `mise bootstrap` installs it again on a new machine. Homebrew formulae (`brew:`), casks (`brew-cask:`), App Store apps (`mas:`), and every other mise package manager go in `[bootstrap.packages]` of the file mise's `write_targets.packages` setting names; tools (`npm:prettier`, `github:cli/cli`, or a registry name such as `ripgrep`) go in `[tools]` of the `write_targets.tools` file, at `latest` unless you pass `@<version>`. A package some config already declares is installed where it is declared, and one that is already installed is left alone, so installing twice is safe. Packages install one at a time in the order given; when mise fails, pkg takes that package's new declaration back out and stops, and the error lists what was installed before it. With text output on a terminal, pkg shows its progress as a live display on stderr; otherwise mise's progress lines go to stderr as they arrive.
 
 - **Effect:** modifies installed software and your global mise config
 - **Requires:** `mise`
@@ -278,7 +278,7 @@ Uninstall packages and take them out of your mise config.
 
 Uninstall packages and take them out of your mise config.
 
-Takes each package out of the config file mise writes to and uninstalls it. Homebrew formulae and casks are uninstalled by `mise bootstrap packages prune`, which removes every package no config declares, together with dependencies nothing else needs; pkg first checks that the prune would remove nothing besides what you named, and refuses with PRECONDITION_FAILED, changing nothing, when other undeclared packages are installed (`details.undeclared`; see `pkg prune --dry-run`). Tools are removed with `mise unuse`, which also uninstalls versions no other config uses. mise cannot uninstall other managers' packages, such as App Store apps; pkg takes them out of the config and lists them under `leftInstalled`. pkg edits only mise's write target: a package declared in another file, such as a config shared with other machines, fails with PRECONDITION_FAILED. --dry-run makes the same checks and changes nothing.
+Takes each package out of the config file mise writes to and uninstalls it. Homebrew formulae and casks are uninstalled by `mise bootstrap packages prune`, which removes every package no config declares, together with dependencies nothing else needs; pkg first checks that the prune would remove nothing besides what you named, and refuses with PRECONDITION_FAILED, changing nothing, when other undeclared packages are installed (`details.undeclared`; see `pkg prune --dry-run`). Tools are removed with `mise unuse`, which also uninstalls versions no other config uses. mise cannot uninstall other managers' packages, such as App Store apps; pkg takes them out of the config and lists them under `leftInstalled`. pkg edits only mise's write target: a package declared in another file, such as a config shared with other machines, fails with PRECONDITION_FAILED. --dry-run makes the same checks and changes nothing. With text output on a terminal, pkg shows its progress as a live display on stderr; otherwise mise's progress lines go to stderr as they arrive.
 
 - **Effect:** modifies installed software and your global mise config
 - **Requires:** `mise`
@@ -851,7 +851,7 @@ Update installed packages to their newest versions.
 
 Update installed packages to their newest versions.
 
-Updates the named packages, or with none mise itself and then every installed package and global tool: `mise self-update`, then `mise bootstrap packages upgrade` for Homebrew, the App Store, and the other package managers, and `mise upgrade --global` for tools, which include pkg once pkg is handed to mise. A mise that a package manager installed is left to it and listed under `skipped`; when `mise self-update` fails, nothing else changes. Packages that are declared but not installed are left to `pkg sync`. The receipt lists each package whose installed version changed, mise first. --dry-run lists what would be updated, as `pkg outdated` does, and changes nothing. mise's progress goes to stderr.
+Updates the named packages, or with none mise itself and then every installed package and global tool: `mise self-update`, then `mise bootstrap packages upgrade` for Homebrew, the App Store, and the other package managers, and `mise upgrade --global` for tools, which include pkg once pkg is handed to mise. A mise that a package manager installed is left to it and listed under `skipped`; when `mise self-update` fails, nothing else changes. Packages that are declared but not installed are left to `pkg sync`. The receipt lists each package whose installed version changed, mise first. --dry-run lists what would be updated, as `pkg outdated` does, and changes nothing. With text output on a terminal, pkg shows its progress as a live display on stderr; otherwise mise's progress lines go to stderr as they arrive.
 
 - **Effect:** modifies installed software
 - **Requires:** `mise`, `network`
@@ -971,7 +971,7 @@ Install everything your mise config declares that is missing.
 
 Install everything your mise config declares that is missing.
 
-Brings this machine in line with the config's packages and tools: `mise bootstrap packages apply` installs every missing `[bootstrap.packages]` entry (and removes packages declared with `state = "absent"`, where the manager can), and `mise install` installs every missing global tool. Use it after pulling config changes made on another machine; unlike `mise bootstrap` it leaves dotfiles, services, and settings alone. Packages whose manager this machine lacks, such as `apt:` on macOS, are skipped. --dry-run lists what is missing and changes nothing. mise's progress goes to stderr.
+Brings this machine in line with the config's packages and tools: `mise bootstrap packages apply` installs every missing `[bootstrap.packages]` entry (and removes packages declared with `state = "absent"`, where the manager can), and `mise install` installs every missing global tool. Use it after pulling config changes made on another machine; unlike `mise bootstrap` it leaves dotfiles, services, and settings alone. Packages whose manager this machine lacks, such as `apt:` on macOS, are skipped. --dry-run lists what is missing and changes nothing. With text output on a terminal, pkg shows its progress as a live display on stderr; otherwise mise's progress lines go to stderr as they arrive.
 
 - **Effect:** modifies installed software
 - **Requires:** `mise`
@@ -1052,7 +1052,7 @@ Uninstall Homebrew packages no config declares.
 
 Uninstall Homebrew packages no config declares.
 
-Runs `mise bootstrap packages prune` for formulae and casks: it uninstalls every formula that no config declares and no declared package needs, and every cask mise installed that no config declares. Casks that update themselves or run install scripts cannot be proven unchanged and are kept unless you pass --force, which removes the files mise recorded but not what the cask's own scripts created. Packages that `pkg remove` would otherwise take with it show up here first. --dry-run lists what would be uninstalled and changes nothing.
+Runs `mise bootstrap packages prune` for formulae and casks: it uninstalls every formula that no config declares and no declared package needs, and every cask mise installed that no config declares. Casks that update themselves or run install scripts cannot be proven unchanged and are kept unless you pass --force, which removes the files mise recorded but not what the cask's own scripts created. Packages that `pkg remove` would otherwise take with it show up here first. --dry-run lists what would be uninstalled and changes nothing. With text output on a terminal, pkg shows its progress as a live display on stderr; otherwise mise's progress lines go to stderr as they arrive.
 
 - **Effect:** modifies installed software
 - **Requires:** `mise`

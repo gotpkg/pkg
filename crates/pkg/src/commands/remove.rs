@@ -4,9 +4,10 @@ use pkg_core::{ReceiptStatus, RemoveReceipt, RemoveRequest};
 use schemars::schema_for;
 use serde_json::{Value, json};
 
-use super::common::{PACKAGES, execute, for_people, join_words};
+use super::common::{PACKAGES, execute_change, for_people, join_words};
 use crate::failure::{ErrorCode, Failure};
 use crate::invocation::Invocation;
+use crate::progress::shows_display;
 use crate::registry::{CommandSpec, DRY_RUN, Effect, Example, Requirement};
 use crate::response::{RenderOutput, Response};
 
@@ -25,7 +26,9 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
         other managers' packages, such as App Store apps; pkg takes them out of the config and \
         lists them under `leftInstalled`. pkg edits only mise's write target: a package declared \
         in another file, such as a config shared with other machines, fails with \
-        PRECONDITION_FAILED. --dry-run makes the same checks and changes nothing.",
+        PRECONDITION_FAILED. --dry-run makes the same checks and changes nothing. With text \
+        output on a terminal, pkg shows its progress as a live display on stderr; otherwise \
+        mise's progress lines go to stderr as they arrive.",
     arguments: &[PACKAGES, DRY_RUN],
     effect: Effect::Modifies("installed software and your global mise config"),
     requires: &[Requirement::Mise],
@@ -94,7 +97,8 @@ impl RenderOutput for RemoveReceipt {
 fn remove(invocation: &Invocation) -> Result<Response, Failure> {
     let request =
         RemoveRequest { packages: invocation.strings("packages"), mode: invocation.mode() };
-    execute(invocation, |client, progress| client.remove(request, progress))
+    let live = shows_display(invocation.output);
+    execute_change(invocation, live, |client, progress| client.remove(request, progress))
 }
 
 #[cfg(test)]

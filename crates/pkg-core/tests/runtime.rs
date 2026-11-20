@@ -112,9 +112,10 @@ fn invalid_library_requests_fail_before_mise_or_files_are_touched() {
     let mut client = Client::new(configuration).unwrap();
     for packages in [vec![], vec!["brew:".into()], vec!["not a name".into()]] {
         let failure = client
-            .install(InstallRequest { packages, mode: Mode::Apply }, &mut |_| {
-                panic!("invalid request emitted progress")
-            })
+            .install(
+                InstallRequest { packages, mode: Mode::Apply, report_plans: false },
+                &mut |_| panic!("invalid request emitted progress"),
+            )
             .err()
             .unwrap();
         assert_eq!(failure.kind, ErrorKind::InvalidArgument);

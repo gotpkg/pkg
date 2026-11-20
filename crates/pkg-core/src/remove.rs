@@ -14,10 +14,10 @@ use serde::Serialize;
 
 use crate::common::{Machine, ReceiptStatus, absolute, join_words};
 use crate::declarations::remove_package;
-use crate::mise::{ConfigTarget, Mise, removals};
+use crate::mise::{ConfigTarget, Mise, removals, uninstalls};
 use crate::package::Package;
 use crate::requests::validate_packages;
-use crate::{Client, Error, ErrorDetails, Outcome, Progress, Recovery, RemoveRequest};
+use crate::{Client, Error, ErrorDetails, Outcome, Progress, Recovery, RemoveRequest, Step};
 
 /// The outcome of `pkg remove`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
@@ -71,6 +71,7 @@ impl Client {
         progress: &mut dyn FnMut(Progress<'_>),
     ) -> Result<Outcome<RemoveReceipt>, Error> {
         validate_packages(&request.packages, true)?;
+        progress(Progress::Step(Step::CheckPrune));
         let machine = Machine::load(&self.settings)?;
         let mut targets: Vec<(Package, ConfigTarget)> = Vec::new();
         for package in machine.packages(&request.packages) {
@@ -120,6 +121,7 @@ impl Client {
             }));
         }
 
+        progress(Progress::Step(Step::Undeclare));
         for (index, (package, target)) in targets.iter().enumerate() {
             let outcome = if package.is_tool() {
                 mise.run(
@@ -138,12 +140,15 @@ impl Client {
             outcome.map_err(|error| after_removals(error, &removed[..index]))?;
         }
         let mut uninstalled: Vec<(String, Option<String>)> = Vec::new();
-        for (_, selection) in &managers {
+        for (manager, selection) in &managers {
+            progress(Progress::Step(Step::PlanPrune { manager }));
             let output = mise
                 .query(&prune_args("--dry-run", selection))
                 .map_err(|error| after_removals(error, &removed))?;
             let plan = removals(&output.combined());
             if !plan.is_empty() {
+                progress(Progress::Step(Step::Uninstall { manager }));
+                progress(Progress::Plan(&uninstalls(&plan)));
                 mise.run(&prune_args("--yes", selection), progress)
                     .map_err(|error| after_removals(error, &removed))?;
             }

@@ -4,8 +4,8 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::common::{Machine, ReceiptStatus};
-use crate::mise::removals;
-use crate::{Client, Error, Outcome, Progress, PruneRequest};
+use crate::mise::{removals, uninstalls};
+use crate::{Client, Error, Outcome, Progress, PruneRequest, Step};
 
 /// The outcome of `pkg prune`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
@@ -29,11 +29,17 @@ impl Client {
         request: PruneRequest,
         progress: &mut dyn FnMut(Progress<'_>),
     ) -> Result<Outcome<PruneReceipt>, Error> {
+        let managers = ["brew", "brew-cask"];
+        // Reading the config belongs to finding the first manager's undeclared packages.
+        progress(Progress::Step(Step::PlanPrune { manager: managers[0] }));
         let machine = Machine::load(&self.settings)?;
         let mise = &machine.environment.mise;
         let dry_run = request.mode.is_dry_run();
         let mut uninstalled = Vec::new();
-        for manager in ["brew", "brew-cask"] {
+        for (index, manager) in managers.into_iter().enumerate() {
+            if index > 0 {
+                progress(Progress::Step(Step::PlanPrune { manager }));
+            }
             let mut selection = vec!["--manager", manager];
             if request.force && manager == "brew-cask" {
                 selection.push("--force");
@@ -42,6 +48,8 @@ impl Client {
             args.extend(&selection);
             let plan = removals(&mise.query(&args)?.combined());
             if !plan.is_empty() && !dry_run {
+                progress(Progress::Step(Step::Uninstall { manager }));
+                progress(Progress::Plan(&uninstalls(&plan)));
                 args[3] = "--yes";
                 mise.run(&args, progress)?;
             }
