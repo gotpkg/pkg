@@ -4,6 +4,8 @@
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use std::thread::ThreadId;
 
 use pkg_core::{
@@ -12,19 +14,32 @@ use pkg_core::{
 };
 use tempfile::TempDir;
 
-/// A fake mise that logs every call to `$HOME/calls` and answers by `case "$*"` in `answers`.
+/// The fake mise every test runs: it logs each call to `$HOME/calls` and answers from
+/// `$HOME/answers.sh`. It is written once, before any test starts a process, because Linux
+/// refuses to run a file another thread's fork still holds open for writing (ETXTBSY).
+static FAKE_MISE: LazyLock<PathBuf> = LazyLock::new(|| {
+    let directory = Path::new(env!("CARGO_TARGET_TMPDIR")).join("steps");
+    fs::create_dir_all(&directory).unwrap();
+    let executable = directory.join("mise");
+    let script =
+        "#!/bin/sh\nshift 2\nprintf '%s\\n' \"$*\" >> \"$HOME/calls\"\n. \"$HOME/answers.sh\"\n";
+    fs::write(&executable, script).unwrap();
+    fs::set_permissions(&executable, fs::Permissions::from_mode(0o755)).unwrap();
+    executable
+});
+
+/// A home whose fake mise answers by `case "$*"` in `answers`.
 fn fixture(answers: &str) -> (TempDir, Settings) {
+    let mise = FAKE_MISE.as_os_str().to_os_string();
     let root = TempDir::new().unwrap();
-    let executable = root.path().join("mise");
-    let script = format!(
-        "#!/bin/sh\nshift 2\nprintf '%s\\n' \"$*\" >> \"$HOME/calls\"\ncase \"$*\" in\n{answers}\n\
+    let answers = format!(
+        "case \"$*\" in\n{answers}\n\
          'backends ls') printf 'npm';;\n\
          'settings get write_targets.'*) printf 'is not set' >&2; exit 1;;\n\
          esac\n"
     );
-    fs::write(&executable, script).unwrap();
-    fs::set_permissions(&executable, fs::Permissions::from_mode(0o755)).unwrap();
-    let settings = Settings::new(root.path().to_path_buf(), executable.into_os_string());
+    fs::write(root.path().join("answers.sh"), answers).unwrap();
+    let settings = Settings::new(root.path().to_path_buf(), mise);
     (root, settings)
 }
 
