@@ -2,7 +2,7 @@
 id: proposal.0003
 title: Progress Display for Package Changes
 authors: [Mark]
-status: awaiting-implementation
+status: active-review
 pull-request: https://github.com/gotpkg/pkg/pull/3
 issues: []
 supersedes: []
