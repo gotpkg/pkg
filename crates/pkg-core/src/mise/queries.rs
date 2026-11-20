@@ -296,7 +296,7 @@ impl Mise<'_> {
     }
 }
 
-fn parse<T: for<'de> Deserialize<'de>>(text: &str, command: &str) -> Result<T, Failure> {
+pub(crate) fn parse<T: for<'de> Deserialize<'de>>(text: &str, command: &str) -> Result<T, Failure> {
     serde_json::from_str(text).map_err(|error| {
         Failure::new(
             ErrorKind::MiseFailed,

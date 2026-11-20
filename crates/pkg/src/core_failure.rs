@@ -48,7 +48,7 @@ impl From<Error> for Failure {
 
 fn hint(recovery: Recovery) -> String {
     match recovery {
-        Recovery::InstallMise => "Install mise: curl https://mise.run | sh".into(),
+        Recovery::InstallMise => format!("Install mise: {NAME} setup"),
         Recovery::SelectMise => format!("Or point {MISE_VARIABLE} at the mise executable"),
         Recovery::CheckMiseVersion => {
             "Check that mise is 2026.11.9 or newer: mise --version".into()
@@ -77,6 +77,19 @@ fn hint(recovery: Recovery) -> String {
         }
         Recovery::Cursor => {
             "Pass the nextCursor value from the previous page, or omit --cursor".into()
+        }
+        Recovery::UpdateMise => "Update mise: mise self-update".into(),
+        Recovery::UpdateMiseWithItsPackageManager => {
+            "Update mise with the package manager that installed it".into()
+        }
+        Recovery::MoveAside(path) => {
+            format!("Move {} aside, then run the same command again", for_people(path))
+        }
+        Recovery::RunInTerminal => {
+            "Run the same command in a terminal, where mise can ask for what it needs".into()
+        }
+        Recovery::RunAgain => {
+            "Fix the cause and run the same command again; parts already done are left alone".into()
         }
     }
 }

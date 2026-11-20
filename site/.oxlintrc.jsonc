@@ -1,0 +1,168 @@
+{
+    "$schema": "node_modules/oxlint/configuration_schema.json",
+    // Oxlint lints TypeScript, TSX and the frontmatter and scripts of `.astro` files; ESLint
+    // (eslint.config.js) lints `.astro` templates, which Oxlint cannot read yet. Oxlint's default
+    // plugins are named because listing plugins replaces them.
+    "plugins": ["eslint", "typescript", "unicorn", "oxc", "vitest"],
+    "jsPlugins": ["eslint-plugin-perfectionist"],
+    "categories": { "correctness": "error" },
+    "env": { "builtin": true },
+    "ignorePatterns": [
+        "dist/**",
+        ".astro/**",
+        ".wrangler/**",
+        "test-results/**",
+        "playwright-report/**"
+    ],
+    "options": {
+        // Type-aware rules run through oxlint-tsgolint. Type errors themselves are reported
+        // by tsrs and `astro check` (`mise run site:typecheck`), not here.
+        "typeAware": true
+    },
+    // ESLint's `js.configs.recommended` and typescript-eslint's `recommended`.
+    "rules": {
+        "constructor-super": "error",
+        "for-direction": "error",
+        "getter-return": "error",
+        "no-async-promise-executor": "error",
+        "no-case-declarations": "error",
+        "no-class-assign": "error",
+        "no-compare-neg-zero": "error",
+        "no-cond-assign": "error",
+        "no-const-assign": "error",
+        "no-constant-binary-expression": "error",
+        "no-constant-condition": "error",
+        "no-control-regex": "error",
+        "no-debugger": "error",
+        "no-delete-var": "error",
+        "no-dupe-class-members": "error",
+        "no-dupe-else-if": "error",
+        "no-dupe-keys": "error",
+        "no-duplicate-case": "error",
+        "no-empty": "error",
+        "no-empty-character-class": "error",
+        "no-empty-pattern": "error",
+        "no-empty-static-block": "error",
+        "no-ex-assign": "error",
+        "no-extra-boolean-cast": "error",
+        "no-fallthrough": "error",
+        "no-func-assign": "error",
+        "no-global-assign": "error",
+        "no-import-assign": "error",
+        "no-invalid-regexp": "error",
+        "no-irregular-whitespace": "error",
+        "no-loss-of-precision": "error",
+        "no-misleading-character-class": "error",
+        "no-new-native-nonconstructor": "error",
+        "no-nonoctal-decimal-escape": "error",
+        "no-obj-calls": "error",
+        "no-prototype-builtins": "error",
+        "no-redeclare": "error",
+        "no-regex-spaces": "error",
+        "no-self-assign": "error",
+        "no-setter-return": "error",
+        "no-shadow-restricted-names": "error",
+        "no-sparse-arrays": "error",
+        "no-this-before-super": "error",
+        "no-unassigned-vars": "error",
+        "no-unexpected-multiline": "error",
+        "no-unreachable": "error",
+        "no-unsafe-finally": "error",
+        "no-unsafe-negation": "error",
+        "no-unsafe-optional-chaining": "error",
+        "no-unused-labels": "error",
+        "no-unused-private-class-members": "error",
+        "no-unused-vars": "error",
+        "no-useless-backreference": "error",
+        "no-useless-catch": "error",
+        "no-useless-escape": "error",
+        "no-with": "error",
+        "preserve-caught-error": "error",
+        "require-yield": "error",
+        "use-isnan": "error",
+        "valid-typeof": "error",
+        "no-array-constructor": "error",
+        "no-unused-expressions": "error",
+        "typescript/ban-ts-comment": "error",
+        "typescript/no-duplicate-enum-values": "error",
+        "typescript/no-explicit-any": "error",
+        "typescript/no-extra-non-null-assertion": "error",
+        "typescript/no-misused-new": "error",
+        "typescript/no-non-null-asserted-optional-chain": "error",
+        "typescript/no-require-imports": "error",
+        "typescript/no-this-alias": "error",
+        "typescript/no-unnecessary-type-constraint": "error",
+        "typescript/no-unsafe-declaration-merging": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/no-wrapper-object-types": "error",
+        "typescript/prefer-as-const": "error",
+        "typescript/prefer-namespace-keyword": "error",
+        "typescript/triple-slash-reference": "error",
+        "prefer-const": "error",
+        // Colocating a component's types in a `namespace` (`Carousel.Props`) is allowed.
+        "typescript/no-namespace": "off",
+        // `interface Props extends VariantProps<typeof button> {}` derives an Astro component's
+        // props from cva variants.
+        "typescript/no-empty-object-type": "off"
+    },
+    "overrides": [
+        {
+            // TypeScript reports these itself, so typescript-eslint turns them off for
+            // TypeScript files and adds the ES2015 idioms instead.
+            "files": ["**/*.{ts,tsx,mts,cts}"],
+            "rules": {
+                "constructor-super": "off",
+                "getter-return": "off",
+                "no-class-assign": "off",
+                "no-const-assign": "off",
+                "no-dupe-class-members": "off",
+                "no-dupe-keys": "off",
+                "no-func-assign": "off",
+                "no-import-assign": "off",
+                "no-new-native-nonconstructor": "off",
+                "no-obj-calls": "off",
+                "no-redeclare": "off",
+                "no-setter-return": "off",
+                "no-this-before-super": "off",
+                "no-unreachable": "off",
+                "no-unsafe-negation": "off",
+                "no-with": "off",
+                "no-var": "error",
+                "prefer-rest-params": "error",
+                "prefer-spread": "error"
+            }
+        },
+        {
+            // Oxlint reads only an `.astro` file's frontmatter and scripts; ESLint lints the
+            // template.
+            "files": ["**/*.astro"],
+            "env": { "astro": true, "node": true }
+        },
+        {
+            // React islands and hooks. Only app/: Playwright's fixture callback `use` in e2e/ is
+            // not a hook.
+            "files": ["app/**/*.{ts,tsx}"],
+            "plugins": ["react", "jsx-a11y"],
+            "rules": {
+                "perfectionist/sort-jsx-props": "warn",
+                // eslint-plugin-react-hooks' `recommended-latest`, which Oxlint implements
+                // natively: the rules of hooks and the React Compiler's rules.
+                "react/rules-of-hooks": "error",
+                "react/exhaustive-deps": "warn",
+                "react/static-components": "error",
+                "react/use-memo": "error",
+                "react/void-use-memo": "error",
+                "react/preserve-manual-memoization": "error",
+                "react/incompatible-library": "warn",
+                "react/immutability": "error",
+                "react/globals": "error",
+                "react/refs": "error",
+                "react/set-state-in-effect": "error",
+                "react/error-boundaries": "error",
+                "react/purity": "error",
+                "react/set-state-in-render": "error",
+                "react/unsupported-syntax": "warn"
+            }
+        }
+    ]
+}

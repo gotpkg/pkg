@@ -1,0 +1,53 @@
+:root {
+    color-scheme: light dark;
+    --page-background: light-dark(#f7f5ed, #161619);
+    --page-foreground: light-dark(#161619, #f7f5ed);
+    --secondary: light-dark(#585852, #b8b8b2);
+    --border: light-dark(#d4d1c5, #3a3a3d);
+    --border-strong: light-dark(#bdbbb2, #626264);
+    --link-underline: light-dark(#bab8ae, #777773);
+    --control-hover: light-dark(#e9e6db, #29292e);
+    --primary-background: light-dark(#161619, #f7f5ed);
+    --primary-foreground: light-dark(#ffffff, #161619);
+    --primary-hover: light-dark(#353539, #e4e1d5);
+    --code-surface: light-dark(#161619, #222225);
+    --campaign-background: light-dark(#161619, #101013);
+    --parcel-shadow: light-dark(#dedcd2, #08080a);
+    --display-emphasis: light-dark(#161619, #fed90a);
+    --display-underline: light-dark(#fed90a, #50451a);
+    --focus: light-dark(#336ad6, #fed90a);
+}
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+:root[data-theme="dark"] {
+    color-scheme: dark;
+}
+.logo-dark {
+    display: none;
+}
+:root[data-theme="dark"] .logo-light {
+    display: none;
+}
+:root[data-theme="dark"] .logo-dark {
+    display: block;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .logo-light {
+        display: none;
+    }
+    :root:not([data-theme="light"]) .logo-dark {
+        display: block;
+    }
+}
+.hero .button-dark {
+    background: var(--primary-background);
+    color: var(--primary-foreground);
+    transition-property: transform;
+}
+.hero .button-dark:hover {
+    background: var(--primary-hover);
+}
+h1 em {
+    color: var(--display-emphasis);
+}

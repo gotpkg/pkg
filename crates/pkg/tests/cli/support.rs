@@ -5,6 +5,7 @@
 //! local HTTP server that serves fixed documents by path.
 
 use std::collections::{BTreeMap, HashMap};
+use std::ffi::OsStr;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -14,6 +15,34 @@ use std::time::SystemTime;
 
 use serde_json::{Value, json};
 use tempfile::TempDir;
+
+/// The only directories on `PATH` when pkg runs: enough for the fake mise's shell script.
+pub(crate) const SYSTEM_PATH: &str = "/usr/bin:/bin:/usr/sbin:/sbin";
+
+/// The version of the pkg under test, which the installer's copy and mise's pkg report too.
+pub(crate) const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// What `mise use -g github:gotpkg/pkg@latest` leaves behind: mise's shim for pkg, which runs a
+/// pkg that reports the version pkg itself was built as.
+pub(crate) const INSTALLS_PKG: &str = concat!(
+    r#"shims="$HOME/.local/share/mise/shims"
+mkdir -p "$shims"
+printf '#!/bin/sh\necho "pkg "#,
+    env!("CARGO_PKG_VERSION"),
+    r#""\n' > "$shims/pkg"
+chmod +x "$shims/pkg"
+"#
+);
+
+/// A stand-in for mise's installer at https://mise.run: it puts the fake mise where
+/// `MISE_INSTALL_PATH` says.
+pub(crate) const FAKE_MISE_INSTALLER: &str = r#"#!/bin/sh
+set -e
+mkdir -p "$(dirname "$MISE_INSTALL_PATH")"
+cp "$FAKE_MISE/../bin/mise" "$MISE_INSTALL_PATH"
+chmod +x "$MISE_INSTALL_PATH"
+echo "mise: installed to $MISE_INSTALL_PATH" >&2
+"#;
 
 const FAKE_MISE: &str = r#"#!/bin/sh
 # Answers from $FAKE_MISE/answers/<key>[.<n>], where <key> is the arguments with the home
@@ -159,6 +188,8 @@ impl Fixture {
         fixture.mise(&["settings", "get", "write_targets.tools"]).stdout(target);
         fixture.mise(&["backends", "ls"]).stdout("aqua\ncargo\ncore\ngithub\nnpm\n");
         fixture.mise(&["version"]).stdout("2026.11.9 macos-arm64 (2026-11-16)\n");
+        fixture.mise(&["version", "--json"]).json(&mise_version("2026.11.9", "2026.11.9"));
+        fixture.mise(&["self-update", "--yes"]).stdout("");
         let config = fixture.config_dir();
         fixture.mise(&["config", "ls", "--json"]).json(&json!([
             { "path": config.join("config.macos.toml"), "tools": ["npm:prettier"] },
@@ -216,6 +247,11 @@ impl Fixture {
                 .declares(package);
         }
         fixture.mise(&["use", "-g", "ripgrep@latest"]).stdout("mise ripgrep@15.2.0 installed\n");
+        fixture.mise(&["use", "-g", "github:gotpkg/pkg@latest"]).runs(INSTALLS_PKG);
+        fixture.mise(&["bootstrap", "--dry-run"]).stdout("mise bootstrap: tools: nothing to do\n");
+        fixture
+            .mise(&["bootstrap"])
+            .stdout("bootstrap: follow-up\n  - start a new login session for the login shell\n");
         fixture
             .mise(&["bootstrap", "packages", "prune", "--dry-run", "--manager", "brew"])
             .nth(2)
@@ -301,8 +337,14 @@ impl Fixture {
 
     /// The answer the fake mise gives to `mise -C <home> <args>`.
     pub(crate) fn mise(&self, args: &[&str]) -> Answer {
+        self.mise_in(&self.home(), args)
+    }
+
+    /// The answer the fake mise gives to `mise -C <directory> <args>`.
+    pub(crate) fn mise_in(&self, directory: &Path, args: &[&str]) -> Answer {
         let home = self.home().display().to_string();
-        let mut words = vec!["-C", home.as_str()];
+        let directory = directory.display().to_string();
+        let mut words = vec!["-C", directory.as_str()];
         words.extend_from_slice(args);
         let key: String = words
             .join(" ")
@@ -335,6 +377,20 @@ impl Fixture {
             .insert(path.to_string(), (200, body.to_string()));
     }
 
+    /// Serves `body` as plain text at `path` on the fake catalogs.
+    pub(crate) fn serve_text(&self, path: &str, body: &str) {
+        self.catalog
+            .routes
+            .lock()
+            .expect("the routes")
+            .insert(path.to_string(), (200, body.to_string()));
+    }
+
+    /// The fake catalogs' base URL.
+    pub(crate) fn catalog_url(&self) -> &str {
+        &self.catalog.url
+    }
+
     /// Answers `path` with an error status.
     pub(crate) fn fail(&self, path: &str, status: u16) {
         self.catalog
@@ -345,12 +401,18 @@ impl Fixture {
     }
 
     pub(crate) fn run(&self, args: &[&str]) -> Outcome {
+        self.run_with(args, &[])
+    }
+
+    /// `run` with `env` applied on top of the fixture's environment; `None` unsets a variable.
+    /// `PATH` holds only the system directories, so no mise or pkg of the host's is found.
+    pub(crate) fn run_with(&self, args: &[&str], env: &[(&str, Option<&OsStr>)]) -> Outcome {
         let mut command = Command::new(env!("CARGO_BIN_EXE_pkg"));
         command
             .args(args)
             .current_dir(self.dir.path())
             .env_clear()
-            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("PATH", SYSTEM_PATH)
             .env("HOME", self.home())
             .env("PKG_MISE", self.path("bin/mise"))
             .env("FAKE_MISE", self.path("mise"))
@@ -360,12 +422,25 @@ impl Fixture {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        for (key, value) in env {
+            match value {
+                Some(value) => command.env(key, value),
+                None => command.env_remove(key),
+            };
+        }
         let output = command.output().expect("pkg runs");
         Outcome {
             status: output.status.code().unwrap_or(-1),
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
             stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         }
+    }
+
+    /// Marks the fake mise as one a package manager installed, which mise's packaging contract
+    /// signals with a file under its install prefix (the directory above `bin/`).
+    pub(crate) fn disable_mise_self_update(&self) {
+        std::fs::create_dir_all(self.path("lib")).expect("the prefix's lib directory");
+        std::fs::write(self.path("lib/.disable-self-update"), "").expect("the marker");
     }
 
     /// `run` with `--output json`.
@@ -432,6 +507,12 @@ impl Answer {
         self
     }
 
+    /// Runs `script` with `sh` before answering, in mise's environment.
+    pub(crate) fn runs(self, script: &str) -> Answer {
+        std::fs::write(self.directory.join("run"), script).expect("run");
+        self
+    }
+
     /// Appends `"<package>" = "latest"` to the Mac config, as `mise bootstrap packages use`
     /// does; the config ends in `[bootstrap.packages]`.
     pub(crate) fn declares(self, package: &str) -> Answer {
@@ -473,6 +554,17 @@ pub(crate) fn status(extra: &[(&str, &str, Option<&str>)]) -> Value {
         })
         .collect();
     Value::Object(managers)
+}
+
+/// `mise version --json` for a mise at `current` that knows of `latest`.
+pub(crate) fn mise_version(current: &str, latest: &str) -> Value {
+    json!({
+        "version": format!("{current} macos-arm64 (2026-11-16)"),
+        "latest": latest,
+        "os": "macos",
+        "arch": "arm64",
+        "build_time": "2026-11-16 10:40:41 +00:00",
+    })
 }
 
 fn tool(version: &str, config: &Path) -> Value {

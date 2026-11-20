@@ -20,7 +20,14 @@
         "Cargo.lock",
         "mise.lock",
         "CHANGELOG.md",
-        "crates/pkg/docs/cli.md"
+        "crates/pkg/docs/cli.md",
+        "**/node_modules/**",
+        "site/dist/**",
+        "site/.astro/**",
+        "site/.wrangler/**",
+        "site/test-results/**",
+        "site/playwright-report/**",
+        "site/pnpm-lock.yaml"
     ],
     "plugins": [
         "https://plugins.dprint.dev/markdown-0.29.0.wasm",

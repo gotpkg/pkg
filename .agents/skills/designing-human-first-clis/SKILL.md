@@ -15,7 +15,7 @@ Every result is one value with two renderings through the CLI's `RenderOutput`: 
 
 ## For people (the default)
 
-- **Commands are verbs a person already knows.** `install`, `remove`, `list`, `search`, `info`, `outdated`, `upgrade`. Give familiar aliases (`rm`, `uninstall`, `ls`, `i`) rather than inventing new words. Keep arguments positional when there is one obvious thing to act on.
+- **Commands are verbs a person already knows.** `install`, `remove`, `list`, `search`, `info`, `outdated`, `update`. Give familiar aliases (`rm`, `uninstall`, `ls`, `i`) rather than inventing new words. Keep arguments positional when there is one obvious thing to act on.
 - **Accept the names people see elsewhere.** A package is written the way mise and Homebrew documentation write it (`brew:wget`, `brew-cask:iina`); never invent an identifier format.
 - **`--help` is a short orientation:** what the tool does, how to name things, the everyday commands with one-line summaries, and a few examples. It is not the catalogue: agent commands are hidden from the list and named in one closing line.
 - **Text says what happened in a sentence,** names the file or package it touched, and abbreviates the home directory as `~`. Tables align their columns. Say "Dry run: nothing was ..." at the end of every dry run.

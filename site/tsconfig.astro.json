@@ -1,0 +1,6 @@
+{
+    // `astro check --tsconfig tsconfig.astro.json` (in `mise run site:typecheck`) reports
+    // diagnostics for .astro files only; tsrs owns .ts and .tsx files through tsconfig.json.
+    "extends": "./tsconfig.json",
+    "include": [".astro/types.d.ts", "app/**/*.astro"]
+}

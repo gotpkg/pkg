@@ -1,0 +1,6 @@
+# pnpm settings for the website. Dependency build scripts run only when listed `true` here.
+# esbuild and workerd ship install scripts that only verify their prebuilt binaries; the build,
+# the workerd dev and preview servers and the tests work without them, so both are denied.
+allowBuilds:
+    esbuild: false
+    workerd: false

@@ -1,0 +1,30 @@
+{
+    "$schema": "node_modules/oxfmt/configuration_schema.json",
+    // Oxfmt owns TypeScript, JavaScript, CSS and `.astro` files. dprint owns Markdown, JSON,
+    // YAML and TOML (dprint.json). MDX has no formatter: Oxfmt's MDX support follows Prettier's
+    // pre-MDX 2 grammar and escapes MDX 3 expressions (`{n * 2}` becomes `{n \* 2}`, which no
+    // longer builds). hk passes Oxfmt only its own files; these patterns keep a bare `oxfmt` run
+    // off the others too.
+    "ignorePatterns": [
+        "**/*.md",
+        "**/*.mdx",
+        "**/*.json",
+        "**/*.jsonc",
+        "**/*.yml",
+        "**/*.yaml",
+        "**/*.toml",
+        "dist/**",
+        ".astro/**",
+        ".wrangler/**",
+        "test-results/**",
+        "playwright-report/**"
+    ],
+    "printWidth": 100,
+    "tabWidth": 4,
+    "arrowParens": "avoid",
+    // Needs the `@astrojs/compiler-rs` devDependency. `compressHTML` mirrors `compressHTML: true`
+    // in astro.config.ts, so the formatter only moves whitespace the compiler collapses anyway.
+    "astro": { "compressHTML": "html" },
+    "sortImports": true,
+    "sortTailwindcss": { "stylesheet": "./app/styles/global.css" }
+}

@@ -26,14 +26,25 @@ worktrunk = "0.81.0" # provides `wt`
 # hk's `cargo_fmt` and `cargo_clippy` steps need both components on every machine, CI included.
 # rust-toolchain.toml pins the same toolchain for rustup; change both together.
 rust = { version = "1.100.0", components = "rustfmt,clippy" }
+# The website and installer Worker share Node. pnpm matches `packageManager` in site/package.json.
+node = "26.13.1"
+pnpm = "12.21.0"
 
 [hooks]
 postinstall = 'ln -sfn "$(mise where github:markmals/workbench)" "{{config_root}}/.workbench"'
 
+[env]
+# The website's CLIs (astro, oxfmt, oxlint, eslint, tsrs, wrangler) by bare name, for tasks, hk
+# and `mise exec`.
+_.path = ["{{config_root}}/site/node_modules/.bin"]
+ASTRO_TELEMETRY_DISABLED = "1"
+WRANGLER_SEND_METRICS = "false"
+
 # ── The task interface every Workbench project implements ────────────────────
 
 [tasks.setup]
-description = "Idempotent first-run bootstrap: crates, this machine's Beads replica, git hooks"
+description = "Idempotent first-run bootstrap: crates, the website's npm packages and test browser, this machine's Beads replica, git hooks"
+depends = ["site:deps", "site:e2e:install"]
 run = [
     # Downloads every crate Cargo.lock names, failing if the lockfile is out of date.
     "cargo fetch --locked",
@@ -51,16 +62,17 @@ run = [
 ]
 
 [tasks.check]
-description = "The single blocking gate: tests, rustdoc, formatting, Clippy, workflows, records"
+description = "The single blocking gate: tests, rustdoc, the website's build, browser tests and checks, formatting, Clippy, workflows, records"
 alias = "c"
 # `hk check --all` runs every step in hk.pkl: whitespace, newlines, merge conflicts, actionlint,
-# dprint, rustfmt, and Clippy over every target with warnings as errors.
-depends = ["test", "doc"]
+# dprint, rustfmt, Clippy over every target with warnings as errors, and the website's Oxfmt,
+# Oxlint, ESLint and type checks.
+depends = ["test", "doc", "site:check"]
 run = ["hk check --all", "mise run validate"]
 
 [tasks.fmt]
 alias = "f"
-description = "Format in place with hk's fixers (dprint, rustfmt); accepts file paths, all files when none"
+description = "Format in place with hk's fixers (dprint, rustfmt, Oxfmt, Oxlint, ESLint); accepts file paths, all files when none"
 usage = 'arg "[files]" help="Files to format" var=#true'
 run = "hk fix ${usage_files:---all}"
 
@@ -116,6 +128,93 @@ description = "Regenerate crates/pkg/docs/cli.md from the command registry"
 env = { PKG_UPDATE_REFERENCE = "1" }
 run = "cargo test --package pkg --test cli reference"
 
+# ── The website (site/) ──────────────────────────────────────────────────────
+# The landing page and the Starlight docs under /docs: Astro on Cloudflare Workers, its own pnpm
+# project. Its tasks run in site/ and find its CLIs through `_.path`.
+
+[tasks."site:deps"]
+description = "Install the website's npm packages from site/pnpm-lock.yaml"
+dir = "{{config_root}}/site"
+run = "pnpm install --frozen-lockfile"
+
+[tasks."site:dev"]
+description = "Serve the website with live reload in workerd on port 4327, on every network interface"
+depends = ["site:deps"]
+dir = "{{config_root}}/site"
+# `--ignore-lock` keeps Astro in the foreground: it backgrounds itself when it detects an agent.
+run = "astro dev --host 0.0.0.0 --port 4327 --ignore-lock"
+
+[tasks."site:build"]
+description = "Build the website into site/dist/: every page and the docs search index, prerendered in workerd"
+depends = ["site:deps"]
+dir = "{{config_root}}/site"
+# Cached Markdown can reference deleted syntax CSS after an imported theme changes.
+run = "astro build --force"
+
+[tasks."site:preview"]
+description = "Rebuild the website and serve the production build in workerd on port 4328, on every network interface"
+depends = ["site:build"]
+dir = "{{config_root}}/site"
+run = "astro preview --host 0.0.0.0 --port 4328 --ignore-lock"
+
+[tasks."site:deploy:check"]
+description = "Validate the built website's Worker upload without deploying"
+depends = ["site:build"]
+dir = "{{config_root}}/site"
+run = "wrangler deploy --config dist/server/wrangler.json --dry-run"
+
+[tasks."site:deploy"]
+description = "Build the website, then deploy it and the installer routes to gotpkg.dev"
+depends = ["site:build"]
+run = [{ task = "site:deploy:built" }]
+
+[tasks."site:deploy:built"]
+description = "Deploy the existing site/dist/ build and installer routes to gotpkg.dev without rebuilding (needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID)"
+# No build dependencies: CI exposes credentials only after producing this generated config.
+# Varlock resolves the schema from the repository root, not this task's site/ directory.
+dir = "{{config_root}}/site"
+confirm = "Deploy pkg-site to gotpkg.dev?"
+run = "varlock run --path ../ --filter CLOUDFLARE_API_TOKEN,CLOUDFLARE_ACCOUNT_ID -- wrangler deploy --config dist/server/wrangler.json"
+
+[tasks."site:check"]
+description = "The website's gate: the production build, Playwright against it in workerd, then Oxfmt, Oxlint, ESLint and the type checks"
+depends = ["site:build", "site:e2e", "site:worker:test"]
+dir = "{{config_root}}/site"
+run = ["oxfmt --check", { task = "site:lint" }, { task = "site:typecheck" }]
+
+[tasks."site:e2e"]
+description = "Run Playwright against the website's production build served by workerd"
+depends = ["site:build", "site:e2e:install"]
+dir = "{{config_root}}/site"
+run = "playwright test"
+
+[tasks."site:worker:test"]
+description = "Test the built Worker and static assets with isolated upstream responses"
+depends = ["site:build"]
+dir = "{{config_root}}/site"
+run = "node --test 'tests/*.test.ts'"
+
+[tasks."site:e2e:install"]
+description = "Install Playwright's Chromium (and, in CI, its system libraries)"
+depends = ["site:deps"]
+dir = "{{config_root}}/site"
+run = "playwright install ${CI:+--with-deps} chromium"
+
+[tasks."site:fmt"]
+description = "Format and fix the website's files with hk's fixers (dprint, Oxfmt, Oxlint, ESLint)"
+run = "hk fix --all --glob 'site/**'"
+
+[tasks."site:lint"]
+description = "Lint the website: Oxlint (type-aware; TypeScript and .astro scripts) and ESLint (.astro templates)"
+dir = "{{config_root}}/site"
+run = ["oxlint --deny-warnings", "eslint --max-warnings 0 ."]
+
+[tasks."site:typecheck"]
+description = "Type-check the website: astro check for .astro files, tsrs for .ts and .tsx"
+dir = "{{config_root}}/site"
+# `astro check` also generates site/.astro/types.d.ts, which site/tsconfig.json includes.
+run = ["astro check --tsconfig tsconfig.astro.json", "tsrs"]
+
 # ── Releases ─────────────────────────────────────────────────────────────────
 
 [tasks.package]
@@ -128,12 +227,16 @@ description = "Build a local CLI archive and a source archive for a private libr
 depends = ["package"]
 run = "git archive --format=tar.gz --prefix=pkg-source/ --output=artifacts/pkg-core-source.tar.gz HEAD"
 
-[tasks."release:formula"]
-description = "Write the Homebrew formula for the archives in artifacts/ to artifacts/pkg.rb"
-run = "cargo xtask formula"
+[tasks."release:installer"]
+description = "Write the installer for this version, which gotpkg.dev serves, to artifacts/install.sh"
+run = "cargo xtask installer"
+
+[tasks."release:checksums"]
+description = "Write the SHA-256 manifest of the archives in artifacts/ to artifacts/SHA256SUMS"
+run = "cargo xtask checksums"
 
 [tasks.release]
-description = "Publish the GitHub release with the archives in artifacts/ (release.yml runs this)"
+description = "Publish the GitHub release with the archives, installer and SHA256SUMS in artifacts/ (release.yml runs this)"
 # `knope release` reads GITHUB_TOKEN; Varlock checks it against .env.schema and redacts it.
 # `--filter` loads that item alone, so another component's required items in a merged
 # .env.schema never block a release.
