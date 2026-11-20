@@ -1,7 +1,9 @@
-//! Reading the plans mise prints for prune and upgrade, which have no JSON form.
+//! Reading the plans mise prints for install, prune, and upgrade, which have no JSON form.
 //!
 //! The parsers recognize only the lines they need and skip every other line, so a line mise adds
 //! in a later release is ignored rather than misread.
+
+use crate::{PlannedAction, PlannedItem};
 
 /// The packages a prune removes, from its `remove brew:pkgconf@3.0.10` lines, as `(key, version)`.
 pub(crate) fn removals(output: &str) -> Vec<(String, Option<String>)> {
@@ -19,6 +21,58 @@ pub(crate) fn removals(output: &str) -> Vec<(String, Option<String>)> {
             }
         })
         .collect()
+}
+
+/// A prune's removals as the items it uninstalls.
+pub(crate) fn uninstalls(removals: &[(String, Option<String>)]) -> Vec<PlannedItem> {
+    removals
+        .iter()
+        .map(|(name, version)| PlannedItem {
+            name: name.clone(),
+            version: version.clone(),
+            action: PlannedAction::Uninstall,
+        })
+        .collect()
+}
+
+/// Every item an install plan installs, dependencies included: formulae from
+/// `pour <name>/<version> (requested)` or `(dependency)` and
+/// `build <name>/<version> from source (requested, ...)`, casks from
+/// `install cask <token>/<version>`.
+pub(crate) fn install_plan(output: &str) -> Vec<PlannedItem> {
+    let mut items = Vec::new();
+    for line in output.lines().map(str::trim) {
+        if let Some(rest) = line.strip_prefix("install cask ") {
+            if let Some((token, version)) = rest.split_whitespace().next().and_then(item_version) {
+                // A cask version can carry a build hash after a comma.
+                let version = version.split(',').next().map(str::to_string);
+                let name = format!("brew-cask:{token}");
+                items.push(PlannedItem { name, version, action: PlannedAction::Install });
+            }
+        } else if let Some(rest) =
+            line.strip_prefix("pour ").or_else(|| line.strip_prefix("build "))
+        {
+            let action = if line.contains("(requested") {
+                PlannedAction::Install
+            } else if line.contains("(dependency") {
+                PlannedAction::InstallDependency
+            } else {
+                continue;
+            };
+            if let Some((name, version)) = rest.split_whitespace().next().and_then(item_version) {
+                let name = format!("brew:{name}");
+                items.push(PlannedItem { name, version: Some(version), action });
+            }
+        }
+    }
+    items
+}
+
+/// `name/version`, split at the last `/` so a tap's `owner/tap/name` stays whole.
+fn item_version(word: &str) -> Option<(String, String)> {
+    word.rsplit_once('/')
+        .filter(|(name, version)| !name.is_empty() && !version.is_empty())
+        .map(|(name, version)| (name.to_string(), version.to_string()))
 }
 
 /// What `mise bootstrap packages upgrade --dry-run` would do to Homebrew packages.
@@ -78,6 +132,37 @@ fn name_version(word: &str) -> Option<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_install_plan_lists_every_formula_and_cask_it_installs() {
+        // `mise bootstrap packages use --dry-run -g brew:wget`, mise 2026.11.9.
+        let output = "\
+~/.config/mise/config.toml: \"brew:wget\" = \"latest\"
+mkdir -p /opt/homebrew/Cellar
+pour ca-certificates/2026-11-05 (dependency)
+pour openssl@4/4.1.0 (dependency)
+pour wget/1.25.0_2 (requested)
+build tg/0.10.0 from source (requested, source-only formula, no bottles)
+install cask claude/6.6395.0,d71a20056be3b25708751e98bef60759ea1f441b
+link app /Applications/Claude.app
+";
+        let items: Vec<(String, Option<String>, PlannedAction)> = install_plan(output)
+            .into_iter()
+            .map(|item| (item.name, item.version, item.action))
+            .collect();
+        let item = |name: &str, version: &str, action| (name.into(), Some(version.into()), action);
+        assert_eq!(
+            items,
+            [
+                item("brew:ca-certificates", "2026-11-05", PlannedAction::InstallDependency),
+                item("brew:openssl@4", "4.1.0", PlannedAction::InstallDependency),
+                item("brew:wget", "1.25.0_2", PlannedAction::Install),
+                item("brew:tg", "0.10.0", PlannedAction::Install),
+                item("brew-cask:claude", "6.6395.0", PlannedAction::Install),
+            ]
+        );
+        assert!(install_plan("mise brew: all formulae already poured\n").is_empty());
+    }
 
     #[test]
     fn removals_read_the_remove_lines() {

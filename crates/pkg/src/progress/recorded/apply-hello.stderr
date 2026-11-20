@@ -1,0 +1,8 @@
+mise brew:hello      download hello-2.12.3.tar.gz
+mise brew:hello      checksum
+mise brew:hello      extract
+mise brew:hello      extract hello-2.12.3.tar.gz
+mise brew:hello      relocate
+mise brew:hello      link
+mise brew:hello    ✓ 2.12.3
+mise brew: installed hello

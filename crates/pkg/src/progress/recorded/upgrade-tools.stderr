@@ -1,0 +1,14 @@
+mise by @jdx – resolving 4 tools
+mise ✓ bun      0ms
+mise ✓ jq       1ms
+mise ✓ ripgrep  1ms
+mise ✓ node     2ms
+mise ████████████████ 4/4 · resolved 4 tools in 2ms
+mise by @jdx – resolving 1 tool
+mise ✓ aqua:jqlang/jq@1.7.1  1ms
+mise ████████████████ 1/1 · resolved 1 tool in 1ms
+mise by @jdx – installing 1 tool
+mise ✓ jq@1.8.2  1.3s  jq-macos-arm64
+mise ████████████████ 1/1 · installed 1 tool in 1.3s
+mise checking tracked configs resolving tracked configs
+mise checking tracked configs ✓ done

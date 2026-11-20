@@ -18,6 +18,11 @@ impl Mode {
 pub struct InstallRequest {
     pub packages: Vec<String>,
     pub mode: Mode,
+    /// Before installing each bootstrap package, ask mise for its plan with the read-only query
+    /// the dry run uses, and report the items it installs, dependencies included, as
+    /// [`Progress::Plan`](crate::Progress::Plan). Costs one query per bootstrap package; a query
+    /// that fails or yields no item is ignored. A dry run runs no extra query.
+    pub report_plans: bool,
 }
 
 #[derive(Debug)]

@@ -20,6 +20,9 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.6", features = ["string"] }
+# Draws the live progress display of `install`, `update`, `sync`, `remove` and `prune` on a
+# terminal; only `src/progress/display.rs` uses it.
+indicatif = "0.18"
 pkg-core = { path = "../pkg-core" }
 schemars = "1.2"
 serde = { version = "1.0", features = ["derive"] }
@@ -28,8 +31,14 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 
 [dev-dependencies]
+# The in-memory terminal the display's tests draw on.
+indicatif = { version = "0.18", features = ["in_memory"] }
 jsonschema = { version = "0.61", default-features = false }
 tempfile = "3.27"
+
+# The pseudo-terminal that tests run the binary's stderr on.
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"
 
 [lints]
 workspace = true
