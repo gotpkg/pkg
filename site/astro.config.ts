@@ -33,6 +33,7 @@ export default defineConfig({
         // under /docs) and adds MDX, Expressive Code and the Pagefind search index itself.
         starlight({
             title: "pkg",
+            favicon: "/favicon.ico",
             head: sharingHead,
             logo: {
                 light: "./app/assets/pkg-logo-light-mode.svg",
