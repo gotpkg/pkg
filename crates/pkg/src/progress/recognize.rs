@@ -7,13 +7,14 @@
 //!   stderr. These are a tool session's header (`by @jdx – installing 2 tools`, also `resolving`
 //!   and `removing`, and `1 tool`); its snapshots, a 16-cell bar of `█` and `░` with the count
 //!   done, a `·` and the elapsed time (`██░░░░░░░░░░░░░░ 0/2 · 3.1s`), each followed by rows
-//!   indented by two spaces, one per active tool, in columns two or more spaces apart (label,
+//!   indented by two spaces in columns two or more spaces apart: one per active tool (label,
 //!   phase, elapsed time, and the transfer when there is one:
-//!   `  node@24.22.3  downloading  3.1s  17.5/53.1 MB · 6.5 MB/s`); its closing summary, a bar,
-//!   the count, a `·` and a past-tense verb (`████████████████ 2/2 · installed 2 tools in
-//!   15.7s`); and a bootstrap package's phase, its `manager:name` label padded with spaces and
-//!   one of the words `download <file>`, `checksum`, `extract` (alone or with the file),
-//!   `relocate`, `codesign`, `link`, or `post-install` (`brew:wget       checksum`).
+//!   `  node@24.22.3  downloading  3.1s  17.5/53.1 MB · 6.5 MB/s`), one per tool held back
+//!   (`  fd@10.5.2  waiting for node`), and a count of the rest (`  3 queued`); its closing
+//!   summary, a bar, the count, a `·` and a past-tense verb (`████████████████ 2/2 · installed
+//!   2 tools in 15.7s`); and a bootstrap package's phase, its `manager:name` label padded with
+//!   spaces and one of the words `download <file>`, `checksum`, `extract` (alone or with the
+//!   file), `relocate`, `codesign`, `link`, or `post-install` (`brew:wget       checksum`).
 //! - **Completion**: it records that an item finished, so it updates the display and stays on
 //!   stderr unchanged. These are a tool's `✓`, `⇢`, or `✗` line, the icon, the label, two
 //!   spaces, and the elapsed time (`✓ bun@1.4.5     11.4s  bun-darwin-aarch64.zip`,
@@ -24,9 +25,10 @@
 //!
 //! Shapes are matched after color codes and the leading `mise ` are set aside; snapshot rows have
 //! no `mise `. The only state kept is whether the previous line was a snapshot or one of its rows,
-//! so an indented line elsewhere, such as the advice under a warning, is Other. The files in
-//! `recorded/` are mise 2026.11.9's output, recorded piped in a disposable home and Homebrew
-//! prefix; when the supported mise changes, record them again.
+//! so an indented line elsewhere, such as the advice under a warning, or one after a snapshot
+//! that has no row's shape, is Other. The files in `recorded/` are mise 2026.11.9's output,
+//! recorded piped in a disposable home and Homebrew prefix; when the supported mise changes,
+//! record them again.
 
 /// What a line says, for the display.
 #[derive(Debug, PartialEq, Eq)]
@@ -62,8 +64,11 @@ impl Recognizer {
     /// Sorts one line, with or without its line ending.
     pub(super) fn recognize(&mut self, line: &str) -> Kind {
         let plain = without_colors(line.trim_end_matches(['\n', '\r']));
-        if self.in_snapshot && plain.starts_with("  ") {
-            return Kind::Transient(row(&plain));
+        if self.in_snapshot
+            && plain.starts_with("  ")
+            && let Some(row) = row(&plain)
+        {
+            return Kind::Transient(row);
         }
         self.in_snapshot = false;
         let Some(text) = plain.strip_prefix("mise ") else {
@@ -111,18 +116,31 @@ fn summary(words: &[&str]) -> Option<Report> {
         .then_some(Report::Summary { done, total })
 }
 
-/// `  node@24.22.3  downloading  3.1s  17.5/53.1 MB · 6.5 MB/s`, after a snapshot.
-fn row(plain: &str) -> Option<Report> {
+/// A snapshot row: `  node@24.22.3  downloading  3.1s  17.5/53.1 MB · 6.5 MB/s` (the transfer
+/// only during one), `  fd@10.5.2  waiting for node`, or `  3 queued`, which names no tool.
+/// `None` for an indented line of any other shape.
+fn row(plain: &str) -> Option<Option<Report>> {
     let cells: Vec<&str> =
         plain.split("  ").map(str::trim).filter(|cell| !cell.is_empty()).collect();
-    let [item, phase, rest @ ..] = cells.as_slice() else {
-        return None;
+    let report = |item: &str, phase: &str, transfer: Option<&str>| Report::Row {
+        item: item.to_string(),
+        phase: phase.to_string(),
+        transfer: transfer.map(str::to_string),
     };
-    let transfer = match rest {
-        [_, transfer] => Some((*transfer).to_string()),
+    match cells.as_slice() {
+        [queued] => {
+            let count = queued.strip_suffix(" queued")?;
+            count.parse::<usize>().ok().map(|_| None)
+        }
+        [item, waiting] if waiting.starts_with("waiting for ") => {
+            Some(Some(report(item, waiting, None)))
+        }
+        [item, phase, elapsed] if is_elapsed(elapsed) => Some(Some(report(item, phase, None))),
+        [item, phase, elapsed, transfer] if is_elapsed(elapsed) => {
+            Some(Some(report(item, phase, Some(transfer))))
+        }
         _ => None,
-    };
-    Some(Report::Row { item: item.to_string(), phase: phase.to_string(), transfer })
+    }
 }
 
 /// `brew:wget       download wget-1.25.0_2.tar.gz`, `brew:wget       checksum`.
@@ -439,5 +457,25 @@ mod tests {
         ] {
             assert_eq!(recognizer.recognize(line), Kind::Other, "{line}");
         }
+    }
+
+    #[test]
+    fn an_indented_line_after_a_snapshot_is_a_row_only_in_a_rows_shape() {
+        let mut recognizer = Recognizer::default();
+        assert!(matches!(
+            recognizer.recognize("mise ██░░░░░░░░░░░░░░ 0/3 · 3.1s"),
+            Kind::Transient(Some(Report::Snapshot { .. }))
+        ));
+        assert_eq!(
+            recognizer.recognize("  fd@10.5.2    waiting for node"),
+            Kind::Transient(Some(Report::Row {
+                item: "fd@10.5.2".into(),
+                phase: "waiting for node".into(),
+                transfer: None,
+            }))
+        );
+        assert_eq!(recognizer.recognize("  1 queued"), Kind::Transient(None));
+        assert_eq!(recognizer.recognize("  WARNING: low disk space"), Kind::Other);
+        assert_eq!(recognizer.recognize("  node@24.22.3  downloading  3.1s"), Kind::Other);
     }
 }

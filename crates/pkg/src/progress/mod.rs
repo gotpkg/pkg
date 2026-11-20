@@ -214,4 +214,16 @@ mod tests {
         live.finish(false);
         assert_eq!(term.contents(), "mise WARN no newline");
     }
+
+    #[test]
+    fn a_line_ending_in_a_carriage_return_stays_above_the_display() {
+        let (mut live, term) = live();
+        live.observe(install("brew:hello", 1, 1));
+        output(&mut live, "mise brew:hello      checksum\r\nmise brew:hello    ✓ 2.12.3\r\n");
+        let screen = term.contents();
+        assert_eq!(screen.lines().next(), Some("mise brew:hello    ✓ 2.12.3"), "{screen}");
+        assert!(screen.contains("Installing brew:hello"), "{screen}");
+        live.finish(false);
+        assert_eq!(term.contents(), "mise brew:hello    ✓ 2.12.3");
+    }
 }

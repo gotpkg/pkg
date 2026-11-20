@@ -32,11 +32,14 @@ impl Display {
         Display { multi, headline, lines: Vec::new(), step: 0, after }
     }
 
-    /// Writes `lines` above the display, each without its line ending.
+    /// Writes `lines` above the display. indicatif ends each line itself, and a carriage return
+    /// left before it would return the cursor into the display's region.
     pub(super) fn print(&self, lines: &[String]) {
         for line in lines {
+            let line = line.strip_suffix('\n').unwrap_or(line);
+            let line = line.strip_suffix('\r').unwrap_or(line);
             // Like the plain forwarding, a stderr that refuses a line has no one to tell.
-            let _ = self.multi.println(line.trim_end_matches('\n'));
+            let _ = self.multi.println(line);
         }
     }
 

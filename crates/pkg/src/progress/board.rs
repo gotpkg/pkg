@@ -24,9 +24,6 @@ pub(super) struct View {
     pub lines: Vec<Line>,
 }
 
-/// The most item rows shown; the rest are counted on one line.
-const MOST_ROWS: usize = 8;
-
 #[derive(Default)]
 pub(super) struct Board {
     step: u64,
@@ -142,20 +139,16 @@ impl Board {
             });
         }
         lines.extend(self.tally());
-        let shown = &self.rows[..self.rows.len().min(MOST_ROWS)];
-        let labels: Vec<String> = shown.iter().map(|row| self.label(&row.item)).collect();
+        // Every row, however many: indicatif stops drawing at the bottom of the terminal.
+        let labels: Vec<String> = self.rows.iter().map(|row| self.label(&row.item)).collect();
         let width = labels.iter().map(|label| label.chars().count()).max().unwrap_or(0);
-        for (row, label) in shown.iter().zip(labels) {
+        for (row, label) in self.rows.iter().zip(labels) {
             let text = match &row.transfer {
                 Some(transfer) => format!("{}  {transfer}", row.phase),
                 None => row.phase.clone(),
             };
             let bar = row.transfer.as_deref().and_then(fraction);
             lines.push(Line { label: format!("{label:<width$}"), bar, text });
-        }
-        if self.rows.len() > MOST_ROWS {
-            let more = self.rows.len() - MOST_ROWS;
-            lines.push(Line { label: String::new(), bar: None, text: format!("and {more} more") });
         }
         View { headline: self.headline.clone(), step: self.step, lines }
     }
@@ -437,5 +430,18 @@ mod tests {
         assert_eq!(view.headline, "Reading what is installed now");
         assert!(view.lines.is_empty(), "{:?}", view.lines);
         assert_ne!(view.step, first);
+    }
+
+    #[test]
+    fn every_item_mise_is_working_on_has_a_row() {
+        let mut board = Board::default();
+        board.begin(Step::UpdatePackages);
+        for index in 1..=12 {
+            board.apply(Report::Phase { item: format!("brew:item{index}"), phase: "link".into() });
+        }
+        let rows: Vec<String> =
+            board.view().lines.into_iter().map(|line| line.label.trim().to_string()).collect();
+        let expected: Vec<String> = (1..=12).map(|index| format!("brew:item{index}")).collect();
+        assert_eq!(rows, expected);
     }
 }
