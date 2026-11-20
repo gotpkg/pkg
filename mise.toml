@@ -198,10 +198,12 @@ dir = "{{config_root}}/site"
 run = "node --test 'tests/*.test.ts'"
 
 [tasks."site:e2e:install"]
-description = "Install Playwright's Chromium (and, in CI, its system libraries)"
+description = "Install Playwright's Chromium"
 depends = ["site:deps"]
 dir = "{{config_root}}/site"
-run = "playwright install ${CI:+--with-deps} chromium"
+# No `--with-deps`: on GitHub's ubuntu-latest it installs only nine font packages the tests do not
+# use, and one slow apt mirror held a run for eight minutes.
+run = "playwright install chromium"
 
 [tasks."site:fmt"]
 description = "Format and fix the website's files with hk's fixers (dprint, Oxfmt, Oxlint, ESLint)"
