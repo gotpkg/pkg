@@ -1563,6 +1563,6 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## Website icons
 
-The interface icons in `site/app/assets/icons/Primaries-*.svg` are from the Primaries set by [Parakeet, Inc.](https://parakeet.co/stock-icons/), which owns them. They are used under the [Parakeet Primaries License Agreement](https://parakeet.co/stock-icons/license/), not under the MIT License. That agreement is non-transferable and does not let anyone else copy, redistribute, or reuse the icons from this repository; obtain a license from Parakeet to use them in your own work. `site/public/favicon.svg` is drawn from the Primaries "Package" icon and is excluded from the MIT License for the same reason.
+The interface icons in `site/app/assets/icons/Primaries-*.svg` are from the Primaries set by [Parakeet, Inc.](https://parakeet.co/stock-icons/), which owns them. They are used under the [Parakeet Primaries License Agreement](https://parakeet.co/stock-icons/license/), not under the MIT License. That agreement is non-transferable and does not let anyone else copy, redistribute, or reuse the icons from this repository; obtain a license from Parakeet to use them in your own work.
 
 `site/app/assets/icons/google-chrome.svg` shows the Google Chrome logo to identify that application in the package demonstration. Chrome and its logo are trademarks of Google LLC, and the MIT License grants no rights in them.
