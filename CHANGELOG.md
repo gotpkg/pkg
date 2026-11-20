@@ -1,3 +1,25 @@
+## 0.1.1 (2026-11-20)
+
+### Fixes
+
+#### Install and restore from the pkg website
+
+The website now serves the release installer to command-line clients and includes guides for pkg setup, pkg bootstrap, and pkg update. Browser visits keep the marketing site and searchable documentation.
+
+#### Make pkg links shareable without breaking the installer
+
+The homepage serves HTML to sharing crawlers and other clients by default. Standard curl and GNU Wget requests still receive the installer; custom download clients can use /install.sh to request it explicitly.
+
+#### Meet pkg on the web
+
+Explore pkg through a new marketing site and searchable Starlight documentation covering installation, packages, configuration, and automation.
+
+The landing page has light and dark themes that follow your system setting. The documentation has its own theme picker.
+
+Primaries icons give the landing page and documentation controls a consistent style.
+
+Pages include OpenGraph metadata and a pkg-branded image for sharing previews.
+
 ## 0.1.0 (2026-11-19)
 
 ### Breaking Changes
