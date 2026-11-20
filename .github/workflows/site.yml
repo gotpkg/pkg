@@ -1,6 +1,7 @@
 # Deploys the website (site/) and its installer routes to gotpkg.dev on Cloudflare Workers when a
-# push to `main` changes what the site is built from, and on demand. The commit passes the gate
-# first. CLI releases (release.yml) deploy nothing.
+# push to `main` changes what the site is built from, and on demand. The commit passes the
+# website's own gate first: its production build, browser tests and Worker tests. The full gate,
+# Rust included, runs in ci.yml on the same commit. CLI releases (release.yml) deploy nothing.
 #
 # Deploying needs the repository variable CLOUDFLARE_DEPLOY=true and the `production` environment
 # (restricted to `main`), which holds the secret CLOUDFLARE_API_TOKEN and the variables
@@ -33,17 +34,20 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: read
+        # Only the tools that build and test the site; Workbench's link hook stays out.
+        env:
+            MISE_ENABLE_TOOLS: node,pnpm
+            MISE_NO_HOOKS: "1"
         steps:
             - uses: actions/checkout@v7
               with:
-                  fetch-depth: 0
                   persist-credentials: false
             - uses: jdx/mise-action@v5
               with:
                   # A deploying workflow restores no cache: a lower-trust workflow that can write
                   # to the default branch's cache could otherwise plant files in it.
                   cache: false
-            - run: mise run check
+            - run: mise run site:check
 
     deploy:
         name: "Site: deploy to Cloudflare Workers"
