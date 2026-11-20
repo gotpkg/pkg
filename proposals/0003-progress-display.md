@@ -2,7 +2,7 @@
 id: proposal.0003
 title: Progress Display for Package Changes
 authors: [Mark]
-status: draft
+status: awaiting-implementation
 pull-request: https://github.com/gotpkg/pkg/pull/3
 issues: []
 supersedes: []
@@ -305,4 +305,4 @@ No policy or decision records exist; `policies/` and `decisions/` hold only thei
 
 ## Open questions
 
-None. During discovery on 2026-11-17 the human chose the approach, the commands and the plan query.
+None. During discovery on 2026-11-17 the human chose the approach, the commands and the plan query, and on 2026-11-19 approved this proposal for implementation.
