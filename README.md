@@ -91,13 +91,13 @@ The tests never run the real mise or reach the network: they run the binary agai
 
 The website lives in `site/`: an Astro site that builds for Cloudflare Workers, with pages and components in `site/app/`. Starlight serves the documentation under `/docs`, one Markdown file per page in `site/app/content/docs/docs/`. `mise install` provides the pinned Node and pnpm, and `site/` has its own pnpm lockfile.
 
-| Task                        | What it does                                                                          |
-| --------------------------- | ------------------------------------------------------------------------------------- |
-| `mise run site:dev`         | Install the site's dependencies and serve it at http://localhost:4327                 |
-| `mise run site:build`       | Build the site, with the documentation search index, into `site/dist/`                |
-| `mise run site:check`       | Build, run browser tests, check formatting, lint and types (`mise run check` runs it) |
-| `mise run site:worker:test` | Test the built Worker and static assets with an isolated GitHub fixture               |
-| `mise run site:deploy`      | Deploy the site and installer routes to gotpkg.dev after approval                     |
+| Task                        | What it does                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `mise run site:dev`         | Install the site's dependencies and serve it at http://localhost:4327         |
+| `mise run site:build`       | Build the site, with the documentation search index, into `site/dist/`        |
+| `mise run site:check`       | Build, then run the browser tests and Worker tests (`mise run check` runs it) |
+| `mise run site:worker:test` | Test the built Worker and static assets with an isolated GitHub fixture       |
+| `mise run site:deploy`      | Deploy the site and installer routes to gotpkg.dev after approval             |
 
 The documentation pages summarize this README and `crates/pkg/docs/`, which own the CLI's behavior. Change those first, then the pages that repeat them.
 
