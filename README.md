@@ -149,3 +149,9 @@ Every pull request carries a Knope change file (`workbench change-files create`)
 The site Worker serves the latest release's installer through the endpoints described in [installer routing](#installer-routing). With `GOTPKG_DOMAIN` set to `true`, each release waits up to five minutes for `https://gotpkg.dev` and `https://gotpkg.dev/install.sh` to serve the new installer, and fails if they do not. Without the variable that job is skipped.
 
 Publishing the GitHub release uses the workflow's built-in `GITHUB_TOKEN`; no stored secret is needed. Website deployments use the protected `production` environment described in [website deployment](#website-deployment).
+
+## License
+
+pkg is released under the [MIT License](LICENSE), except for the website's Primaries icons, which Parakeet, Inc. owns and which are used under [Parakeet's license](https://parakeet.co/stock-icons/license/), and the Google Chrome logo in the package demonstration, which is Google's trademark. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists those files and holds the licenses and copyright notices of the third-party software distributed with pkg: the Rust crates in the executable and the fonts on the website.
+
+pkg depends on other projects without including them. [mise](https://mise.jdx.dev), created by Jeff Dickey and released under the MIT License, installs everything pkg manages. Package details come from [Homebrew](https://brew.sh)'s formulae API and Apple's App Store search.
