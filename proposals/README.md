@@ -25,4 +25,4 @@ Proposals are kept after they close. When a later proposal replaces an earlier o
 - [0001 — Reusable Package Library](0001-reusable-package-library.md).
 - [0002 — First-Machine Setup and Bootstrap](0002-first-machine-bootstrap.md).
 - [0006 — Shareable Homepage Routing](0006-social-preview-routing.md).
-- 0007 — Local Package State.
+- [0007 — Local Package State](0007-local-package-state.md).
