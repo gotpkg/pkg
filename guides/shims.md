@@ -24,6 +24,7 @@ An agent that has never seen pkg runs `brew install --cask iina`. Nothing is ins
 ## Limits and edge cases
 
 - A shim only sees commands found through `PATH`. A tool run by its full path, and `sudo apt install` (sudo searches its own `PATH`), are not intercepted.
+- In a shell that runs `mise activate`, the directories of the tools mise provides come first on `PATH`, ahead of the shims, so `npm` from a mise-managed node runs unshimmed there. A shell that only reads a startup file such as `~/.zshenv` keeps the shims first. `pkg shims list`, run in the shell you care about, shows which names a directory earlier on `PATH` shadows.
 - A shim refuses a global install only when it can name the package without guessing. A command with a path, a URL, a requirement file or an option such as `--registry` that takes a separate value runs the real tool.
 - `pip install` is refused only outside a virtual environment, and `npm install` only with `-g`; project installs are never refused.
 - On a Mac without Homebrew, `command -v brew` finds the shim and `brew --version` exits 127 with a message that Homebrew is not installed.

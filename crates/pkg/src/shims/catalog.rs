@@ -312,22 +312,20 @@ pub(crate) static TOOLS: &[Tool] = &[
             "-c",
             "--config-file",
         ]),
-    Tool::new("dnf", LINUX, &[Rule::install(&["install", "in"], Target::new("dnf"))]).with_values(
-        &[
-            "-c",
-            "--config",
-            "--enablerepo",
-            "--disablerepo",
-            "--repo",
-            "--repoid",
-            "--releasever",
-            "--setopt",
-            "--installroot",
-            "-x",
-            "--exclude",
-            "--forcearch",
-        ],
-    ),
+    Tool::new("dnf", LINUX, &[Rule::install(&["install"], Target::new("dnf"))]).with_values(&[
+        "-c",
+        "--config",
+        "--enablerepo",
+        "--disablerepo",
+        "--repo",
+        "--repoid",
+        "--releasever",
+        "--setopt",
+        "--installroot",
+        "-x",
+        "--exclude",
+        "--forcearch",
+    ]),
     Tool::new("zypper", LINUX, &[Rule::install(&["install", "in"], Target::new("zypper"))])
         .with_values(&["-r", "--repo", "-t", "--type", "--from", "-R", "--root"]),
     Tool::new("apk", LINUX, &[Rule::install(&["add"], Target::new("apk"))]).with_values(&[
@@ -442,8 +440,7 @@ pub(crate) static TOOLS: &[Tool] = &[
         ALL_SYSTEMS,
         &[
             Rule::install(&["install", "i", "add"], Target::new("npm")).requiring(GLOBAL),
-            Rule::remove(&["uninstall", "un", "rm", "remove"], Target::new("npm"))
-                .requiring(GLOBAL),
+            Rule::remove(&["uninstall", "rm", "remove"], Target::new("npm")).requiring(GLOBAL),
         ],
     )
     .with_values(&[
@@ -468,8 +465,7 @@ pub(crate) static TOOLS: &[Tool] = &[
         ALL_SYSTEMS,
         &[
             Rule::install(&["add", "install", "i"], Target::new("npm")).requiring(GLOBAL),
-            Rule::remove(&["remove", "rm", "uninstall", "un"], Target::new("npm"))
-                .requiring(GLOBAL),
+            Rule::remove(&["remove", "rm", "uninstall"], Target::new("npm")).requiring(GLOBAL),
         ],
     )
     .with_values(&[
@@ -488,7 +484,7 @@ pub(crate) static TOOLS: &[Tool] = &[
         "bun",
         ALL_SYSTEMS,
         &[
-            Rule::install(&["add", "install", "i", "a"], Target::new("npm")).requiring(GLOBAL),
+            Rule::install(&["add", "install", "i"], Target::new("npm")).requiring(GLOBAL),
             Rule::remove(&["remove", "rm", "uninstall"], Target::new("npm")).requiring(GLOBAL),
         ],
     )
@@ -672,14 +668,8 @@ pub(crate) static TOOLS: &[Tool] = &[
         "dotnet",
         ALL_SYSTEMS,
         &[
-            Rule::install(&["install"], Target::new("dotnet"))
-                .after(&["tool"])
-                .requiring(GLOBAL)
-                .unless(&["--tool-path"]),
-            Rule::remove(&["uninstall"], Target::new("dotnet"))
-                .after(&["tool"])
-                .requiring(GLOBAL)
-                .unless(&["--tool-path"]),
+            Rule::install(&["install"], Target::new("dotnet")).after(&["tool"]).requiring(GLOBAL),
+            Rule::remove(&["uninstall"], Target::new("dotnet")).after(&["tool"]).requiring(GLOBAL),
         ],
     )
     .with_values(&[
@@ -698,7 +688,7 @@ pub(crate) static TOOLS: &[Tool] = &[
         "mise",
         ALL_SYSTEMS,
         &[
-            Rule::install(&["use", "u"], Target::new("")).requiring(GLOBAL),
+            Rule::install(&["use"], Target::new("")).requiring(GLOBAL),
             Rule::remove(&["unuse", "rm", "remove"], Target::new("")).requiring(GLOBAL),
         ],
     )
