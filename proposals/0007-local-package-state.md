@@ -2,7 +2,7 @@
 id: proposal.0007
 title: Local Package State
 authors: [Mark]
-status: active-review
+status: implemented
 pull-request: https://github.com/gotpkg/pkg/pull/15
 issues: []
 supersedes: []
