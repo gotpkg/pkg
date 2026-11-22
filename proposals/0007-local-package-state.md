@@ -2,7 +2,7 @@
 id: proposal.0007
 title: Local Package State
 authors: [Mark]
-status: draft
+status: awaiting-implementation
 pull-request: https://github.com/gotpkg/pkg/pull/15
 issues: []
 supersedes: []
@@ -165,6 +165,7 @@ The six callers keep calling `Mise::package_states`. Nothing they print or retur
 - [Packages](../crates/pkg/docs/packages.md): add a short section saying where installed state comes from and listing the cask divergences under Compatibility. `pkg docs search` finds it there.
 - [Use pkg From Rust](../guides/rust-library.md): add that a host isolating a client from the real machine sets `MISE_SYSTEM_BREW_PREFIX` in the child environment.
 - No registry entry, argument, output field or schema changes, so `crates/pkg/docs/cli.md` does not change.
+- [VISION.md](../VISION.md), Design principles: the principle "mise decides, pkg translates" gains one clause, agreed with Mark on 2026-11-21. It now reads: "installation, version resolution and config writes go through mise's own commands; pkg edits a config file only to remove an entry mise cannot remove itself, and reads whether a Homebrew cask is installed from Homebrew's Caskroom, which mise answers only over the network." The vision changes when the work is accepted, as `completing-a-feature` does it, with a revision-history row linking this proposal.
 
 ### Tests
 
@@ -231,7 +232,7 @@ When raising the mise version pkg supports, maintainers also check three things:
 No policy or decision records exist; `policies/` and `decisions/` hold only their READMEs. This proposal establishes neither. Checked against [VISION.md](../VISION.md):
 
 - **mise as the single owner of installation and of the config, with no second source of truth:** honored. mise installs, writes, and resolves every declaration. pkg keeps nothing between runs and reads Homebrew's own directory.
-- **"mise decides, pkg translates":** narrowly departed from. mise still checks every manager but casks. For casks, pkg decides from the Caskroom whether one is installed, and `install` and `sync` act on that answer. The divergences under Compatibility are the cost. See Open questions.
+- **"mise decides, pkg translates":** revised. mise still checks every manager but casks. For casks, pkg decides from the Caskroom whether one is installed, and `install` and `sync` act on that answer. The divergences under Compatibility are the cost. Mark agreed on 2026-11-21 that the principle should say so; the wording is under Detailed design.
 - **Non-goal "Replacing mise's installers or keeping a database of its own":** honored.
 
 ## Future directions
@@ -256,4 +257,4 @@ No policy or decision records exist; `policies/` and `decisions/` hold only thei
 
 ## Open questions
 
-- [NEEDS CLARIFICATION: Should VISION.md's "mise decides, pkg translates" principle say that pkg may read whether a Homebrew cask is installed from the Caskroom, or should `install` and `sync` keep asking mise about casks?]
+None.
