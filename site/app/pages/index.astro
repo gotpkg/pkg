@@ -1,0 +1,221 @@
+---
+import { Image } from "astro:assets";
+
+import { sharingHead } from "../../sharing.ts";
+import poster from "../assets/got-pkg.webp";
+import movingBox from "../assets/moving-box.webp";
+import reverseLogo from "../assets/pkg-logo-dark-mode.svg";
+import logo from "../assets/pkg-logo-light-mode.svg";
+import monochromeLogo from "../assets/pkg-logo-monochrome.svg";
+import Icon from "../components/icon/Icon.astro";
+import PackageDemo from "../components/PackageDemo.tsx";
+import Workflow from "../components/Workflow.astro";
+
+import "../styles/global.css";
+
+export const prerender = true;
+
+const title = "The unified system package manager";
+const description =
+    "Apps, system packages, and developer tools, all in one place. Familiar commands that just work.";
+const canonicalUrl = new URL("/", Astro.site).href;
+---
+
+<!--
+THESIS: A unified system package manager, demonstrated through one index spanning apps, system packages, and developer tools.
+OWN-WORLD: Logo-yellow parcel label, charcoal command strips, paper reading surface, heavy italic Barlow, the supplied campaign photograph.
+STORY: Recognize your software in one place, choose a package, see the command, then discover how mise records and restores it.
+FIRST VIEWPORT: Left-aligned oversized headline and primary action; right-hand yellow package index with four examples and a working copy action.
+FORM: Grounded candidate 7, directory-index staging, seed cb8be0d3. The index carries concrete package choices; the poster anchors the closing campaign.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta content="width=device-width, initial-scale=1" name="viewport" />
+        <meta
+            content="The unified system package manager. pkg brings apps, system packages, and developer tools together through one friendly command, powered by mise."
+            name="description"
+        />
+        <meta content="#f7f5ed" name="theme-color" />
+        <link href={canonicalUrl} rel="canonical" />
+        <meta content={title} property="og:title" />
+        <meta content={description} property="og:description" />
+        <meta content="website" property="og:type" />
+        <meta content={canonicalUrl} property="og:url" />
+        {sharingHead.map(({ attrs }) => (
+            <meta {...attrs} />
+        ))}
+        <meta content={title} name="twitter:title" />
+        <meta content={description} name="twitter:description" />
+        <link href="/favicon.ico" rel="icon" sizes="16x16 32x32 48x48" />
+        <title>pkg: {title}</title>
+    </head>
+    <body>
+        <a class="skip-link" href="#main">Skip to content</a>
+        <header class="site-header wrap">
+            <a aria-label="pkg home" class="brand" href="/">
+                <img alt="pkg" class="logo-light" height="48" src={logo.src} width="76" />
+                <img alt="pkg" class="logo-dark" height="48" src={reverseLogo.src} width="76" />
+            </a>
+            <span class="header-note">Your software.<br />One package manager.</span>
+            <nav aria-label="Main navigation">
+                <a href="/docs">Docs</a>
+                <a class="github-link" href="https://github.com/gotpkg/pkg" target="_blank"
+                    >GitHub <Icon name="arrow-ne"
+                /></a>
+            </nav>
+        </header>
+        <main id="main">
+            <section aria-labelledby="hero-title" class="hero wrap">
+                <div class="hero-copy">
+                    <p class="intro uppercase">
+                        <Icon name="arrow-right" /> Packages. Developer Tools. Apps.
+                    </p>
+                    <h1 id="hero-title">The <em>unified</em><br />system package<br />manager.</h1>
+                    <p class="hero-description">
+                        One package manager for any package from any registry on any machine.
+                        Packages, developer tools, and apps, with familiar commands that just work.
+                    </p>
+                    <div class="hero-actions">
+                        <a class="button button-dark" href="/docs/install"
+                            >Get pkg <Icon name="arrow-ne"
+                        /></a>
+                        <a class="text-link" href="/docs"
+                            >Read the docs <Icon name="arrow-right"
+                        /></a>
+                    </div>
+                    <p class="built-with">
+                        Built with Rust. Powered by
+                        <a href="https://mise.jdx.dev" target="_blank">mise</a>. Made for humans and
+                        agents.
+                    </p>
+                </div>
+                <div class="parcel">
+                    <div class="parcel-top">
+                        <span class="uppercase">Handle With Curiosity</span><Icon name="package" />
+                    </div>
+                    <div class="parcel-brand">
+                        <img alt="" height="120" src={monochromeLogo.src} width="190" />
+                        <p>All package registries.<br /><strong>One package manager.</strong></p>
+                    </div>
+                    <PackageDemo client:load />
+                </div>
+            </section>
+            <div aria-label="Package sources supported through mise" class="manager-band">
+                <div class="wrap manager-list">
+                    <span class="uppercase">Familiar Tools. <br /> One Interface.</span
+                    ><span>Homebrew</span><span>apt</span><span>Mac App Store</span
+                    ><span>Flatpak</span><span>npm</span><span>Cargo</span><span>go</span
+                    ><span>GitHub</span
+                    ><a href="https://mise.jdx.dev/dev-tools/backends/#backends" target="_blank"
+                        >&amp; the mise ecosystem <Icon name="arrow-ne"
+                    /></a>
+                </div>
+            </div>
+            <Workflow />
+            <section aria-labelledby="everyday-title" class="everyday wrap">
+                <div class="everyday-heading">
+                    <h2 id="everyday-title">It just works.<br /><em>Like you expect.</em></h2>
+                    <p>
+                        Sensible defaults, right out of the box. Commands that do what you expect,
+                        from finding a package to keeping your system up to date.
+                    </p>
+                </div>
+                <div class="command-directory">
+                    <a href="/docs/packages#find-a-package">
+                        <code>pkg search ffmpeg</code>
+                        <span>Find your next favorite tool</span>
+                        <Icon name="arrow-ne" />
+                    </a>
+                    <a href="/docs/packages#keep-packages-up-to-date">
+                        <code>pkg update --dry-run</code>
+                        <span>See what’s changing first with <code>--dry-run</code></span>
+                        <Icon name="arrow-ne" />
+                    </a>
+                    <a href="/docs/configuration">
+                        <code>pkg sync</code>
+                        <span>Install packages from your config</span>
+                        <Icon name="arrow-ne" />
+                    </a>
+                    <a href="/docs/automation">
+                        <code>pkg list --output json</code>
+                        <span
+                            >Agents get their own natural interface with
+                            <code>--output json</code></span
+                        >
+                        <Icon name="arrow-ne" />
+                    </a>
+                </div>
+            </section>
+            <section aria-labelledby="campaign-title" class="campaign">
+                <div class="wrap campaign-grid">
+                    <div class="campaign-copy">
+                        <p class="campaign-note uppercase">
+                            Quality Software. Part of a Balanced Breakfast.
+                        </p>
+                        <h2 id="campaign-title">
+                            Got <img alt="pkg" height="126" src={reverseLogo.src} width="200" />?
+                        </h2>
+                        <p>
+                            From your first developer tool to your everyday apps. Good things come
+                            in pkgs.
+                        </p>
+                        <a class="text-link light-link" href="/docs/packages"
+                            >Meet your new package manager <Icon name="arrow-ne"
+                        /></a>
+                    </div>
+                    <figure>
+                        <Image
+                            alt="A playful Got pkg? poster in a middle-school cafeteria, with a cardboard mustache, a package, and the slogan Code it. Install it. Share it."
+                            loading="lazy"
+                            sizes="(max-width: 760px) 100vw, 60vw"
+                            src={poster}
+                            widths={[640, 960, 1448]}
+                        />
+                        <figcaption>
+                            For entertainment purposes only. Please don’t actually run `pkg install
+                            fun`.
+                        </figcaption>
+                    </figure>
+                </div>
+            </section>
+            <section aria-labelledby="get-started-title" class="get-started">
+                <div class="wrap get-started-inner">
+                    <div class="get-started-copy">
+                        <Image
+                            alt=""
+                            class="moving-box"
+                            height={140}
+                            loading="lazy"
+                            sizes="(max-width: 760px) 88px, 140px"
+                            src={movingBox}
+                            width={140}
+                            widths={[160, 280, 420]}
+                        />
+                        <div>
+                            <p class="uppercase">You Got a Delivery Notice.</p>
+                            <h2 id="get-started-title">You're missing a <span>pkg.</span></h2>
+                        </div>
+                    </div>
+                    <a class="button button-dark" href="/docs/install"
+                        >Let’s get you set up <Icon name="arrow-ne"
+                    /></a>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer wrap">
+            <a aria-label="pkg home" href="/">
+                <img alt="pkg" class="logo-light" height="36" src={logo.src} width="56" />
+                <img alt="pkg" class="logo-dark" height="36" src={reverseLogo.src} width="56" />
+            </a>
+            <p>The unified system package manager.</p>
+            <nav aria-label="Footer navigation">
+                <a href="/docs">Documentation</a
+                ><a href="https://github.com/gotpkg/pkg" target="_blank"
+                    >Source code <Icon name="arrow-ne"
+                /></a>
+            </nav>
+            <a class="back-top" href="#main">Back to top <Icon name="arrow-up" /></a>
+        </footer>
+    </body>
+</html>

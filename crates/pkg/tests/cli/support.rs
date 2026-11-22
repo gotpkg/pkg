@@ -16,12 +16,43 @@ use std::time::SystemTime;
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
+/// The only directories on `PATH` when pkg runs: enough for the fake mise's shell script.
+pub(crate) const SYSTEM_PATH: &str = "/usr/bin:/bin:/usr/sbin:/sbin";
+
+/// The version of the pkg under test, which the installer's copy and mise's pkg report too.
+pub(crate) const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// What `mise use -g github:gotpkg/pkg@latest` leaves behind: mise's shim for pkg, which runs a
+/// pkg that reports the version pkg itself was built as.
+pub(crate) const INSTALLS_PKG: &str = concat!(
+    r#"shims="$HOME/.local/share/mise/shims"
+mkdir -p "$shims"
+printf '#!/bin/sh\necho "pkg "#,
+    env!("CARGO_PKG_VERSION"),
+    r#""\n' > "$shims/pkg"
+chmod +x "$shims/pkg"
+"#
+);
+
+/// A stand-in for mise's installer at https://mise.run: it puts the fake mise where
+/// `MISE_INSTALL_PATH` says.
+pub(crate) const FAKE_MISE_INSTALLER: &str = r#"#!/bin/sh
+set -e
+mkdir -p "$(dirname "$MISE_INSTALL_PATH")"
+cp "$FAKE_MISE/../bin/mise" "$MISE_INSTALL_PATH"
+chmod +x "$MISE_INSTALL_PATH"
+echo "mise: installed to $MISE_INSTALL_PATH" >&2
+"#;
+
 const FAKE_MISE: &str = r#"#!/bin/sh
 # Answers from $FAKE_MISE/answers/<key>[.<n>], where <key> is the arguments with the home
 # directory written as `~` and every other byte but letters and digits replaced by `_`, and <n>
-# counts calls with those arguments from 1.
+# counts calls with those arguments from 1. Each call's MISE_SYSTEM_PACKAGES_MANAGERS goes to
+# $FAKE_MISE/managers: `=<value>`, or `-` when it is unset.
 dir=$FAKE_MISE
 printf '%s\n' "$*" >> "$dir/calls"
+if [ -n "${MISE_SYSTEM_PACKAGES_MANAGERS+set}" ]; then managers="=$MISE_SYSTEM_PACKAGES_MANAGERS"; else managers=-; fi
+printf '%s\t%s\n' "$*" "$managers" >> "$dir/managers"
 key=$(printf '%s' "$*" | sed "s|$HOME|~|g" | LC_ALL=C tr -c 'A-Za-z0-9' '_')
 mkdir -p "$dir/counts"
 count=$(( $(cat "$dir/counts/$key" 2>/dev/null || echo 0) + 1 ))
@@ -158,8 +189,20 @@ impl Fixture {
         let target = "~/.config/mise/config.macos.toml\n";
         fixture.mise(&["settings", "get", "write_targets.packages"]).stdout(target);
         fixture.mise(&["settings", "get", "write_targets.tools"]).stdout(target);
+        for setting in ["system_packages.managers", "system_packages.prefer"] {
+            fixture
+                .mise(&["settings", "get", setting])
+                .stderr(&format!("mise ERROR Setting [{setting}] is not set\n"))
+                .status(1);
+        }
+        for version in ["160.0", ".metadata"] {
+            std::fs::create_dir_all(fixture.caskroom().join("firefox").join(version))
+                .expect("the Caskroom");
+        }
         fixture.mise(&["backends", "ls"]).stdout("aqua\ncargo\ncore\ngithub\nnpm\n");
         fixture.mise(&["version"]).stdout("2026.11.9 macos-arm64 (2026-11-16)\n");
+        fixture.mise(&["version", "--json"]).json(&mise_version("2026.11.9", "2026.11.9"));
+        fixture.mise(&["self-update", "--yes"]).stdout("");
         let config = fixture.config_dir();
         fixture.mise(&["config", "ls", "--json"]).json(&json!([
             { "path": config.join("config.macos.toml"), "tools": ["npm:prettier"] },
@@ -217,6 +260,11 @@ impl Fixture {
                 .declares(package);
         }
         fixture.mise(&["use", "-g", "ripgrep@latest"]).stdout("mise ripgrep@15.2.0 installed\n");
+        fixture.mise(&["use", "-g", "github:gotpkg/pkg@latest"]).runs(INSTALLS_PKG);
+        fixture.mise(&["bootstrap", "--dry-run"]).stdout("mise bootstrap: tools: nothing to do\n");
+        fixture
+            .mise(&["bootstrap"])
+            .stdout("bootstrap: follow-up\n  - start a new login session for the login shell\n");
         fixture
             .mise(&["bootstrap", "packages", "prune", "--dry-run", "--manager", "brew"])
             .nth(2)
@@ -281,6 +329,11 @@ impl Fixture {
         self.path("home")
     }
 
+    /// The Caskroom of the Homebrew prefix pkg is pointed at, outside the home directory.
+    pub(crate) fn caskroom(&self) -> PathBuf {
+        self.path("brew/Caskroom")
+    }
+
     /// `~/.config/mise`, as mise names it.
     pub(crate) fn config_dir(&self) -> PathBuf {
         self.home().join(".config/mise")
@@ -302,8 +355,14 @@ impl Fixture {
 
     /// The answer the fake mise gives to `mise -C <home> <args>`.
     pub(crate) fn mise(&self, args: &[&str]) -> Answer {
+        self.mise_in(&self.home(), args)
+    }
+
+    /// The answer the fake mise gives to `mise -C <directory> <args>`.
+    pub(crate) fn mise_in(&self, directory: &Path, args: &[&str]) -> Answer {
         let home = self.home().display().to_string();
-        let mut words = vec!["-C", home.as_str()];
+        let directory = directory.display().to_string();
+        let mut words = vec!["-C", directory.as_str()];
         words.extend_from_slice(args);
         let key: String = words
             .join(" ")
@@ -327,6 +386,19 @@ impl Fixture {
             .collect()
     }
 
+    /// `MISE_SYSTEM_PACKAGES_MANAGERS` as each run of the mise command `call` (written as
+    /// [`Fixture::calls`] writes it) received it, `None` when it was unset.
+    pub(crate) fn managers_for(&self, call: &str) -> Vec<Option<String>> {
+        let call = format!("-C {} {call}", self.home().display());
+        std::fs::read_to_string(self.path("mise/managers"))
+            .unwrap_or_default()
+            .lines()
+            .filter_map(|line| line.split_once('\t'))
+            .filter(|(args, _)| *args == call)
+            .map(|(_, managers)| managers.strip_prefix('=').map(str::to_string))
+            .collect()
+    }
+
     /// Serves `body` as JSON at `path` on the fake catalogs.
     pub(crate) fn serve(&self, path: &str, body: &Value) {
         self.catalog
@@ -334,6 +406,20 @@ impl Fixture {
             .lock()
             .expect("the routes")
             .insert(path.to_string(), (200, body.to_string()));
+    }
+
+    /// Serves `body` as plain text at `path` on the fake catalogs.
+    pub(crate) fn serve_text(&self, path: &str, body: &str) {
+        self.catalog
+            .routes
+            .lock()
+            .expect("the routes")
+            .insert(path.to_string(), (200, body.to_string()));
+    }
+
+    /// The fake catalogs' base URL.
+    pub(crate) fn catalog_url(&self) -> &str {
+        &self.catalog.url
     }
 
     /// Answers `path` with an error status.
@@ -345,28 +431,22 @@ impl Fixture {
             .insert(path.to_string(), (status, "{}".into()));
     }
 
-    /// A command for `program` in the fixture's environment: `PATH`, `HOME`, and pkg's settings.
-    pub(crate) fn command(&self, program: impl AsRef<OsStr>) -> Command {
-        let mut command = Command::new(program);
-        command
-            .current_dir(self.dir.path())
-            .env_clear()
-            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
-            .env("HOME", self.home())
-            .env("PKG_MISE", self.path("bin/mise"))
-            .env("FAKE_MISE", self.path("mise"))
-            .env("PKG_HOMEBREW_API", format!("{}/api", self.catalog.url))
-            .env("PKG_APP_STORE_API", &self.catalog.url)
-            .env("XDG_CACHE_HOME", self.path("cache"))
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        command
+    pub(crate) fn run(&self, args: &[&str]) -> Outcome {
+        self.run_with(args, &[])
     }
 
-    /// Runs `command` to completion.
+    /// `run` with `env` applied on top of the fixture's environment; `None` unsets a variable.
+    pub(crate) fn run_with(&self, args: &[&str], env: &[(&str, Option<&OsStr>)]) -> Outcome {
+        self.finish(&mut self.command(args, env))
+    }
+
+    /// Runs `command` to completion, capturing both streams.
     pub(crate) fn finish(&self, command: &mut Command) -> Outcome {
-        let output = command.output().expect("the program runs");
+        let output = command
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .expect("the program runs");
         Outcome {
             status: output.status.code().unwrap_or(-1),
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
@@ -374,8 +454,47 @@ impl Fixture {
         }
     }
 
-    pub(crate) fn run(&self, args: &[&str]) -> Outcome {
-        self.finish(self.command(env!("CARGO_BIN_EXE_pkg")).args(args))
+    /// pkg with `args`, in the fixture's environment with `env` on top; `None` unsets a variable.
+    /// `PATH` holds only the system directories, so no mise or pkg of the host's is found.
+    pub(crate) fn command(&self, args: &[&str], env: &[(&str, Option<&OsStr>)]) -> Command {
+        self.command_for(env!("CARGO_BIN_EXE_pkg"), args, env)
+    }
+
+    /// `program` in the fixture's environment, as [`Fixture::command`] sets it up for pkg.
+    pub(crate) fn command_for(
+        &self,
+        program: impl AsRef<OsStr>,
+        args: &[&str],
+        env: &[(&str, Option<&OsStr>)],
+    ) -> Command {
+        let mut command = Command::new(program);
+        command
+            .args(args)
+            .current_dir(self.dir.path())
+            .env_clear()
+            .env("PATH", SYSTEM_PATH)
+            .env("HOME", self.home())
+            .env("PKG_MISE", self.path("bin/mise"))
+            .env("FAKE_MISE", self.path("mise"))
+            .env("PKG_HOMEBREW_API", format!("{}/api", self.catalog.url))
+            .env("PKG_APP_STORE_API", &self.catalog.url)
+            .env("XDG_CACHE_HOME", self.path("cache"))
+            .env("MISE_SYSTEM_BREW_PREFIX", self.path("brew"))
+            .stdin(Stdio::null());
+        for (key, value) in env {
+            match value {
+                Some(value) => command.env(key, value),
+                None => command.env_remove(key),
+            };
+        }
+        command
+    }
+
+    /// Marks the fake mise as one a package manager installed, which mise's packaging contract
+    /// signals with a file under its install prefix (the directory above `bin/`).
+    pub(crate) fn disable_mise_self_update(&self) {
+        std::fs::create_dir_all(self.path("lib")).expect("the prefix's lib directory");
+        std::fs::write(self.path("lib/.disable-self-update"), "").expect("the marker");
     }
 
     /// `run` with `--output json`.
@@ -442,7 +561,7 @@ impl Answer {
         self
     }
 
-    /// Runs `script` (a shell script) whenever this answer is given.
+    /// Runs `script` with `sh` before answering, in mise's environment.
     pub(crate) fn runs(self, script: &str) -> Answer {
         std::fs::write(self.directory.join("run"), script).expect("run");
         self
@@ -457,10 +576,28 @@ impl Answer {
         std::fs::write(self.directory.join("run"), script).expect("run");
         self
     }
+
+    /// Waits half a second before answering, long enough for a display to draw.
+    pub(crate) fn slowly(self) -> Answer {
+        let run = self.directory.join("run");
+        let script = std::fs::read_to_string(&run).unwrap_or_default();
+        std::fs::write(&run, format!("sleep 0.5\n{script}")).expect("run");
+        self
+    }
 }
 
-/// `mise bootstrap packages status --json` for the seeded packages plus `extra`.
+/// `mise bootstrap packages status --json` for the seeded packages plus `extra`, as mise answers
+/// when pkg leaves casks out of its check: they are listed, but skipped.
 pub(crate) fn status(extra: &[(&str, &str, Option<&str>)]) -> Value {
+    status_answer(extra, true)
+}
+
+/// [`status`] as mise answers when it checks casks too.
+pub(crate) fn status_with_casks(extra: &[(&str, &str, Option<&str>)]) -> Value {
+    status_answer(extra, false)
+}
+
+fn status_answer(extra: &[(&str, &str, Option<&str>)], casks_left_out: bool) -> Value {
     let mut managers: BTreeMap<&str, Vec<Value>> = BTreeMap::new();
     let seeded = [
         ("brew", "git", Some("2.56.1")),
@@ -469,13 +606,19 @@ pub(crate) fn status(extra: &[(&str, &str, Option<&str>)]) -> Value {
         ("brew-cask", "firefox", Some("160.0")),
         ("mas", "937984704", Some("5.3.1")),
     ];
+    let left_out = |manager: &str| casks_left_out && manager == "brew-cask";
     for (manager, package, installed) in seeded.iter().chain(extra) {
+        let state = match installed {
+            _ if left_out(manager) => "skipped",
+            Some(_) => "installed",
+            None => "missing",
+        };
         let mut entry = json!({
             "package": package,
             "requested_version": "latest",
             "desired_state": "present",
-            "state": if installed.is_some() { "installed" } else { "missing" },
-            "installed_version": installed,
+            "state": state,
+            "installed_version": if left_out(manager) { "" } else { installed.unwrap_or("") },
         });
         if *manager == "mas" {
             entry["name"] = json!("Amphetamine");
@@ -485,10 +628,30 @@ pub(crate) fn status(extra: &[(&str, &str, Option<&str>)]) -> Value {
     let managers: serde_json::Map<String, Value> = managers
         .into_iter()
         .map(|(manager, packages)| {
-            (manager.to_string(), json!({ "available": true, "packages": packages }))
+            let status = if left_out(manager) {
+                json!({
+                    "available": false,
+                    "reason": "excluded by the system_packages.managers setting",
+                    "packages": packages,
+                })
+            } else {
+                json!({ "available": true, "packages": packages })
+            };
+            (manager.to_string(), status)
         })
         .collect();
     Value::Object(managers)
+}
+
+/// `mise version --json` for a mise at `current` that knows of `latest`.
+pub(crate) fn mise_version(current: &str, latest: &str) -> Value {
+    json!({
+        "version": format!("{current} macos-arm64 (2026-11-16)"),
+        "latest": latest,
+        "os": "macos",
+        "arch": "arm64",
+        "build_time": "2026-11-16 10:40:41 +00:00",
+    })
 }
 
 fn tool(version: &str, config: &Path) -> Value {

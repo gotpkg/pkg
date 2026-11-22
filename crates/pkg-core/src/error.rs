@@ -64,6 +64,18 @@ pub struct ErrorDetails {
     pub argument: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+    /// A file or directory the failure concerns, other than a config file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<PathBuf>,
+    /// The step of `setup` or `bootstrap` that failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phase: Option<String>,
+    /// What the operation completed before it failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completed: Option<Vec<String>>,
+    /// Whether `mise bootstrap` had started, so that changes it made may remain.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub changes_may_remain: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -79,10 +91,28 @@ pub enum Recovery {
     PreviewPrune,
     Prune,
     Keep(String),
-    RemoveDeclaration { package: String, config: PathBuf, shared: bool },
+    RemoveDeclaration {
+        package: String,
+        config: PathBuf,
+        shared: bool,
+    },
     ListTaps,
-    RemoveTap { tap: String, config: PathBuf, editable_config: PathBuf },
+    RemoveTap {
+        tap: String,
+        config: PathBuf,
+        editable_config: PathBuf,
+    },
     Cursor,
+    /// `mise self-update`.
+    UpdateMise,
+    /// Update mise with the package manager that installed it.
+    UpdateMiseWithItsPackageManager,
+    /// Move this file or directory aside, then run the command again.
+    MoveAside(PathBuf),
+    /// Run the command in a terminal, where mise can ask for what it needs.
+    RunInTerminal,
+    /// Fix the cause and run the same command again.
+    RunAgain,
 }
 
 impl Error {

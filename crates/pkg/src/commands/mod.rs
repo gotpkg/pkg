@@ -2,6 +2,7 @@
 
 use crate::registry::CommandSpec;
 
+pub mod bootstrap;
 pub mod cli;
 pub mod common;
 pub mod context;
@@ -15,10 +16,11 @@ pub mod prune;
 pub mod remove;
 pub mod schema;
 pub mod search;
+pub mod setup;
 pub mod shims;
 pub mod sync;
 pub mod tap;
-pub mod upgrade;
+pub mod update;
 
 /// The registry, by resource, in the order discovery lists them.
 pub static GROUPS: &[&[CommandSpec]] = &[
@@ -28,11 +30,13 @@ pub static GROUPS: &[&[CommandSpec]] = &[
     search::COMMANDS,
     info::COMMANDS,
     outdated::COMMANDS,
-    upgrade::COMMANDS,
+    update::COMMANDS,
     sync::COMMANDS,
     prune::COMMANDS,
     locate::COMMANDS,
     tap::COMMANDS,
+    setup::COMMANDS,
+    bootstrap::COMMANDS,
     shims::COMMANDS,
     cli::COMMANDS,
     schema::COMMANDS,

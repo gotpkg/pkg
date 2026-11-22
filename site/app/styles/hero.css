@@ -1,0 +1,126 @@
+.hero {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 65px;
+    padding-block: 54px 84px;
+    align-items: center;
+}
+.intro {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.055em;
+    margin-bottom: 26px;
+}
+.intro .icon {
+    font-size: 18px;
+}
+h1 {
+    font-size: clamp(64px, 6.1vw, 86px);
+    line-height: 0.95;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+}
+h1 em,
+h2 em {
+    font-weight: 800;
+}
+h1 em {
+    position: relative;
+    z-index: 0;
+}
+h1 em::after {
+    content: "";
+    position: absolute;
+    bottom: 3px;
+    left: 0;
+    width: 100%;
+    height: 15px;
+    background: var(--display-underline);
+    z-index: -1;
+    transform: rotate(-2deg);
+}
+.hero-description {
+    font-size: 20px;
+    line-height: 1.5;
+    margin-top: 30px;
+    max-width: 39ch;
+}
+.hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    margin-top: 30px;
+}
+.built-with {
+    font-size: 12px;
+    color: var(--secondary);
+    margin-top: 22px;
+}
+.built-with a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+@media (min-width: 1500px) {
+    .hero {
+        padding-block: 75px 105px;
+    }
+}
+@media (max-width: 1100px) {
+    .hero {
+        gap: 36px;
+    }
+    h1 {
+        font-size: 74px;
+    }
+}
+@media (max-width: 900px) {
+    .hero {
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+    }
+    h1 {
+        font-size: 65px;
+    }
+    .hero-description {
+        font-size: 18px;
+    }
+    .hero-actions {
+        gap: 18px;
+    }
+}
+@media (max-width: 760px) {
+    .hero {
+        grid-template-columns: 1fr;
+        gap: 45px;
+        padding-block: 32px 64px;
+    }
+    .intro {
+        font-size: 10px;
+        margin-bottom: 20px;
+    }
+    h1 {
+        font-size: clamp(64px, 13vw, 88px);
+    }
+    .hero-description {
+        font-size: 20px;
+        margin-top: 24px;
+    }
+    .hero-actions {
+        margin-top: 26px;
+        gap: 28px;
+    }
+    .built-with {
+        font-size: 11px;
+    }
+}
+@media (max-width: 380px) {
+    .hero-actions {
+        gap: 20px;
+    }
+    .hero-actions .button {
+        gap: 24px;
+    }
+}

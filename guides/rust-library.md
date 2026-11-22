@@ -12,7 +12,7 @@ title: Use pkg From Rust
 ## How to use it
 
 1. Add `pkg-core` from this repository as a Git dependency, or use `path = "../pkg/crates/pkg-core"` from a neighboring checkout. The crate is not published to crates.io.
-2. Install mise 2026.11.9 or newer separately. Create `Settings` with an absolute home and the mise executable. Its configuration/cache defaults derive from that home, not the process environment. Set explicit paths and catalog endpoints when needed; pass only the child environment that the operation should receive.
+2. Install mise 2026.11.9 or newer separately, or let `Client::setup` install it with mise's own installer on macOS or Linux. Create `Settings` with an absolute home and the mise executable. Its configuration/cache defaults derive from that home, not the process environment. Set explicit paths and catalog endpoints when needed; pass only the child environment that the operation should receive.
 3. Construct `Client`, pass a progress callback to each operation, and inspect the typed result or error. Run calls on your own worker thread when the host has a UI; calls are blocking.
 
 ## Worked example
@@ -33,6 +33,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut progress = |event: Progress<'_>| match event {
         Progress::Output { text, .. } => eprint!("{text}"),
         Progress::Warning(message) => eprintln!("warning: {message}"),
+        // Steps and plans are for drawing progress; ignoring them loses nothing.
+        Progress::Step(_) | Progress::Plan(_) => {}
     };
 
     let listed = client.list(ListRequest::default(), &mut progress)?;
@@ -43,6 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let request = InstallRequest {
         packages: vec!["brew:wget".into()],
         mode: Mode::DryRun,
+        report_plans: false,
     };
     match client.install(request, &mut progress) {
         Ok(outcome) => {
@@ -62,13 +65,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 The application owns every print in this example. A native frontend can instead update its model from the receipt and route progress to its own log. Passing `&mut |_| {}` ignores progress; final outcomes still retain warnings.
 
+To draw progress, read the two events that describe the operation's own work. `install`, `update`, `sync`, `remove`, and `prune` send `Progress::Step` each time a stretch of their work begins, such as reading what is installed or installing one package, with the package's position in the request; every event until the next step belongs to it. `Progress::Plan` follows a step that installs or uninstalls with the items mise is about to work on, dependencies included. `remove` and `prune` always send their plans. `install` sends one for each bootstrap package only when `InstallRequest::report_plans` is set, which costs one read-only mise query per package; leave it off unless you show plans. `Step` in the [API contract](../crates/pkg-core/src/lib.rs) lists each operation's steps in order.
+
 ## Limits and edge cases
 
 - A context is not an inventory snapshot: later calls reload the configuration and installed state. Two clients can use different homes without changing process-global settings.
+- Installed state comes from mise, except for Homebrew casks, which are read from the Caskroom under `MISE_SYSTEM_BREW_PREFIX` in the child environment, else mise's default prefix ([Where installed state comes from](../crates/pkg/docs/packages.md#where-installed-state-comes-from)). A host that isolates a client from the machine's Homebrew, such as a test, sets `MISE_SYSTEM_BREW_PREFIX` in `child_env`; mise reads the same variable, so both see the same prefix.
 - Set `config_dir` to select a different global mise directory with its host/environment overlays. Set `global_config_override` only when deliberately requesting mise's narrower `MISE_GLOBAL_CONFIG_FILE` behavior; it is not equivalent to selecting that file's directory. The default leaves the file override unset.
 - Serialize mutations of the same configuration, including calls through separate clients or processes. This library does not add a lock around external mise users.
-- Callbacks run serially on the calling thread and stop before the method returns. Return promptly, do not panic, and do not reenter the same client. Stdout and stderr retain their individual ordering, not a shared total order.
+- Callbacks run serially on the calling thread and stop before the method returns. Return promptly, do not panic, and do not reenter the same client. Stdout and stderr retain their individual ordering, not a shared total order. `Progress::Output` is mise's own wording, which any mise release can change; steps and plans are the typed part.
 - Core errors expose typed details and recovery actions. `details.package`, `details.installed`, `details.removed`, `details.config`, and `details.editable_config` identify relevant partial work and declaration conflicts when present. `removed` lists declaration removals confirmed before a later failure; it is not a rollback guarantee. Do not assume an error means no earlier package changed.
 - Reads and dry runs do not install or edit configuration. Catalog search can update its cache and can return warnings alongside matches.
-- Core starts no prompt, async runtime, signal handler, daemon, or background job that survives a call. There is no cancellation or rollback-on-drop API.
+- `setup` and `bootstrap` change the machine beyond packages, on macOS and Linux only: they can run mise's installer, edit pkg's `PATH` block in shell startup files, and replace `~/.local/bin/pkg` with a link to mise's shim. `bootstrap` applies whatever the configuration declares and is not a transaction; a failure's `details.phase`, `details.completed`, and `details.changes_may_remain` say how far it got.
+- Core starts no prompt of its own, async runtime, signal handler, daemon, or background job that survives a call. Set `BootstrapRequest::terminal` only when your process owns an interactive terminal: mise and the programs it runs may then ask there for passwords and answers. Without it, mise runs with no controlling terminal, so a step that needs an answer fails. There is no cancellation or rollback-on-drop API.
 - The previous unpublished `pkg` implementation modules are removed rather than retained as aliases. Rust consumers migrate to `pkg_core`; CLI users need no migration. Swift bindings and app packaging remain separate work.

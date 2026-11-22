@@ -14,6 +14,7 @@ mod error_details;
 pub mod failure;
 pub mod invocation;
 pub mod parser;
+mod progress;
 pub mod reference;
 pub mod registry;
 pub mod response;

@@ -1,0 +1,143 @@
+# Deploys the website (site/) and its installer routes to gotpkg.dev on Cloudflare Workers when a
+# push to `main` changes what the site is built from, and on demand. The commit passes the
+# website's own gate first: its production build, browser tests and Worker tests. The full gate,
+# Rust included, runs in ci.yml on the same commit. CLI releases (release.yml) deploy nothing.
+#
+# Deploying needs the repository variable CLOUDFLARE_DEPLOY=true and the `production` environment
+# (restricted to `main`), which holds the secret CLOUDFLARE_API_TOKEN and the variables
+# CLOUDFLARE_ACCOUNT_ID and SITE_URL (https://gotpkg.dev).
+
+name: Site
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "site/**"
+            - "mise.toml"
+            - "mise.lock"
+            - ".env.schema"
+            - ".github/workflows/site.yml"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+# Deploys run one at a time and are never cancelled; a newer push waits for the running one.
+concurrency:
+    group: site-production
+    cancel-in-progress: false
+
+jobs:
+    check:
+        name: "Site: check"
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        # Only the tools that build and test the site; Workbench's link hook stays out.
+        env:
+            MISE_ENABLE_TOOLS: node,pnpm
+            MISE_NO_HOOKS: "1"
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+            - uses: jdx/mise-action@v5
+              with:
+                  # A deploying workflow restores no cache: a lower-trust workflow that can write
+                  # to the default branch's cache could otherwise plant files in it.
+                  cache: false
+            - run: mise run site:check
+
+    deploy:
+        name: "Site: deploy to Cloudflare Workers"
+        needs: check
+        if: vars.CLOUDFLARE_DEPLOY == 'true' && github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        # Only the tools that build and deploy the site; Workbench's link hook stays out.
+        env:
+            MISE_ENABLE_TOOLS: node,pnpm,github:dmno-dev/varlock
+            MISE_NO_HOOKS: "1"
+        environment:
+            name: production
+            url: ${{ vars.SITE_URL }}
+        steps:
+            # Fail before uploading anything the job could not verify.
+            - name: Require SITE_URL
+              if: vars.SITE_URL == ''
+              run: |
+                  echo "::error::Set SITE_URL in the production environment to verify the deploy."
+                  exit 1
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+            - uses: jdx/mise-action@v5
+              with:
+                  cache: false
+            # Dependencies install and the site builds with no credential in the environment.
+            - run: mise run site:build
+            - name: Deploy the build
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+                  # Answers the deploy task's `confirm` prompt.
+                  MISE_YES: "1"
+              run: mise run site:deploy:built
+            # `wrangler deploy` returns before every edge location serves the new version. Every
+            # built page answers with `X-Build: <first 7 characters of the commit>`
+            # (site/stamp-build.plugin.ts), so poll each one as a browser would, until it answers
+            # 200 with this build's stamp. Curl probes explicitly accept HTML rather than the installer.
+            - name: Wait until every page serves this build
+              shell: bash
+              env:
+                  SITE_URL: ${{ vars.SITE_URL }}
+                  CLIENT_DIR: site/dist/client
+              run: |
+                  expected="${GITHUB_SHA::7}"
+                  site_url="${SITE_URL%/}"
+
+                  # Each built page, at its unslashed URL: `index.html` answers for its directory.
+                  # The 404 and 500 pages answer with their error status by design.
+                  paths=()
+                  while IFS= read -r path; do
+                      paths+=("$path")
+                  done < <(
+                      cd "$CLIENT_DIR" &&
+                          find . -name '*.html' ! -path ./404.html ! -path ./500.html |
+                          sed -e 's|^\.||' -e 's|/index\.html$||' -e 's|\.html$||' -e 's|^$|/|' |
+                          sort
+                  )
+                  if [ "${#paths[@]}" -eq 0 ]; then
+                      echo "::error::No pages found in $CLIENT_DIR"
+                      exit 1
+                  fi
+
+                  # "<status> <build>" for a URL; status 000 when the request fails.
+                  probe() {
+                      curl --silent --max-time 10 --header 'Accept: text/html' \
+                          --output /dev/null --dump-header - "$1" |
+                          awk -f site/scripts/deployment-headers.awk
+                  }
+
+                  stale_routes() {
+                      local path status build out=""
+                      for path in "${paths[@]}"; do
+                          read -r status build < <(probe "$site_url$path")
+                          if [ "$status" != 200 ] || [ "$build" != "$expected" ]; then
+                              out+="$path (HTTP $status, build ${build:-none}) "
+                          fi
+                      done
+                      printf '%s' "$out"
+                  }
+
+                  deadline=$((SECONDS + 180))
+                  until stale="$(stale_routes)"; [ -z "$stale" ]; do
+                      if [ "$SECONDS" -ge "$deadline" ]; then
+                          echo "::error::$site_url is not serving build $expected: $stale"
+                          exit 1
+                      fi
+                      sleep 10
+                  done
+                  echo "All ${#paths[@]} pages at $site_url serve build $expected."

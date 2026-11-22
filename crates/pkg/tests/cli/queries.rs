@@ -1,6 +1,100 @@
 //! The commands that only read: list, search, info, outdated, where, and tap list.
 
-use crate::support::{Fixture, assert_matches_output_schema};
+use serde_json::{Value, json};
+
+use crate::support::{
+    Fixture, assert_matches_output_schema, mise_version, status, status_with_casks,
+};
+
+const STATUS: &str = "bootstrap packages status --json";
+
+/// Every manager the seeded config names or an unprefixed key may choose, but casks.
+const ALL_BUT_CASKS: &str = "apk,apt,brew,choco,dnf,mas,pacman,scoop,winget,zypper";
+
+#[test]
+fn list_reads_casks_from_the_caskroom_and_asks_mise_about_the_rest() {
+    let fixture = Fixture::seeded();
+    let page = fixture.json(&["list"]).success();
+    let firefox = &page["items"][3];
+    assert_eq!(firefox["package"], "brew-cask:firefox");
+    assert_eq!(firefox["state"], "installed");
+    assert_eq!(firefox["installed"], "160.0");
+    assert_eq!(page["items"][2]["installed"], "1.24.5", "mise still answers for formulae");
+    assert_eq!(fixture.managers_for(STATUS), [Some(ALL_BUT_CASKS.to_string())]);
+    assert_matches_output_schema(&["list"], &page);
+
+    std::fs::remove_dir(fixture.caskroom().join("firefox/160.0")).unwrap();
+    let page = fixture.json(&["list", "--manager", "brew-cask"]).success();
+    assert_eq!(page["items"][0]["state"], "missing");
+    assert_eq!(page["items"][0]["installed"], Value::Null);
+}
+
+#[test]
+fn a_formula_mise_reports_missing_has_no_version() {
+    let fixture = Fixture::seeded();
+    fixture
+        .mise(&["bootstrap", "packages", "status", "--json"])
+        .json(&status(&[("brew", "tree", None)]));
+    let page = fixture.json(&["list", "--manager", "brew"]).success();
+    assert_eq!(page["items"][3]["package"], "brew:tree");
+    assert_eq!(page["items"][3]["installed"], Value::Null);
+}
+
+#[test]
+fn the_configs_own_manager_settings_decide_what_mise_checks() {
+    let fixture = Fixture::seeded();
+    fixture
+        .mise(&["settings", "get", "system_packages.managers"])
+        .stdout("[\"brew\", \"brew-cask\", \"mas\"]\n")
+        .stderr("")
+        .status(0);
+    fixture.json(&["list"]).success();
+    assert_eq!(fixture.managers_for(STATUS), [Some("brew,mas".to_string())]);
+
+    let fixture = Fixture::seeded();
+    fixture
+        .mise(&["settings", "get", "system_packages.prefer"])
+        .stdout("[\"brew-cask\", \"brew\"]\n")
+        .stderr("")
+        .status(0);
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).json(&status_with_casks(&[]));
+    std::fs::remove_dir(fixture.caskroom().join("firefox/160.0")).unwrap();
+    let page = fixture.json(&["list", "--manager", "brew-cask"]).success();
+    assert_eq!(page["items"][0]["installed"], "160.0", "mise's answer, not the Caskroom's");
+    assert_eq!(fixture.managers_for(STATUS), [None]);
+}
+
+#[test]
+fn a_manager_pkg_did_not_name_sends_the_question_back_to_mise() {
+    let fixture = Fixture::seeded();
+    let mut missed = status(&[]);
+    missed["macports"] = json!({
+        "available": false,
+        "reason": "excluded by the system_packages.managers setting",
+        "packages": [{ "package": "tree", "requested_version": "latest", "desired_state": "present", "state": "skipped", "installed_version": "" }],
+    });
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).nth(1).json(&missed);
+    let mut checked = status_with_casks(&[]);
+    checked["brew-cask"]["packages"][0]["installed_version"] = "161.0".into();
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).nth(2).json(&checked);
+    let page = fixture.json(&["list", "--manager", "brew-cask"]).success();
+    assert_eq!(page["items"][0]["installed"], "161.0");
+    assert_eq!(fixture.managers_for(STATUS), [Some(ALL_BUT_CASKS.to_string()), None]);
+}
+
+#[test]
+fn a_config_without_casks_asks_mise_as_it_always_did() {
+    let fixture = Fixture::seeded();
+    let config = fixture.read_dotfile("config.macos.toml");
+    std::fs::write(
+        fixture.dotfile("config.macos.toml"),
+        config.replace("\"brew-cask:firefox\" = \"latest\"\n", ""),
+    )
+    .unwrap();
+    fixture.json(&["list"]).success();
+    assert_eq!(fixture.managers_for(STATUS), [None]);
+    assert!(!fixture.calls().iter().any(|call| call.contains("system_packages")));
+}
 
 #[test]
 fn list_groups_packages_by_manager_then_tools() {
@@ -117,6 +211,7 @@ fn info_joins_the_catalog_and_what_mise_has_installed() {
     assert_matches_output_schema(&["info"], &wget);
     let firefox = fixture.json(&["info", "brew-cask:firefox"]).success();
     assert_eq!(firefox["apps"], serde_json::json!(["Firefox.app"]));
+    assert_eq!(firefox["installed"], "160.0", "from the Caskroom");
     let app = fixture.json(&["info", "mas:937984704"]).success();
     assert_eq!(app["name"], "Amphetamine");
     assert_eq!(app["description"], "Keep your Mac awake.");
@@ -148,6 +243,27 @@ fn outdated_combines_homebrew_the_app_store_and_tools() {
     );
     assert_eq!(report["skipped"][0]["package"], "brew-cask:firefox");
     assert_matches_output_schema(&["outdated"], &report);
+}
+
+#[test]
+fn outdated_lists_a_newer_mise_first_unless_a_package_manager_owns_it() {
+    let fixture = Fixture::seeded();
+    fixture.mise(&["version", "--json"]).json(&mise_version("2026.11.9", "2026.11.10"));
+    let report = fixture.json(&["outdated"]).success();
+    assert_eq!(
+        report["items"][0],
+        serde_json::json!({ "package": "mise", "installed": "2026.11.9", "latest": "2026.11.10" })
+    );
+    let preview = fixture.json(&["update", "--dry-run"]).success();
+    assert_eq!(preview["updated"][0]["package"], "mise");
+
+    fixture.disable_mise_self_update();
+    let report = fixture.json(&["outdated"]).success();
+    assert!(report["items"].as_array().unwrap().iter().all(|item| item["package"] != "mise"));
+    assert!(
+        report["skipped"].as_array().unwrap().iter().any(|item| item["package"] == "mise"),
+        "{report}"
+    );
 }
 
 #[test]

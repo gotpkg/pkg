@@ -4,6 +4,8 @@
 //! a shell script, so tests that run it are Unix-only; on Windows the discovery and registry
 //! tests that never reach mise still run.
 
+#[cfg(unix)]
+mod bootstrap;
 mod discovery;
 #[cfg(unix)]
 mod install;
@@ -14,7 +16,11 @@ mod registry;
 #[cfg(unix)]
 mod remove;
 #[cfg(unix)]
+mod setup;
+#[cfg(unix)]
 mod shims;
 mod support;
+#[cfg(unix)]
+mod terminal;
 #[cfg(unix)]
 mod upkeep;

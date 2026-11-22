@@ -1,0 +1,20 @@
+mise by @jdx – installing 2 tools
+mise ██░░░░░░░░░░░░░░ 0/2 · 3.1s
+  node@24.22.3  downloading  3.1s  17.5/53.1 MB · 6.5 MB/s
+  bun@1.4.5     downloading  3.1s  5.7/39.8 MB · 2.7 MB/s
+mise ████░░░░░░░░░░░░ 0/2 · 6.1s
+  node@24.22.3  downloading  6.1s  24.2/53.1 MB · 4.2 MB/s
+  bun@1.4.5     downloading  6.1s  12.4/39.8 MB · 2.4 MB/s
+mise ████████░░░░░░░░ 0/2 · 9.1s
+  node@24.22.3  downloading  9.1s  30.6/53.1 MB · 3.5 MB/s
+  bun@1.4.5     downloading  9.1s  34.3/39.8 MB · 4.2 MB/s
+mise bun@1.4.5 1.4.5
+mise ✓ bun@1.4.5     11.4s  bun-darwin-aarch64.zip
+mise ████████████░░░░ 1/2 · 12.2s
+  node@24.22.3  downloading  12.2s  40.3/53.1 MB · 3.4 MB/s
+mise ██████████████░░ 1/2 · 15.2s
+  node@24.22.3  node -v  15.2s
+mise node@24.22.3 v24.22.3
+mise node@24.22.3 11.19.1
+mise ✓ node@24.22.3  15.7s  node-v24.22.3-darwin-arm64.tar.gz
+mise ████████████████ 2/2 · installed 2 tools in 15.7s

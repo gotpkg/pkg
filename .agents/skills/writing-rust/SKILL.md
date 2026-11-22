@@ -21,10 +21,11 @@ description: Use when writing, reviewing, or restructuring Rust in this reposito
 | Reading and editing mise config files  | `crates/pkg-core/src/declarations.rs`                                              |
 | Homebrew and App Store catalogs        | `crates/pkg-core/src/catalog/`                                                     |
 | Explicit context and process defaults  | `crates/pkg-core/src/settings.rs`; CLI capture in `crates/pkg/src/environment.rs`  |
+| Live progress display on a terminal    | `crates/pkg/src/progress/`: lines and recognition, the display, the on/off choice  |
 | Shipped documentation                  | `crates/pkg/docs/*.md`, listed in `docs::DOCUMENTS`                                |
 | Rules about values                     | `#[cfg(test)] mod tests` beside the code                                           |
 | Rules about the process                | `crates/pkg/tests/cli/` (one test binary, a fake mise, fake catalogs)              |
-| Release archives and Homebrew formula  | `xtask/` (`cargo xtask …`), never shipped                                          |
+| Release archives and the installer     | `xtask/` (`cargo xtask …`), never shipped                                          |
 
 The binary is a shell around `pkg::app::run`. The CLI consumes `pkg_core::Client`; [the library contract](../../../crates/pkg-core/src/lib.rs) owns typed requests, outcomes, errors, and progress lifetimes.
 
@@ -39,7 +40,7 @@ Never hand-write Clap definitions: the parser is generated from the registry wit
 
 ## Output and errors
 
-- Core sends progress through the caller's callback and retains warnings in `Outcome`; it writes no terminal output. The CLI forwards upstream output to stderr and renders only the requested text or JSON result.
+- Core sends progress through the caller's callback and retains warnings in `Outcome`; it writes no terminal output. The CLI shows upstream output on stderr, as a live display for `install`, `update`, `sync`, `remove` and `prune` when text output goes to a terminal and as mise's own lines as they arrive otherwise, and renders only the requested text or JSON result.
 - Core errors expose `ErrorKind`, typed details, and semantic recovery actions. `core_failure.rs` maps them to the existing CLI `Failure`, suggestions, and exit statuses; CLI parse/output failures remain local to the executable.
 - A closed stdout (`… | head`) is the reader's choice, not a failure; any other stdout write error is reported as `INTERNAL`.
 - No `process::exit` below `main`; `main` returns `ExitCode`.
@@ -47,7 +48,7 @@ Never hand-write Clap definitions: the parser is generated from the registry wit
 ## mise and the config files
 
 - Run mise only through core's `Mise` (`read`/`query` for silent queries, `run` for callback progress). It passes `-C <home>`, clears inherited child variables, then applies the caller's environment snapshot and explicit home/config selection. Never mutate the host environment or current directory.
-- Prefer mise's JSON (`--json`) to its text. Where mise has none (prune and upgrade plans), parse only the lines you need in `mise/plans.rs` and skip the rest, with a unit test over captured output.
+- Prefer mise's JSON (`--json`) to its text. Where mise has none (prune and upgrade plans), parse only the lines you need in `mise/plans.rs` and skip the rest, with a unit test over captured output. The one exception is mise's progress lines, which the CLI's `progress/` recognizes for its display and for nothing else; a line it does not recognize is shown, never dropped.
 - New declarations are mise's to write (`mise bootstrap packages use -g`, `mise use -g`). pkg edits a file itself only to take a `[bootstrap.packages]` entry out, through `declarations::remove_package`, which deletes the entry's own lines, keeps comments, and checks the result parses to the original minus that entry. Edit only the write target; refuse a declaration in any other file.
 - Reads and dry runs never install, uninstall or write a config file. The only thing a read may write is the search index cache.
 

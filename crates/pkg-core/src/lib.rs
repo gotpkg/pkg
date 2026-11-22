@@ -6,8 +6,21 @@
 //! a mise executable, catalog URLs, and an explicit child-environment snapshot. Construction
 //! validates settings without running mise. Each operation reads current declarations and
 //! installation state; the client is not an inventory snapshot. Child processes receive only
-//! that snapshot plus the explicit home/configuration selection, with stdin closed. The host's
-//! environment, current directory, signal policy, and standard streams are never changed.
+//! that snapshot plus the explicit home/configuration selection, with stdin closed, except that
+//! `bootstrap` with `terminal: true` lets mise read the caller's stdin and write to its stderr.
+//! `bootstrap` with `terminal: false` starts mise in a session of its own with no controlling
+//! terminal, so nothing it runs can wait at `/dev/tty`. The host's environment, current
+//! directory, signal policy, and standard streams are never changed.
+//!
+//! Installed state comes from mise, except for Homebrew casks. mise checks a cask against its
+//! current definition, which it fetches over the network, so on macOS and Linux, when the
+//! configuration declares a `brew-cask:` package, the status query runs with
+//! `MISE_SYSTEM_PACKAGES_MANAGERS` naming every other manager it may need, and each cask's state
+//! is read from Homebrew's Caskroom: installed when `<prefix>/Caskroom/<token>/` holds exactly one
+//! version directory. The prefix is `MISE_SYSTEM_BREW_PREFIX` from the child environment, else
+//! `/opt/homebrew` on macOS and `/home/linuxbrew/.linuxbrew` on Linux; a host that isolates a
+//! client from the machine's Homebrew sets it. mise answers for casks itself when its own
+//! `system_packages.managers` leaves them out or its `system_packages.prefer` names `brew-cask`.
 //!
 //! The caller supplies credentials through the child environment, which is omitted from Debug
 //! output. This is process isolation, not a sandbox: mise and the selected packages still run
@@ -20,13 +33,20 @@
 //!
 //! # Operations
 //!
-//! `Client` exposes `install`, `remove`, `list`, `search`, `info`, `outdated`, `upgrade`, `sync`,
-//! `prune`, `locate`, `tap_list`, `tap_add`, `tap_remove`, and `context`. Requests are typed and
-//! validated before I/O: package names use mise syntax; install/remove need at least one name;
-//! pagination limits must be positive; search accepts the four catalog source variants and
-//! at most 50 results. Empty upgrade selection means every declared package/tool.
-//! Construct search requests with `SearchRequest::new`, which validates and tokenizes the
-//! query before context resolution. Package/tap operands cannot begin with an option prefix.
+//! `Client` exposes `install`, `remove`, `list`, `search`, `info`, `outdated`, `update`, `sync`,
+//! `prune`, `locate`, `tap_list`, `tap_add`, `tap_remove`, `context`, `setup`, and `bootstrap`.
+//! Requests are typed and validated before I/O: package names use mise syntax; install/remove
+//! need at least one name; pagination limits must be positive; search accepts the four catalog
+//! source variants and at most 50 results. Empty update selection means every declared
+//! package/tool. Construct search requests with `SearchRequest::new`, which validates and
+//! tokenizes the query before context resolution. Package/tap operands cannot begin with an
+//! option prefix.
+//!
+//! `setup` and `bootstrap` get a machine ready rather than changing packages: they may download
+//! and run mise's installer script (`Settings::mise_installer`) with `sh`, edit or move aside
+//! pkg's block of `PATH` lines in shell startup files, and replace `~/.local/bin/pkg` with a link
+//! to mise's shim. `bootstrap` runs `mise bootstrap`, which applies whatever the configuration
+//! declares and is not a transaction. Both support macOS and Linux only.
 //!
 //! Mutation requests choose `Mode::Apply` or `Mode::DryRun` explicitly. A preview uses the same
 //! decisions and refusals as apply without installing, uninstalling, or writing configuration.
@@ -45,11 +65,28 @@
 //! # Progress
 //!
 //! Each operation borrows a progress callback for that call only. `Progress::Output` identifies
-//! stdout or stderr and borrows the received text; `Progress::Warning` borrows a warning. Calls
-//! are serialized on the operation's calling thread, preserve each stream's order, and end
+//! stdout or stderr and borrows the text mise wrote, in mise's own wording, which the library
+//! does not interpret and any mise release can change; `Progress::Warning` borrows a warning.
+//!
+//! `install`, `update`, `sync`, `remove`, and `prune` also report their own work, on every call,
+//! dry runs included; no other operation does. `Progress::Step` says which stretch of the work
+//! begins (`Step` lists each operation's steps). A step lasts until the next one begins or the
+//! method returns, so every event delivered in between belongs to it. A step about one package
+//! carries the package, its position, and the number of packages; a step that uninstalls carries
+//! the manager. `Progress::Plan` lists the items mise is about to install or uninstall in the
+//! current step, right after it begins: `remove` and `prune` report the plan of each prune they
+//! run, and `install` reports each bootstrap package's plan only when
+//! `InstallRequest::report_plans` asks for it. That request costs one read-only mise query per
+//! bootstrap package; a query that fails or yields no item is ignored and reports nothing. A
+//! plan serves the caller's display: the operation decides nothing from it, and results do not
+//! include it.
+//!
+//! Calls are serialized on the operation's calling thread, preserve each stream's order, and end
 //! before the method returns. There is no ordering promise between separate streams. Internal
 //! pipe readers use a bounded handoff; the library does not keep a second progress history.
-//! Callbacks must return promptly, must not reenter the same client, and must not panic.
+//! Callbacks must return promptly, must not reenter the same client, and must not panic. A
+//! callback that ignores steps and plans loses nothing: results, warnings, and errors never
+//! depend on them.
 //!
 //! The API supplies no cancellation or rollback-on-drop guarantee. A failed mutation may have
 //! completed earlier work, reported in its error. It never exits the host process or prompts.
@@ -61,6 +98,7 @@
 //! second package inventory are required. CLI parsing, rendering, discovery, and exit statuses
 //! belong to the executable crate, not this API.
 
+mod caskroom;
 mod catalog;
 mod client;
 mod common;
@@ -74,37 +112,51 @@ mod list;
 mod locate;
 pub mod matching;
 mod mise;
+mod onboarding;
 mod outdated;
 mod package;
+mod package_states;
 mod progress;
 mod prune;
 mod remove;
 mod requests;
 mod search;
 mod settings;
+mod startup;
 mod sync;
 mod tap;
-mod upgrade;
+mod update;
 
 pub use client::Client;
 pub use common::ReceiptStatus;
-pub use context::{Catalogs, ConfigContext, Context, MiseContext};
+pub use context::{Catalogs, ConfigContext, Context, MiseContext, PkgTool};
 pub use error::{Error, ErrorDetails, ErrorKind, Recovery};
 pub use info::PackageInfo;
 pub use install::{InstallAction, InstallKind, InstallReceipt, Installed};
 pub use list::Listed;
 pub use locate::Location;
+pub use onboarding::bootstrap::{BootstrapReceipt, SourceKind, SourceReport};
+pub use onboarding::handoff::{Declaration, Handoff, Link, PkgOwner, pkg_owner};
+pub use onboarding::mise::{MiseAction, MiseSetup};
+pub use onboarding::setup::SetupReceipt;
+pub use onboarding::shims::{PathAction, PathChange};
+pub use onboarding::startup_files::StartupFiles;
 pub use outdated::{OutdatedPackage, OutdatedReport, Skipped};
 pub use package::is_package;
-pub use progress::{Outcome, OutputStream, Progress};
+pub use progress::{
+    Outcome, OutputStream, PackageStep, PlannedAction, PlannedItem, Progress, Step,
+};
 pub use prune::PruneReceipt;
 pub use remove::{LeftInstalled, RemoveReceipt, Removed};
 pub use requests::{
-    InfoRequest, InstallRequest, ListRequest, LocateRequest, Mode, PruneRequest, RemoveRequest,
-    SearchRequest, SearchSource, SyncRequest, TapAddRequest, TapRemoveRequest, UpgradeRequest,
+    BootstrapRequest, BootstrapSource, InfoRequest, InstallRequest, ListRequest, LocateRequest,
+    Mode, PruneRequest, RemoveRequest, SearchRequest, SearchSource, SetupRequest, SyncRequest,
+    TapAddRequest, TapRemoveRequest, UpdateRequest,
 };
 pub use search::Found;
-pub use settings::{DEFAULT_APP_STORE_API, DEFAULT_HOMEBREW_API, Settings};
+pub use settings::{
+    DEFAULT_APP_STORE_API, DEFAULT_HOMEBREW_API, DEFAULT_MISE_INSTALLER, Settings, find_on_path,
+};
 pub use sync::SyncReceipt;
 pub use tap::{TapEntry, TapList, TapReceipt};
-pub use upgrade::{UpgradeReceipt, Upgraded};
+pub use update::{UpdateReceipt, Updated};

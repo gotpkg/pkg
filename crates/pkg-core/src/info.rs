@@ -76,7 +76,8 @@ impl Client {
                 .find(|tool| tool.key == package.key && tool.installed)
                 .and_then(|tool| tool.version)
         } else if info.config.is_some() {
-            mise.package_states()?
+            machine
+                .package_states()?
                 .into_iter()
                 .find(|state| state.key == package.key && state.state == "installed")
                 .and_then(|state| state.installed)

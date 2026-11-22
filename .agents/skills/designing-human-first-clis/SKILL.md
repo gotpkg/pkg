@@ -15,12 +15,12 @@ Every result is one value with two renderings through the CLI's `RenderOutput`: 
 
 ## For people (the default)
 
-- **Commands are verbs a person already knows.** `install`, `remove`, `list`, `search`, `info`, `outdated`, `upgrade`. Give familiar aliases (`rm`, `uninstall`, `ls`, `i`) rather than inventing new words. Keep arguments positional when there is one obvious thing to act on.
+- **Commands are verbs a person already knows.** `install`, `remove`, `list`, `search`, `info`, `outdated`, `update`. Give familiar aliases (`rm`, `uninstall`, `ls`, `i`) rather than inventing new words. Keep arguments positional when there is one obvious thing to act on.
 - **Accept the names people see elsewhere.** A package is written the way mise and Homebrew documentation write it (`brew:wget`, `brew-cask:iina`); never invent an identifier format.
 - **`--help` is a short orientation:** what the tool does, how to name things, the everyday commands with one-line summaries, and a few examples. It is not the catalogue: agent commands are hidden from the list and named in one closing line.
 - **Text says what happened in a sentence,** names the file or package it touched, and abbreviates the home directory as `~`. Tables align their columns. Say "Dry run: nothing was ..." at the end of every dry run.
 - **Errors are a sentence and hints:** `error: <what went wrong>` then `hint: <command that fixes it>` lines. When a tool pkg runs failed, its own output has already gone to stderr; do not print it twice.
-- **Progress from long operations goes to stderr as it happens,** so a person sees mise working and stdout keeps only the result.
+- **Progress from long operations goes to stderr as it happens,** so a person sees mise working and stdout keeps only the result: a live display when text output goes to a terminal, and mise's own lines as they arrive otherwise.
 - **No prompts.** Every command does exactly what was typed; a person previews with `--dry-run`. A command that would do more than was asked (a prune that would also take undeclared packages) refuses and says how to proceed instead of asking.
 
 ## For scripts and agents (opt-in)

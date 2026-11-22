@@ -1,0 +1,5 @@
+mise ~/.config/mise/config.toml: added brew:no-such-formula-pkg-test
+mise ERROR failed to fetch Homebrew formula 'no-such-formula-pkg-test'
+mise ERROR HTTP status client error (404 Not Found) for url (https://formulae.brew.sh/api/formula/no-such-formula-pkg-test.json)
+mise ERROR Version: 2026.11.9 macos-arm64 (2026-11-16)
+mise ERROR Run with --verbose or MISE_VERBOSE=1 for more information

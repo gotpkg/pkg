@@ -5,7 +5,7 @@ use crate::support::{Fixture, MAC_CONFIG, assert_matches_output_schema, status};
 #[test]
 fn a_new_formula_is_declared_in_the_write_target_and_installed() {
     let fixture = Fixture::seeded();
-    fixture.mise(&["bootstrap", "packages", "status", "--json"]).nth(2).json(&status(&[(
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).json(&status(&[(
         "brew",
         "hello",
         Some("2.12.3"),
@@ -31,6 +31,54 @@ fn text_names_the_dotfiles_file_it_was_declared_in() {
         outcome.text(),
         "Installed brew:hello, declared in ~/.dotfiles/mise/config.macos.toml\n"
     );
+}
+
+#[test]
+fn state_is_read_only_after_installing_a_package_nothing_declares_yet() {
+    let fixture = Fixture::seeded();
+    fixture.json(&["install", "brew:hello", "--dry-run"]).success();
+    assert!(
+        !fixture.calls().iter().any(|call| call == "bootstrap packages status --json"),
+        "{:?}",
+        fixture.calls()
+    );
+
+    fixture.json(&["install", "brew:hello"]).success();
+    let calls = fixture.calls();
+    let installed =
+        calls.iter().position(|call| call == "bootstrap packages use --yes -g brew:hello");
+    let reads: Vec<usize> = calls
+        .iter()
+        .enumerate()
+        .filter(|(_, call)| *call == "bootstrap packages status --json")
+        .map(|(index, _)| index)
+        .collect();
+    assert_eq!(reads.len(), 1, "{calls:?}");
+    assert!(installed.is_some_and(|installed| installed < reads[0]), "{calls:?}");
+}
+
+#[test]
+fn a_package_an_unprefixed_key_declares_is_still_read_before_installing() {
+    let fixture = Fixture::seeded();
+    let config = fixture.dotfile("config.macos.toml");
+    std::fs::write(&config, format!("{MAC_CONFIG}\"tree\" = \"latest\"\n")).unwrap();
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).json(&status(&[(
+        "brew",
+        "tree",
+        Some("2.2.1"),
+    )]));
+    fixture.mise(&["bootstrap", "packages", "use", "--dry-run", "-g", "brew:tree"]).stdout("");
+    let receipt = fixture.json(&["install", "brew:tree", "--dry-run"]).success();
+    assert_eq!(receipt["packages"][0]["version"], "2.2.1", "{receipt}");
+}
+
+#[test]
+fn an_installed_cask_is_left_alone_on_the_caskrooms_word() {
+    let fixture = Fixture::seeded();
+    let receipt = fixture.json(&["install", "brew-cask:firefox"]).success();
+    assert_eq!(receipt["packages"][0]["action"], "unchanged");
+    assert_eq!(receipt["packages"][0]["version"], "160.0");
+    assert!(!fixture.calls().iter().any(|call| call.contains("apply")), "{:?}", fixture.calls());
 }
 
 #[test]

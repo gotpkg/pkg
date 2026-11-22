@@ -108,3 +108,8 @@ pub(crate) fn join_words(values: &[String]) -> String {
         many => format!("{}, and {}", many[..many.len() - 1].join(", "), many[many.len() - 1]),
     }
 }
+
+/// The result of a mise query run on a scoped thread; a panic there is an internal error.
+pub(crate) fn joined<T>(result: std::thread::Result<Result<T, Error>>) -> Result<T, Error> {
+    result.unwrap_or_else(|_| Err(Error::internal("a mise query panicked")))
+}

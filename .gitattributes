@@ -1,0 +1,2 @@
+# mise's output as recorded, byte for byte: a checkout must not convert its line endings.
+crates/pkg/src/progress/recorded/** -text

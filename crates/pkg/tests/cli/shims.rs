@@ -5,12 +5,13 @@
 //! system directories are left out so that no real `npm` or `dotnet` on the machine running the
 //! tests can answer.
 
+use std::ffi::OsStr;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::support::{Fixture, Outcome};
+use crate::support::{Fixture, Outcome, SYSTEM_PATH};
 
 fn pkg_directory() -> PathBuf {
     Path::new(env!("CARGO_BIN_EXE_pkg")).parent().expect("pkg's directory").to_path_buf()
@@ -43,7 +44,12 @@ fn joined(directories: &[&Path]) -> String {
 /// Runs the installed shim `name` with `path` as `PATH`.
 fn run_shim(fixture: &Fixture, name: &str, args: &[&str], path: &str) -> Outcome {
     let shim = shim_directory(fixture).join(name);
-    fixture.finish(fixture.command(&shim).args(args).env("PATH", path))
+    fixture.finish(&mut fixture.command_for(&shim, args, &[("PATH", Some(OsStr::new(path)))]))
+}
+
+/// pkg with `args` and `path` as `PATH`.
+fn run_pkg(fixture: &Fixture, args: &[&str], path: &str) -> Outcome {
+    fixture.run_with(args, &[("PATH", Some(OsStr::new(path)))])
 }
 
 /// A fixture with every shim installed, a directory of fake real tools, and the usual `PATH`:
@@ -182,17 +188,7 @@ fn listing_shows_whether_the_directory_is_on_the_path_and_what_each_name_runs() 
     let directory = shim_directory(&fixture);
     let real = fixture.path("real");
     let npm = write_tool(&real, "npm", "exit 0");
-
-    let shadowed = joined(&[&real, &directory]);
-    let listed = fixture.finish(
-        fixture
-            .command(env!("CARGO_BIN_EXE_pkg"))
-            .args(["shims", "list", "--output", "json"])
-            .env("PATH", &shadowed),
-    );
-    let listed = listed.success();
-    assert_eq!(listed["onPath"], true);
-    let resolves = |name: &str| -> Value {
+    let resolves = |listed: &Value, name: &str| -> Value {
         listed["shims"]
             .as_array()
             .expect("shims")
@@ -201,26 +197,18 @@ fn listing_shows_whether_the_directory_is_on_the_path_and_what_each_name_runs() 
             .unwrap_or_else(|| panic!("no entry for {name}"))["resolvesTo"]
             .clone()
     };
-    assert_eq!(resolves("npm")["kind"], "other");
-    assert_eq!(resolves("npm")["path"], npm.to_string_lossy().as_ref());
-    assert_eq!(resolves("cargo")["kind"], "shim");
 
-    let nothing = fixture.finish(
-        fixture
-            .command(env!("CARGO_BIN_EXE_pkg"))
-            .args(["shims", "list", "--output", "json"])
-            .env("PATH", joined(&[&real])),
-    );
+    let shadowed = joined(&[&real, &directory]);
+    let listed = run_pkg(&fixture, &["shims", "list", "--output", "json"], &shadowed).success();
+    assert_eq!(listed["onPath"], true);
+    assert_eq!(resolves(&listed, "npm")["kind"], "other");
+    assert_eq!(resolves(&listed, "npm")["path"], npm.to_string_lossy().as_ref());
+    assert_eq!(resolves(&listed, "cargo")["kind"], "shim");
+
+    let nothing = run_pkg(&fixture, &["shims", "list", "--output", "json"], &joined(&[&real]));
     let nothing = nothing.success();
     assert_eq!(nothing["onPath"], false);
-    let cargo = nothing["shims"]
-        .as_array()
-        .expect("shims")
-        .iter()
-        .find(|shim| shim["name"] == "cargo")
-        .expect("cargo")
-        .clone();
-    assert_eq!(cargo["resolvesTo"]["kind"], "none");
+    assert_eq!(resolves(&nothing, "cargo")["kind"], "none");
 }
 
 #[test]
@@ -332,17 +320,19 @@ fn pkg_runs_the_mise_behind_the_shims_and_gives_it_a_path_without_them() {
     )
     .expect("a mise shim that records its use");
     let seen = fixture.path("mise-path");
-    fixture
-        .mise(&["ls", "--global", "--json"])
-        .runs(&format!("printf '%s' \"$PATH\" > {}", seen.display()));
+    let record = format!("printf '%s' \"$PATH\" > {}", seen.display());
+    for args in [
+        &["settings", "get", "write_targets.packages"][..],
+        &["config", "ls", "--json"][..],
+        &["ls", "--global", "--json"][..],
+    ] {
+        fixture.mise(args).runs(&record);
+    }
 
-    let path = format!("{}:{}:/usr/bin:/bin", shims.display(), fixture.path("bin").display());
-    let listed = fixture.finish(
-        fixture
-            .command(env!("CARGO_BIN_EXE_pkg"))
-            .args(["list", "--output", "json"])
-            .env_remove("PKG_MISE")
-            .env("PATH", &path),
+    let path = format!("{}:{}:{SYSTEM_PATH}", shims.display(), fixture.path("bin").display());
+    let listed = fixture.run_with(
+        &["list", "--output", "json"],
+        &[("PKG_MISE", None), ("PATH", Some(OsStr::new(&path)))],
     );
     listed.success();
     assert!(!hit.exists(), "pkg ran mise through its shim");

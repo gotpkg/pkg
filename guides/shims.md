@@ -12,7 +12,7 @@ Agents reach for `brew install`, `apt install` or `npm install -g` because those
 ## How to use it
 
 1. Run `pkg shims install --dry-run` to see what it would write, then `pkg shims install`. It creates the shims for this system in `~/.local/share/pkg/shims` (`%LOCALAPPDATA%\pkg\shims` on Windows) and prints the line that puts that directory first on `PATH`.
-2. Add that line to the startup file your agents' shells read. pkg does not edit startup files. If your dotfiles deploy `~/.zshenv`, put the line there.
+2. Add that line to the startup file your agents' shells read. pkg does not edit startup files. If your dotfiles deploy `~/.zshenv`, put the line there, after any line that adds `~/.local/bin` or mise's shims to `PATH`, so the shims stay first.
 3. Start a new shell and run `pkg shims list`. Each shim should be installed and, for the names you use, resolve to the shim. A name that a directory earlier on `PATH` shadows is shown with the path that wins.
 4. Run `mise` as `mise`, not by its full path, so your own `mise bootstrap` reaches the real package managers.
 5. To undo it, delete the line and run `pkg shims remove`.

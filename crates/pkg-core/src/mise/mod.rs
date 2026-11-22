@@ -1,7 +1,10 @@
 //! mise execution within a caller-supplied home and child environment.
 
+mod bootstrap;
+mod installer;
 mod plans;
 mod queries;
+mod release;
 mod streams;
 
 use std::ffi::OsStr;
@@ -11,8 +14,11 @@ use std::process::{Command, Stdio};
 
 use crate::{Error, ErrorDetails, ErrorKind, Progress, Recovery, Settings};
 
-pub(crate) use plans::{removals, upgrade_plan};
+pub(crate) use bootstrap::BootstrapRun;
+pub(crate) use installer::run_installer;
+pub(crate) use plans::{install_plan, removals, uninstalls, upgrade_plan};
 pub(crate) use queries::{ConfigTarget, OutdatedTool, PackageState, ToolState};
+pub(crate) use release::{MISE, MiseRelease, PACKAGE_MANAGER_REASON};
 
 pub(crate) struct Mise<'a> {
     settings: &'a Settings,
@@ -42,12 +48,17 @@ impl<'a> Mise<'a> {
     }
 
     fn command(&self, args: &[impl AsRef<OsStr>]) -> Command {
+        self.command_in(self.home, args)
+    }
+
+    /// `mise -C <directory> <args>`, run from `directory` in the caller's child environment.
+    fn command_in(&self, directory: &Path, args: &[impl AsRef<OsStr>]) -> Command {
         let mut command = Command::new(&self.settings.mise);
         command
             .arg("-C")
-            .arg(self.home)
+            .arg(directory)
             .args(args)
-            .current_dir(self.home)
+            .current_dir(directory)
             .env_clear()
             .envs(&self.settings.child_env)
             .env("HOME", self.home)
@@ -62,7 +73,13 @@ impl<'a> Mise<'a> {
     }
 
     pub(crate) fn read(&self, args: &[&str]) -> Result<String, Error> {
-        self.query(args).map(|output| output.stdout)
+        self.read_with(args, &[])
+    }
+
+    /// [`Mise::read`] with `env` added to the child environment.
+    pub(crate) fn read_with(&self, args: &[&str], env: &[(&str, &str)]) -> Result<String, Error> {
+        let output = self.capture_with(args, env)?;
+        if output.success { Ok(output.stdout) } else { Err(self.failure(args, &output, true)) }
     }
 
     pub(crate) fn query(&self, args: &[&str]) -> Result<Output, Error> {
@@ -71,8 +88,13 @@ impl<'a> Mise<'a> {
     }
 
     pub(crate) fn capture(&self, args: &[&str]) -> Result<Output, Error> {
+        self.capture_with(args, &[])
+    }
+
+    fn capture_with(&self, args: &[&str], env: &[(&str, &str)]) -> Result<Output, Error> {
         let output = self
             .command(args)
+            .envs(env.iter().copied())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
@@ -90,8 +112,17 @@ impl<'a> Mise<'a> {
         args: &[impl AsRef<OsStr>],
         progress: &mut dyn FnMut(Progress<'_>),
     ) -> Result<Output, Error> {
-        let mut child = self
-            .command(args)
+        self.run_command(self.command(args), args, progress)
+    }
+
+    /// Runs `command`, passing its output to `progress` as it arrives.
+    fn run_command(
+        &self,
+        mut command: Command,
+        args: &[impl AsRef<OsStr>],
+        progress: &mut dyn FnMut(Progress<'_>),
+    ) -> Result<Output, Error> {
+        let mut child = command
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()

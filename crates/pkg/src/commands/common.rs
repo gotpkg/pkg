@@ -9,6 +9,7 @@ use serde::Serialize;
 use crate::environment::real_path;
 use crate::failure::{ErrorCode, Failure};
 use crate::invocation::Invocation;
+use crate::progress::Live;
 use crate::registry::{ArgumentKind, ArgumentSpec, ValueKind};
 use crate::response::{RenderOutput, Response};
 
@@ -40,7 +41,8 @@ pub const PACKAGE: ArgumentSpec = ArgumentSpec {
 pub const MISE_ERRORS: &[ErrorCode] =
     &[ErrorCode::InvalidArgument, ErrorCode::PreconditionFailed, ErrorCode::MiseFailed];
 
-/// Runs the typed operation and renders only the requested representation.
+/// Runs the typed operation and renders only the requested representation. mise's output goes
+/// to stderr as it arrives.
 ///
 /// # Errors
 /// Reports context construction or operation failures using the CLI error contract.
@@ -59,7 +61,42 @@ pub fn execute<T: Serialize + RenderOutput>(
             let _ = stderr.flush();
         }
     };
-    let outcome = run(&mut client, &mut progress).map_err(|mut error| {
+    let outcome = run(&mut client, &mut progress);
+    respond(invocation, outcome, forwarded_output)
+}
+
+/// [`execute`] for a command that changes installed software. With `live`, which
+/// `progress::shows_display` decides, the live display takes the progress in place of stderr
+/// and is gone before this returns.
+///
+/// # Errors
+/// Reports context construction or operation failures using the CLI error contract.
+pub fn execute_change<T: Serialize + RenderOutput>(
+    invocation: &Invocation,
+    live: bool,
+    run: impl FnOnce(&mut Client, &mut dyn FnMut(Progress<'_>)) -> Result<Outcome<T>, pkg_core::Error>,
+) -> Result<Response, Failure> {
+    if !live {
+        return execute(invocation, run);
+    }
+    let mut client = Client::new(invocation.environment()?)?;
+    let mut display = Live::on_stderr();
+    let mut forwarded_output = false;
+    let outcome = run(&mut client, &mut |event: Progress<'_>| {
+        forwarded_output |= matches!(event, Progress::Output { .. });
+        display.observe(event);
+    });
+    display.finish(outcome.is_err());
+    respond(invocation, outcome, forwarded_output)
+}
+
+/// The response, or the failure without mise's output once that output reached stderr.
+fn respond<T: Serialize + RenderOutput>(
+    invocation: &Invocation,
+    outcome: Result<Outcome<T>, pkg_core::Error>,
+    forwarded_output: bool,
+) -> Result<Response, Failure> {
+    let outcome = outcome.map_err(|mut error| {
         if forwarded_output && error.details.output_streamed {
             error.details.output = Some(Vec::new());
         }

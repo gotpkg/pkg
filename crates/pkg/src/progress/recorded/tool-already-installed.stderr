@@ -1,0 +1,7 @@
+mise by @jdx – installing 2 tools
+mise ⇢ node@24.22.3  6ms · already installed
+mise ✓ fd@10.5.2     2.2s  fd-v10.5.2-aarch64-apple-darwin.tar.gz
+mise ████████████████ 2/2 · installed 1 tool · 1 already installed in 2.2s
+mise WARN  fd installed but not activated — it is not in any config file.
+To install and activate, run:
+  mise use fd

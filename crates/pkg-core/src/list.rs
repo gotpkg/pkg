@@ -53,7 +53,7 @@ impl Client {
         let mise = &machine.environment.mise;
         let mut items: Vec<Listed> = Vec::new();
         if managers.is_empty() || managers.iter().any(|manager| manager != "tool") {
-            for state in mise.package_states()? {
+            for state in machine.package_states()? {
                 if !wants(&state.manager) {
                     continue;
                 }

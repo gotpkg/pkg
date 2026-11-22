@@ -1,0 +1,6 @@
+mise by @jdx – installing 1 tool
+mise ✗ no-such-tool-pkg-test@latest  0ms · failed: no-such-tool-pkg-test not found in mise tool registry
+mise ████████████████ 1/1 · installed 0 tools · 1 failed in 36ms
+mise ERROR Failed to install no-such-tool-pkg-test@latest: no-such-tool-pkg-test not found in mise tool registry
+mise ERROR Version: 2026.11.9 macos-arm64 (2026-11-16)
+mise ERROR Run with --verbose or MISE_VERBOSE=1 for more information

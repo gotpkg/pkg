@@ -1,0 +1,166 @@
+---
+import Icon from "./icon/Icon.astro";
+---
+
+<section aria-labelledby="workflow-title" class="workflow wrap" id="how-it-works">
+    <div class="workflow-intro">
+        <h2 id="workflow-title">Install once.<br /><em>Configure everywhere.</em></h2>
+        <p>
+            pkg installs through mise and records what you chose in your global config. When it's
+            time to set up a new machine, your software has a packing list.
+        </p>
+    </div>
+    <div class="workflow-track">
+        <div class="workflow-step">
+            <span class="step-marker">1</span>
+            <h3>Make yourself at home.</h3>
+            <p>Use the package names you already know. pkg installs them through mise.</p>
+            <div class="workflow-code">
+                <code><span class="muted">$</span> pkg install brew:wget</code>
+            </div>
+        </div>
+        <div class="workflow-step">
+            <span class="step-marker">2</span>
+            <h3>Keep the packing list.</h3>
+            <p>Your global mise config keeps track of all installed packages.</p>
+            <div class="workflow-code">
+                <pre><code>[bootstrap.packages]
+"brew:wget" = <span class="code-yellow">"latest"</span></code></pre>
+            </div>
+        </div>
+        <div class="workflow-step">
+            <span class="step-marker">3</span>
+            <h3>Unpack somewhere new.</h3>
+            <p>Bring your mise config to a new machine. pkg can restore everything it declares.</p>
+            <div class="workflow-code">
+                <code><span class="muted">$</span> pkg bootstrap</code>
+            </div>
+        </div>
+    </div>
+    <p class="workflow-footnote">
+        Your config stays yours.
+        <a href="/docs/configuration">Learn more <Icon name="arrow-ne" /></a>
+    </p>
+</section>
+<style>
+    .workflow {
+        padding-block: 112px 88px;
+        scroll-margin-top: 32px;
+    }
+    .workflow-intro {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: 80px;
+        align-items: end;
+        margin-bottom: 56px;
+    }
+    .workflow-intro p {
+        max-width: 39ch;
+        font-size: 20px;
+        line-height: 1.55;
+    }
+    .workflow-track {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 32px;
+    }
+    .workflow-step {
+        display: flex;
+        flex-direction: column;
+    }
+    .step-marker {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border: 1.5px solid currentColor;
+        border-radius: 50%;
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+    h3 {
+        font-size: 25px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        margin-bottom: 12px;
+    }
+    .workflow-step p {
+        max-width: 34ch;
+        margin-bottom: 28px;
+        color: var(--secondary);
+        font-size: 18px;
+    }
+    .workflow-code {
+        background: var(--code-surface);
+        color: var(--paper);
+        padding: 22px;
+        border-radius: 8px;
+        margin-top: auto;
+        min-height: 92px;
+    }
+    .code-label {
+        display: block;
+        font: 10px/1.4 var(--mono);
+        letter-spacing: 0.03em;
+        color: #c2c1bd;
+        margin-bottom: 18px;
+    }
+    code {
+        font-size: 13px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+    pre {
+        margin: 0;
+    }
+    .code-yellow {
+        color: var(--yellow);
+    }
+    .muted {
+        color: #aaa9a5;
+    }
+    .workflow-footnote {
+        margin-top: 28px;
+        color: var(--secondary);
+        font-size: 15px;
+    }
+    .workflow-footnote a {
+        margin-left: 8px;
+        color: var(--page-foreground);
+        text-decoration: underline;
+        text-underline-offset: 4px;
+    }
+    @media (max-width: 1000px) {
+        .workflow-track {
+            gap: 20px;
+        }
+        .workflow-code {
+            padding: 18px;
+        }
+    }
+    @media (max-width: 760px) {
+        .workflow {
+            padding-block: 64px;
+        }
+        .workflow-intro {
+            grid-template-columns: 1fr;
+            gap: 24px;
+            margin-bottom: 36px;
+        }
+        .workflow-track {
+            grid-template-columns: 1fr;
+            gap: 36px;
+        }
+        .workflow-step p {
+            max-width: 48ch;
+            margin-bottom: 18px;
+        }
+        .workflow-code {
+            min-height: auto;
+        }
+        .workflow-footnote a {
+            display: block;
+            margin: 4px 0 0;
+        }
+    }
+</style>

@@ -3,9 +3,10 @@
 use pkg_core::{PruneReceipt, PruneRequest, ReceiptStatus};
 use schemars::schema_for;
 
-use super::common::{MISE_ERRORS, execute, join_words};
+use super::common::{MISE_ERRORS, execute_change, join_words};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
+use crate::progress::shows_display;
 use crate::registry::{
     ArgumentKind, ArgumentSpec, CommandSpec, DRY_RUN, Effect, Example, Requirement, ValueKind,
 };
@@ -22,7 +23,8 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
         cannot be proven unchanged and are kept unless you pass --force, which removes the files \
         mise recorded but not what the cask's own scripts created. Packages that `pkg remove` \
         would otherwise take with it show up here first. --dry-run lists what would be \
-        uninstalled and changes nothing.",
+        uninstalled and changes nothing. With text output on a terminal, pkg shows its progress \
+        as a live display on stderr; otherwise mise's progress lines go to stderr as they arrive.",
     arguments: &[
         ArgumentSpec {
             name: "force",
@@ -68,5 +70,6 @@ impl RenderOutput for PruneReceipt {
 
 fn prune(invocation: &Invocation) -> Result<Response, Failure> {
     let request = PruneRequest { mode: invocation.mode(), force: invocation.flag("force") };
-    execute(invocation, |client, progress| client.prune(request, progress))
+    let live = shows_display(invocation.output);
+    execute_change(invocation, live, |client, progress| client.prune(request, progress))
 }
