@@ -62,13 +62,18 @@ run = [
 ]
 
 [tasks.check]
-description = "The single blocking gate: tests, rustdoc, the website's build, browser tests and checks, formatting, Clippy, workflows, records"
+description = "The single blocking gate: tests, rustdoc, the website's build, browser tests and Worker tests, every hk check, records"
 alias = "c"
-# `hk check --all` runs every step in hk.pkl: whitespace, newlines, merge conflicts, actionlint,
-# dprint, rustfmt, Clippy over every target with warnings as errors, and the website's Oxfmt,
-# Oxlint, ESLint and type checks.
-depends = ["test", "doc", "site:check"]
-run = ["hk check --all", "mise run validate"]
+# The dependencies run in parallel and the gate passes when every one of them does. Cargo holds a
+# lock on the build directory, so `test`, `doc` and Clippy (inside `hk:check`) still take turns.
+depends = ["test", "doc", "site:check", "hk:check", "validate"]
+
+[tasks."hk:check"]
+description = "Every hk check over all files: whitespace, workflows, dprint, rustfmt, Clippy over every target with warnings as errors, and the website's Oxfmt, Oxlint, ESLint and type checks"
+# `astro check` writes site/.astro, which `astro build --force` rewrites; start after a build that
+# shares this run instead of racing it. Run alone, this task waits for nothing.
+wait_for = ["site:build"]
+run = "hk check --all"
 
 [tasks.fmt]
 alias = "f"
@@ -177,10 +182,8 @@ confirm = "Deploy pkg-site to gotpkg.dev?"
 run = "varlock run --path ../ --filter CLOUDFLARE_API_TOKEN,CLOUDFLARE_ACCOUNT_ID -- wrangler deploy --config dist/server/wrangler.json"
 
 [tasks."site:check"]
-description = "The website's gate: the production build, Playwright against it in workerd, then Oxfmt, Oxlint, ESLint and the type checks"
+description = "The website's functional gate: the production build, Playwright against it in workerd, and the Worker tests; `hk:check` covers its formatting, lint and types"
 depends = ["site:build", "site:e2e", "site:worker:test"]
-dir = "{{config_root}}/site"
-run = ["oxfmt --check", { task = "site:lint" }, { task = "site:typecheck" }]
 
 [tasks."site:e2e"]
 description = "Run Playwright against the website's production build served by workerd"
@@ -195,19 +198,16 @@ dir = "{{config_root}}/site"
 run = "node --test 'tests/*.test.ts'"
 
 [tasks."site:e2e:install"]
-description = "Install Playwright's Chromium (and, in CI, its system libraries)"
+description = "Install Playwright's Chromium"
 depends = ["site:deps"]
 dir = "{{config_root}}/site"
-run = "playwright install ${CI:+--with-deps} chromium"
+# No `--with-deps`: on GitHub's ubuntu-latest it installs only nine font packages the tests do not
+# use, and one slow apt mirror held a run for eight minutes.
+run = "playwright install chromium"
 
 [tasks."site:fmt"]
 description = "Format and fix the website's files with hk's fixers (dprint, Oxfmt, Oxlint, ESLint)"
 run = "hk fix --all --glob 'site/**'"
-
-[tasks."site:lint"]
-description = "Lint the website: Oxlint (type-aware; TypeScript and .astro scripts) and ESLint (.astro templates)"
-dir = "{{config_root}}/site"
-run = ["oxlint --deny-warnings", "eslint --max-warnings 0 ."]
 
 [tasks."site:typecheck"]
 description = "Type-check the website: astro check for .astro files, tsrs for .ts and .tsx"

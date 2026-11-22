@@ -91,13 +91,13 @@ The tests never run the real mise or reach the network: they run the binary agai
 
 The website lives in `site/`: an Astro site that builds for Cloudflare Workers, with pages and components in `site/app/`. Starlight serves the documentation under `/docs`, one Markdown file per page in `site/app/content/docs/docs/`. `mise install` provides the pinned Node and pnpm, and `site/` has its own pnpm lockfile.
 
-| Task                        | What it does                                                                          |
-| --------------------------- | ------------------------------------------------------------------------------------- |
-| `mise run site:dev`         | Install the site's dependencies and serve it at http://localhost:4327                 |
-| `mise run site:build`       | Build the site, with the documentation search index, into `site/dist/`                |
-| `mise run site:check`       | Build, run browser tests, check formatting, lint and types (`mise run check` runs it) |
-| `mise run site:worker:test` | Test the built Worker and static assets with an isolated GitHub fixture               |
-| `mise run site:deploy`      | Deploy the site and installer routes to gotpkg.dev after approval                     |
+| Task                        | What it does                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `mise run site:dev`         | Install the site's dependencies and serve it at http://localhost:4327         |
+| `mise run site:build`       | Build the site, with the documentation search index, into `site/dist/`        |
+| `mise run site:check`       | Build, then run the browser tests and Worker tests (`mise run check` runs it) |
+| `mise run site:worker:test` | Test the built Worker and static assets with an isolated GitHub fixture       |
+| `mise run site:deploy`      | Deploy the site and installer routes to gotpkg.dev after approval             |
 
 The documentation pages summarize this README and `crates/pkg/docs/`, which own the CLI's behavior. Change those first, then the pages that repeat them.
 
@@ -150,3 +150,9 @@ Every pull request carries a Knope change file (`workbench change-files create`)
 The site Worker serves the latest release's installer through the endpoints described in [installer routing](#installer-routing). With `GOTPKG_DOMAIN` set to `true`, each release waits up to five minutes for `https://gotpkg.dev` and `https://gotpkg.dev/install.sh` to serve the new installer, and fails if they do not. Without the variable that job is skipped.
 
 Publishing the GitHub release uses the workflow's built-in `GITHUB_TOKEN`; no stored secret is needed. Website deployments use the protected `production` environment described in [website deployment](#website-deployment).
+
+## License
+
+pkg is released under the [MIT License](LICENSE), except for the website's Primaries icons, which Parakeet, Inc. owns and which are used under [Parakeet's license](https://parakeet.co/stock-icons/license/), and the Google Chrome logo in the package demonstration, which is Google's trademark. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists those files and holds the licenses and copyright notices of the third-party software distributed with pkg: the Rust crates in the executable and the fonts on the website.
+
+pkg depends on other projects without including them. [mise](https://mise.jdx.dev), created by Jeff Dickey and released under the MIT License, installs everything pkg manages. Package details come from [Homebrew](https://brew.sh)'s formulae API and Apple's App Store search.
