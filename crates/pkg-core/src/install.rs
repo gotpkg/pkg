@@ -83,7 +83,16 @@ impl Client {
         progress(Progress::Step(Step::ReadInstalled));
         let machine = Machine::load(&self.settings)?;
         let packages = machine.packages(&request.packages);
-        let before = States::load(&machine, &packages)?;
+        let tools = packages.iter().any(Package::is_tool);
+        // mise's answer covers only declared packages: by their own key, or through an unprefixed
+        // key it resolves to one. Without either, nothing in it could describe a requested
+        // package, so state is read only after installing.
+        let declared = packages.iter().any(|package| {
+            !package.is_tool()
+                && (machine.declared_in(package).is_some()
+                    || machine.declarations.has_unprefixed_packages())
+        });
+        let before = States::load(&machine, declared, tools)?;
         let mut work = Vec::new();
         for package in &packages {
             work.push(match machine.declared_in(package) {
@@ -109,7 +118,8 @@ impl Client {
         }
 
         progress(Progress::Step(Step::ReadResult));
-        let after = States::load(&machine, &packages)?;
+        let after =
+            States::load(&machine, packages.iter().any(|package| !package.is_tool()), tools)?;
         let items = packages
             .iter()
             .zip(&work)
@@ -184,19 +194,12 @@ struct States {
 }
 
 impl States {
-    fn load(machine: &Machine<'_>, packages: &[Package]) -> Result<States, Error> {
-        let mise = &machine.environment.mise;
+    /// What mise reports about bootstrap packages when `packages` is set, and about global tools
+    /// when `tools` is.
+    fn load(machine: &Machine<'_>, packages: bool, tools: bool) -> Result<States, Error> {
         Ok(States {
-            packages: if packages.iter().any(|package| !package.is_tool()) {
-                mise.package_states()?
-            } else {
-                Vec::new()
-            },
-            tools: if packages.iter().any(Package::is_tool) {
-                mise.tool_states()?
-            } else {
-                Vec::new()
-            },
+            packages: if packages { machine.package_states()? } else { Vec::new() },
+            tools: if tools { machine.environment.mise.tool_states()? } else { Vec::new() },
         })
     }
 

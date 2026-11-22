@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::catalog;
 use crate::catalog::app_store::AppStore;
-use crate::common::Machine;
+use crate::common::{Machine, joined};
 use crate::mise::{
     MISE, MiseRelease, OutdatedTool, Output, PACKAGE_MANAGER_REASON, PackageState, upgrade_plan,
 };
@@ -73,7 +73,7 @@ pub(crate) fn find(
             if wants_tools { mise.outdated_tools() } else { Ok(Vec::new()) }
         });
         let states = scope.spawn(|| -> Result<Vec<PackageState>, Error> {
-            if wants_packages { mise.package_states() } else { Ok(Vec::new()) }
+            if wants_packages { machine.package_states() } else { Ok(Vec::new()) }
         });
         let release = scope.spawn(|| -> Result<Option<MiseRelease>, Error> {
             only.is_empty().then(|| mise.release()).transpose()
@@ -172,10 +172,6 @@ pub(crate) fn find(
         }
     }
     Ok((report, warnings))
-}
-
-fn joined<T>(result: std::thread::Result<Result<T, Error>>) -> Result<T, Error> {
-    result.unwrap_or_else(|_| Err(Error::internal("a mise query panicked")))
 }
 
 /// Whether the dotted version `latest` is above `installed`: `3.2` and `3.2.0` are the same, and

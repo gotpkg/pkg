@@ -146,19 +146,30 @@ impl Mise<'_> {
         setting: &str,
         global_config: &Path,
     ) -> Result<ConfigTarget, Failure> {
-        let key = format!("write_targets.{setting}");
-        let output = self.capture(&["settings", "get", &key])?;
-        let setting = output.stdout.trim().to_string();
-        if !output.success && !output.stderr.contains("is not set") {
-            return Err(self.failure(&["settings", "get", &key], &output, true));
-        }
-        let (setting, path) = if output.success && !setting.is_empty() {
-            let path = self.expand(&setting);
-            (Some(setting), path)
-        } else {
-            (None, global_config.to_path_buf())
-        };
+        let setting = self.setting(&format!("write_targets.{setting}"))?;
+        let path = setting
+            .as_deref()
+            .map_or_else(|| global_config.to_path_buf(), |setting| self.expand(setting));
         Ok(ConfigTarget { setting, real_path: real_path(&path), path })
+    }
+
+    /// A list setting, such as `system_packages.managers`; `None` when it is not set.
+    ///
+    /// # Errors
+    ///
+    /// `MISE_FAILED` when mise cannot read its settings or the value is not a list.
+    pub(crate) fn list_setting(&self, key: &str) -> Result<Option<Vec<String>>, Failure> {
+        self.setting(key)?.map(|value| parse(&value, "settings get")).transpose()
+    }
+
+    /// `mise settings get <key>`, trimmed; `None` when it is not set or empty.
+    fn setting(&self, key: &str) -> Result<Option<String>, Failure> {
+        let output = self.capture(&["settings", "get", key])?;
+        if !output.success && !output.stderr.contains("is not set") {
+            return Err(self.failure(&["settings", "get", key], &output, true));
+        }
+        let value = output.stdout.trim();
+        Ok((output.success && !value.is_empty()).then(|| value.to_string()))
     }
 
     fn expand(&self, path: &str) -> PathBuf {
@@ -187,34 +198,25 @@ impl Mise<'_> {
         Ok(files.into_iter().map(|file| file.path).collect())
     }
 
-    /// Every declared bootstrap package, in manager order, then config order.
+    /// Every declared bootstrap package, in manager order, then config order. `managers`, when
+    /// given, is the comma-separated list of managers mise may check; it lists the rest as
+    /// unavailable and skipped.
     ///
     /// # Errors
     ///
     /// `MISE_FAILED` when mise cannot report them.
-    pub(crate) fn package_states(&self) -> Result<Vec<PackageState>, Failure> {
-        let output = self.read(&["bootstrap", "packages", "status", "--json"])?;
-        let managers: BTreeMap<String, ManagerStatus> = if output.trim().is_empty() {
-            BTreeMap::new()
-        } else {
-            parse(&output, "bootstrap packages status")?
+    pub(crate) fn package_states(
+        &self,
+        managers: Option<&str>,
+    ) -> Result<Vec<PackageState>, Failure> {
+        let args = ["bootstrap", "packages", "status", "--json"];
+        let output = match managers {
+            Some(managers) => {
+                self.read_with(&args, &[("MISE_SYSTEM_PACKAGES_MANAGERS", managers)])?
+            }
+            None => self.read(&args)?,
         };
-        Ok(managers
-            .into_iter()
-            .flat_map(|(manager, status)| {
-                let available = status.available;
-                status.packages.into_iter().map(move |package| PackageState {
-                    key: format!("{manager}:{}", package.package),
-                    manager: manager.clone(),
-                    requested: package.requested_version.unwrap_or_else(|| "latest".into()),
-                    desired: package.desired_state.unwrap_or_else(|| "present".into()),
-                    state: package.state.unwrap_or_else(|| "unknown".into()),
-                    installed: package.installed_version,
-                    name: package.name,
-                    available,
-                })
-            })
-            .collect())
+        package_states_from(&output)
     }
 
     /// Every tool the global config requests, one entry per tool: the active request, else the
@@ -305,4 +307,55 @@ pub(crate) fn parse<T: for<'de> Deserialize<'de>>(text: &str, command: &str) -> 
         .with_details(ErrorDetails { command: Some(command.to_string()), ..Default::default() })
         .recover(Recovery::CheckMiseVersion)
     })
+}
+
+/// The entries of `mise bootstrap packages status --json`, in manager order, then config order.
+/// mise writes a missing package's version as `""`, which becomes `None`.
+fn package_states_from(text: &str) -> Result<Vec<PackageState>, Failure> {
+    let managers: BTreeMap<String, ManagerStatus> = if text.trim().is_empty() {
+        BTreeMap::new()
+    } else {
+        parse(text, "bootstrap packages status")?
+    };
+    Ok(managers
+        .into_iter()
+        .flat_map(|(manager, status)| {
+            let available = status.available;
+            status.packages.into_iter().map(move |package| PackageState {
+                key: format!("{manager}:{}", package.package),
+                manager: manager.clone(),
+                requested: package.requested_version.unwrap_or_else(|| "latest".into()),
+                desired: package.desired_state.unwrap_or_else(|| "present".into()),
+                state: package.state.unwrap_or_else(|| "unknown".into()),
+                installed: package.installed_version.filter(|version| !version.is_empty()),
+                name: package.name,
+                available,
+            })
+        })
+        .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_missing_package_has_no_installed_version() {
+        let states = package_states_from(
+            r#"{"brew-cask":{"available":false,"reason":"excluded by the system_packages.managers setting","packages":[{"package":"firefox","requested_version":"latest","desired_state":"present","state":"skipped","installed_version":""}]},
+                "brew":{"available":true,"packages":[{"package":"wget","requested_version":"latest","desired_state":"present","state":"missing","installed_version":""},{"package":"git","state":"installed","installed_version":"2.56.1"}]}}"#,
+        )
+        .unwrap();
+        let keys: Vec<&str> = states.iter().map(|state| state.key.as_str()).collect();
+        assert_eq!(keys, ["brew:wget", "brew:git", "brew-cask:firefox"]);
+        assert_eq!(states[0].installed, None);
+        assert_eq!(states[1].installed.as_deref(), Some("2.56.1"));
+        assert_eq!(states[2].installed, None);
+        assert!(!states[2].available);
+    }
+
+    #[test]
+    fn mise_printing_nothing_declares_nothing() {
+        assert!(package_states_from("  \n").unwrap().is_empty());
+    }
 }

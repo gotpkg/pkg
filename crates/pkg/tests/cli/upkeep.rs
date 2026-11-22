@@ -67,6 +67,20 @@ fn update_reports_the_versions_that_changed() {
 }
 
 #[test]
+fn update_reads_a_casks_new_version_from_the_caskroom() {
+    let fixture = Fixture::seeded();
+    fixture.mise(&["bootstrap", "packages", "upgrade", "--yes"]).runs(
+        "mv \"$MISE_SYSTEM_BREW_PREFIX/Caskroom/firefox/160.0\" \"$MISE_SYSTEM_BREW_PREFIX/Caskroom/firefox/161.0\"\n",
+    );
+    fixture.mise(&["upgrade", "--global"]).stdout("");
+    let receipt = fixture.json(&["update"]).success();
+    assert_eq!(
+        receipt["updated"],
+        serde_json::json!([{ "package": "brew-cask:firefox", "from": "160.0", "to": "161.0" }])
+    );
+}
+
+#[test]
 fn updating_named_packages_runs_only_their_manager() {
     let fixture = Fixture::seeded();
     fixture.json(&["update", "brew:wget"]).success();
@@ -110,6 +124,18 @@ fn sync_installs_only_when_something_is_missing() {
     assert_eq!(dry["installed"], serde_json::json!(["brew:tree"]));
     let receipt = fixture.json(&["sync"]).success();
     assert_eq!(receipt["installed"], serde_json::json!(["brew:tree"]));
+    assert!(fixture.calls().contains(&"bootstrap packages apply --yes".to_string()));
+}
+
+#[test]
+fn sync_installs_a_cask_the_caskroom_does_not_have() {
+    let fixture = Fixture::seeded();
+    std::fs::remove_dir(fixture.caskroom().join("firefox/160.0")).unwrap();
+    fixture.mise(&["bootstrap", "packages", "apply", "--yes"]).stdout("");
+    let dry = fixture.json(&["sync", "--dry-run"]).success();
+    assert_eq!(dry["installed"], serde_json::json!(["brew-cask:firefox"]));
+    let receipt = fixture.json(&["sync"]).success();
+    assert_eq!(receipt["missing"], serde_json::json!(["brew-cask:firefox"]));
     assert!(fixture.calls().contains(&"bootstrap packages apply --yes".to_string()));
 }
 

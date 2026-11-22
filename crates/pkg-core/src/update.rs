@@ -185,7 +185,7 @@ fn update_packages(
 fn versions(machine: &Machine<'_>) -> Result<Vec<(String, Option<String>)>, Error> {
     let mise = &machine.environment.mise;
     let mut versions: Vec<(String, Option<String>)> =
-        mise.package_states()?.into_iter().map(|state| (state.key, state.installed)).collect();
+        machine.package_states()?.into_iter().map(|state| (state.key, state.installed)).collect();
     versions.extend(
         mise.tool_states()?
             .into_iter()

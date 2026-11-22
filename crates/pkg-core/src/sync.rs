@@ -66,7 +66,7 @@ impl Client {
 /// The declared packages and global tools that are not installed, on managers this machine has.
 fn missing(machine: &Machine<'_>) -> Result<(Vec<String>, Vec<String>), Error> {
     let mise = &machine.environment.mise;
-    let packages = mise
+    let packages = machine
         .package_states()?
         .into_iter()
         .filter(|state| state.available && state.desired == "present" && state.state != "installed")

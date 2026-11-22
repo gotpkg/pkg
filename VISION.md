@@ -1,6 +1,6 @@
 ---
 title: A Vision for pkg
-updated: 2026-11-18
+updated: 2026-11-21
 ---
 
 # A Vision for pkg
@@ -28,7 +28,7 @@ The same package operations are available through the unpublished `pkg-core` Rus
 ## Design principles
 
 - **Human-first, agent-complete** — text is the default and `--help` shows only the everyday commands; the JSON contract and the discovery commands are complete but opt-in.
-- **mise decides, pkg translates** — installation, version resolution and config writes go through mise's own commands; pkg edits a config file only to remove an entry mise cannot remove itself.
+- **mise decides, pkg translates** — installation, version resolution and config writes go through mise's own commands; pkg edits a config file only to remove an entry mise cannot remove itself, and reads whether a Homebrew cask is installed from Homebrew's Caskroom, which mise answers only over the network.
 - **Edit only what you own** — pkg writes to mise's write target and refuses to change a declaration in any other file, such as one shared with other machines.
 - **Ask for exactly what was typed** — pkg adds no prompts of its own, and only `pkg bootstrap` in a terminal lets mise and the programs it runs ask for passwords and answers; a command that would do more than asked, like a prune that would take undeclared packages, refuses and explains.
 
@@ -53,3 +53,4 @@ When principles conflict, safety of the config and of installed software comes b
 | 2026-11-17 | Created this vision.                                                          | N/A                                                         |
 | 2026-11-17 | Added the reusable Rust package API.                                          | [proposal.0001](proposals/0001-reusable-package-library.md) |
 | 2026-11-18 | Added first-machine setup and bootstrap; `pkg update` replaced `pkg upgrade`. | [proposal.0002](proposals/0002-first-machine-bootstrap.md)  |
+| 2026-11-21 | pkg reads whether a Homebrew cask is installed from the Caskroom.             | [proposal.0007](proposals/0007-local-package-state.md)      |

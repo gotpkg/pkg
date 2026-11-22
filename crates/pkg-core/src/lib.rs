@@ -12,6 +12,16 @@
 //! terminal, so nothing it runs can wait at `/dev/tty`. The host's environment, current
 //! directory, signal policy, and standard streams are never changed.
 //!
+//! Installed state comes from mise, except for Homebrew casks. mise checks a cask against its
+//! current definition, which it fetches over the network, so on macOS and Linux, when the
+//! configuration declares a `brew-cask:` package, the status query runs with
+//! `MISE_SYSTEM_PACKAGES_MANAGERS` naming every other manager it may need, and each cask's state
+//! is read from Homebrew's Caskroom: installed when `<prefix>/Caskroom/<token>/` holds exactly one
+//! version directory. The prefix is `MISE_SYSTEM_BREW_PREFIX` from the child environment, else
+//! `/opt/homebrew` on macOS and `/home/linuxbrew/.linuxbrew` on Linux; a host that isolates a
+//! client from the machine's Homebrew sets it. mise answers for casks itself when its own
+//! `system_packages.managers` leaves them out or its `system_packages.prefer` names `brew-cask`.
+//!
 //! The caller supplies credentials through the child environment, which is omitted from Debug
 //! output. This is process isolation, not a sandbox: mise and the selected packages still run
 //! with the caller's permissions. Mutations of the same configuration must be serialized across
@@ -88,6 +98,7 @@
 //! second package inventory are required. CLI parsing, rendering, discovery, and exit statuses
 //! belong to the executable crate, not this API.
 
+mod caskroom;
 mod catalog;
 mod client;
 mod common;
@@ -104,6 +115,7 @@ mod mise;
 mod onboarding;
 mod outdated;
 mod package;
+mod package_states;
 mod progress;
 mod prune;
 mod remove;
