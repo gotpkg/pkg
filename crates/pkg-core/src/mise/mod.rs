@@ -73,7 +73,13 @@ impl<'a> Mise<'a> {
     }
 
     pub(crate) fn read(&self, args: &[&str]) -> Result<String, Error> {
-        self.query(args).map(|output| output.stdout)
+        self.read_with(args, &[])
+    }
+
+    /// [`Mise::read`] with `env` added to the child environment.
+    pub(crate) fn read_with(&self, args: &[&str], env: &[(&str, &str)]) -> Result<String, Error> {
+        let output = self.capture_with(args, env)?;
+        if output.success { Ok(output.stdout) } else { Err(self.failure(args, &output, true)) }
     }
 
     pub(crate) fn query(&self, args: &[&str]) -> Result<Output, Error> {
@@ -82,8 +88,13 @@ impl<'a> Mise<'a> {
     }
 
     pub(crate) fn capture(&self, args: &[&str]) -> Result<Output, Error> {
+        self.capture_with(args, &[])
+    }
+
+    fn capture_with(&self, args: &[&str], env: &[(&str, &str)]) -> Result<Output, Error> {
         let output = self
             .command(args)
+            .envs(env.iter().copied())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()

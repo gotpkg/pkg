@@ -65,6 +65,7 @@ The application owns every print in this example. A native frontend can instead 
 ## Limits and edge cases
 
 - A context is not an inventory snapshot: later calls reload the configuration and installed state. Two clients can use different homes without changing process-global settings.
+- Installed state comes from mise, except for Homebrew casks, which are read from the Caskroom under `MISE_SYSTEM_BREW_PREFIX` in the child environment, else mise's default prefix ([Where installed state comes from](../crates/pkg/docs/packages.md#where-installed-state-comes-from)). A host that isolates a client from the machine's Homebrew, such as a test, sets `MISE_SYSTEM_BREW_PREFIX` in `child_env`; mise reads the same variable, so both see the same prefix.
 - Set `config_dir` to select a different global mise directory with its host/environment overlays. Set `global_config_override` only when deliberately requesting mise's narrower `MISE_GLOBAL_CONFIG_FILE` behavior; it is not equivalent to selecting that file's directory. The default leaves the file override unset.
 - Serialize mutations of the same configuration, including calls through separate clients or processes. This library does not add a lock around external mise users.
 - Callbacks run serially on the calling thread and stop before the method returns. Return promptly, do not panic, and do not reenter the same client. Stdout and stderr retain their individual ordering, not a shared total order.

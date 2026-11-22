@@ -55,6 +55,20 @@ A formula that a declared package still depends on stays installed and is listed
 - `pkg prune` uninstalls Homebrew packages no config declares. `--force` also removes casks mise cannot prove are unchanged.
 - `pkg where brew:<formula>` prints a formula's `opt` directory, which keg-only formulae need on `PATH`; `pkg where <tool>` prints a tool's install directory.
 
+## Where installed state comes from
+
+`pkg list`, `info`, `install`, `sync` and `update` ask mise which declared packages are installed, and mise checks each one on the machine: a formula's `opt` link, `mas list`, `dpkg-query` and the like. Homebrew casks are the exception. mise checks a cask against its current definition, which it fetches from Homebrew or the tap's repository on every run, so on macOS and Linux pkg leaves casks out of mise's check, through mise's `system_packages.managers` setting, and reads them from Homebrew's Caskroom instead. A cask is installed when `<prefix>/Caskroom/<token>/` holds exactly one version; the prefix is `MISE_SYSTEM_BREW_PREFIX`, else `/opt/homebrew` on macOS and `/home/linuxbrew/.linuxbrew` on Linux. Reading state this way needs no network.
+
+Because pkg does not compare a cask with its current definition, its answer can differ from `mise bootstrap packages status`:
+
+- An app you deleted by hand while its Caskroom version remains counts as installed, so `pkg install` leaves it `unchanged` and `pkg sync` skips it. `mise bootstrap packages apply` reinstalls it.
+- A cask whose current definition installs a different app than the one on disk counts as installed.
+- A renamed cask declared under its old name counts as missing.
+- A cask that is not available for this macOS version or architecture counts as missing rather than skipped.
+- A cask with several version directories counts as missing.
+
+When your config sets `system_packages.managers` without `brew-cask`, or names `brew-cask` in `system_packages.prefer`, pkg leaves casks to mise.
+
 ## Taps
 
 mise finds a third-party tap `owner/name` at `https://github.com/owner/homebrew-name` without any setup: `pkg install brew:owner/name/formula` works directly. Only a tap whose repository lives elsewhere on GitHub needs `pkg tap add owner/name <url>`. `pkg tap list` shows the recorded URLs and `pkg tap remove` forgets one.

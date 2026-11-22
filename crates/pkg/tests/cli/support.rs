@@ -47,9 +47,12 @@ echo "mise: installed to $MISE_INSTALL_PATH" >&2
 const FAKE_MISE: &str = r#"#!/bin/sh
 # Answers from $FAKE_MISE/answers/<key>[.<n>], where <key> is the arguments with the home
 # directory written as `~` and every other byte but letters and digits replaced by `_`, and <n>
-# counts calls with those arguments from 1.
+# counts calls with those arguments from 1. Each call's MISE_SYSTEM_PACKAGES_MANAGERS goes to
+# $FAKE_MISE/managers: `=<value>`, or `-` when it is unset.
 dir=$FAKE_MISE
 printf '%s\n' "$*" >> "$dir/calls"
+if [ -n "${MISE_SYSTEM_PACKAGES_MANAGERS+set}" ]; then managers="=$MISE_SYSTEM_PACKAGES_MANAGERS"; else managers=-; fi
+printf '%s\t%s\n' "$*" "$managers" >> "$dir/managers"
 key=$(printf '%s' "$*" | sed "s|$HOME|~|g" | LC_ALL=C tr -c 'A-Za-z0-9' '_')
 mkdir -p "$dir/counts"
 count=$(( $(cat "$dir/counts/$key" 2>/dev/null || echo 0) + 1 ))
@@ -186,6 +189,16 @@ impl Fixture {
         let target = "~/.config/mise/config.macos.toml\n";
         fixture.mise(&["settings", "get", "write_targets.packages"]).stdout(target);
         fixture.mise(&["settings", "get", "write_targets.tools"]).stdout(target);
+        for setting in ["system_packages.managers", "system_packages.prefer"] {
+            fixture
+                .mise(&["settings", "get", setting])
+                .stderr(&format!("mise ERROR Setting [{setting}] is not set\n"))
+                .status(1);
+        }
+        for version in ["160.0", ".metadata"] {
+            std::fs::create_dir_all(fixture.caskroom().join("firefox").join(version))
+                .expect("the Caskroom");
+        }
         fixture.mise(&["backends", "ls"]).stdout("aqua\ncargo\ncore\ngithub\nnpm\n");
         fixture.mise(&["version"]).stdout("2026.11.9 macos-arm64 (2026-11-16)\n");
         fixture.mise(&["version", "--json"]).json(&mise_version("2026.11.9", "2026.11.9"));
@@ -316,6 +329,11 @@ impl Fixture {
         self.path("home")
     }
 
+    /// The Caskroom of the Homebrew prefix pkg is pointed at, outside the home directory.
+    pub(crate) fn caskroom(&self) -> PathBuf {
+        self.path("brew/Caskroom")
+    }
+
     /// `~/.config/mise`, as mise names it.
     pub(crate) fn config_dir(&self) -> PathBuf {
         self.home().join(".config/mise")
@@ -365,6 +383,19 @@ impl Fixture {
             .unwrap_or_default()
             .lines()
             .map(|line| line.strip_prefix(&prefix).unwrap_or(line).to_string())
+            .collect()
+    }
+
+    /// `MISE_SYSTEM_PACKAGES_MANAGERS` as each run of the mise command `call` (written as
+    /// [`Fixture::calls`] writes it) received it, `None` when it was unset.
+    pub(crate) fn managers_for(&self, call: &str) -> Vec<Option<String>> {
+        let call = format!("-C {} {call}", self.home().display());
+        std::fs::read_to_string(self.path("mise/managers"))
+            .unwrap_or_default()
+            .lines()
+            .filter_map(|line| line.split_once('\t'))
+            .filter(|(args, _)| *args == call)
+            .map(|(_, managers)| managers.strip_prefix('=').map(str::to_string))
             .collect()
     }
 
@@ -419,6 +450,7 @@ impl Fixture {
             .env("PKG_HOMEBREW_API", format!("{}/api", self.catalog.url))
             .env("PKG_APP_STORE_API", &self.catalog.url)
             .env("XDG_CACHE_HOME", self.path("cache"))
+            .env("MISE_SYSTEM_BREW_PREFIX", self.path("brew"))
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -524,8 +556,18 @@ impl Answer {
     }
 }
 
-/// `mise bootstrap packages status --json` for the seeded packages plus `extra`.
+/// `mise bootstrap packages status --json` for the seeded packages plus `extra`, as mise answers
+/// when pkg leaves casks out of its check: they are listed, but skipped.
 pub(crate) fn status(extra: &[(&str, &str, Option<&str>)]) -> Value {
+    status_answer(extra, true)
+}
+
+/// [`status`] as mise answers when it checks casks too.
+pub(crate) fn status_with_casks(extra: &[(&str, &str, Option<&str>)]) -> Value {
+    status_answer(extra, false)
+}
+
+fn status_answer(extra: &[(&str, &str, Option<&str>)], casks_left_out: bool) -> Value {
     let mut managers: BTreeMap<&str, Vec<Value>> = BTreeMap::new();
     let seeded = [
         ("brew", "git", Some("2.56.1")),
@@ -534,13 +576,19 @@ pub(crate) fn status(extra: &[(&str, &str, Option<&str>)]) -> Value {
         ("brew-cask", "firefox", Some("160.0")),
         ("mas", "937984704", Some("5.3.1")),
     ];
+    let left_out = |manager: &str| casks_left_out && manager == "brew-cask";
     for (manager, package, installed) in seeded.iter().chain(extra) {
+        let state = match installed {
+            _ if left_out(manager) => "skipped",
+            Some(_) => "installed",
+            None => "missing",
+        };
         let mut entry = json!({
             "package": package,
             "requested_version": "latest",
             "desired_state": "present",
-            "state": if installed.is_some() { "installed" } else { "missing" },
-            "installed_version": installed,
+            "state": state,
+            "installed_version": if left_out(manager) { "" } else { installed.unwrap_or("") },
         });
         if *manager == "mas" {
             entry["name"] = json!("Amphetamine");
@@ -550,7 +598,16 @@ pub(crate) fn status(extra: &[(&str, &str, Option<&str>)]) -> Value {
     let managers: serde_json::Map<String, Value> = managers
         .into_iter()
         .map(|(manager, packages)| {
-            (manager.to_string(), json!({ "available": true, "packages": packages }))
+            let status = if left_out(manager) {
+                json!({
+                    "available": false,
+                    "reason": "excluded by the system_packages.managers setting",
+                    "packages": packages,
+                })
+            } else {
+                json!({ "available": true, "packages": packages })
+            };
+            (manager.to_string(), status)
         })
         .collect();
     Value::Object(managers)

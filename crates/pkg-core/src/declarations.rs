@@ -4,6 +4,7 @@
 //! the file itself: it deletes only the entry's own lines, keeps every comment, and then checks
 //! that the result parses to exactly the original config minus that entry.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value, json};
@@ -90,6 +91,16 @@ impl Declarations {
             .iter()
             .find(|file| file.tools.iter().any(|tool| tool == key))
             .map(|file| file.path.as_path())
+    }
+
+    /// The managers `[bootstrap.packages]` keys name in any file, such as `brew` for `brew:wget`;
+    /// an unprefixed key names none.
+    pub(crate) fn package_managers(&self) -> BTreeSet<&str> {
+        self.files
+            .iter()
+            .flat_map(|file| &file.packages)
+            .filter_map(|key| key.split_once(':').map(|(manager, _)| manager))
+            .collect()
     }
 
     pub(crate) fn taps(&self) -> Vec<Tap> {
