@@ -100,16 +100,28 @@ pub(crate) fn install(
 }
 
 /// Writes through a temporary file and renames it over `file`, so a shim that is running is never
-/// rewritten under it.
+/// rewritten under it. The temporary file is created exclusively, so a file that already has its
+/// name is an error and is never overwritten.
 fn write_executable(file: &Path, script: &str) -> io::Result<()> {
-    let temporary = file.with_extension("pkg-tmp");
-    std::fs::write(&temporary, script)?;
+    use std::io::Write;
+    let name = file.file_name().unwrap_or_default().to_string_lossy();
+    let temporary = file.with_file_name(format!(".{name}.{}.pkg-tmp", std::process::id()));
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&temporary, std::fs::Permissions::from_mode(0o755))?;
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o755);
     }
-    std::fs::rename(&temporary, file)
+    let mut written = options.open(&temporary)?;
+    let result = written
+        .write_all(script.as_bytes())
+        .and_then(|()| written.flush())
+        .and_then(|()| std::fs::rename(&temporary, file));
+    if result.is_err() {
+        let _ = std::fs::remove_file(&temporary);
+    }
+    result
 }
 
 /// Deletes every file in `directory` that carries the marker, then the directory when nothing
@@ -181,14 +193,18 @@ pub(crate) fn list(
             let resolves_to =
                 match path::find_executable(&directories, tool.name, &extensions, |_| false) {
                     None => Resolution::Nothing,
-                    Some(found)
-                        if found
+                    Some(found) => {
+                        let in_shim_directory = found
                             .parent()
-                            .is_some_and(|parent| path::same_directory(parent, directory)) =>
-                    {
-                        Resolution::Shim
+                            .is_some_and(|parent| path::same_directory(parent, directory));
+                        let carries_marker =
+                            read_start(&found).is_some_and(|start| launcher::is_shim(&start));
+                        if in_shim_directory && carries_marker {
+                            Resolution::Shim
+                        } else {
+                            Resolution::Other(found)
+                        }
                     }
-                    Some(found) => Resolution::Other(found),
                 };
             Listed { name: tool.name.to_string(), file, installed, resolves_to }
         })
@@ -267,5 +283,19 @@ mod tests {
         install(system, &directory, false).expect("installs");
         remove(&directory, false).expect("removes");
         assert!(!directory.exists());
+    }
+
+    #[test]
+    fn a_file_named_like_a_temporary_copy_survives_an_install() {
+        let temporary = tempfile::tempdir().expect("a directory");
+        let directory = temporary.path().join("shims");
+        std::fs::create_dir(&directory).expect("a directory");
+        let system = System::current();
+        let bystander = directory.join("npm.pkg-tmp");
+        std::fs::write(&bystander, "mine").expect("a foreign file");
+
+        install(system, &directory, false).expect("installs");
+        assert_eq!(std::fs::read_to_string(&bystander).expect("kept"), "mine");
+        assert!(directory.join(launcher::file_name("npm", system)).exists());
     }
 }

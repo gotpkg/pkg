@@ -110,6 +110,9 @@ pub enum ValueKind {
     Package,
     Choice(&'static [&'static str]),
     Boolean,
+    /// An argument handed on unchanged, as the bytes the caller wrote, so it need not be valid
+    /// UTF-8: what a shim passes to the real tool.
+    Raw,
 }
 
 /// What a package looks like: `manager:name`, `backend:name`, or a bare mise registry tool, with an
@@ -124,6 +127,7 @@ impl ValueKind {
             ValueKind::Package => "package",
             ValueKind::Choice(_) => "choice",
             ValueKind::Boolean => "boolean",
+            ValueKind::Raw => "string",
         }
     }
 

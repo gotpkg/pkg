@@ -115,7 +115,8 @@ pub static COMMANDS: &[CommandSpec] = &[
             arguments are a global install or removal that `pkg` does, fails with \
             INVALID_ARGUMENT (exit status 2), naming the `pkg` command to run instead. Otherwise \
             runs the first executable called <tool> on PATH that is not a shim, with the same \
-            arguments and its exit status, and writes nothing of its own. When there is none, \
+            arguments, byte for byte, and its exit status, and writes nothing of its own. \
+            Everything after `--` is the tool's, `--output` included. When there is none, \
             says so and exits 127. The `mise` shim runs the real mise without the shim directory \
             on PATH, except for `exec`, `x`, `run`, `r`, `watch` and `w`.",
         arguments: &[
@@ -131,7 +132,7 @@ pub static COMMANDS: &[CommandSpec] = &[
             ArgumentSpec {
                 name: "arguments",
                 kind: ArgumentKind::Positional,
-                value: ValueKind::String,
+                value: ValueKind::Raw,
                 required: false,
                 default: None,
                 multiple: true,
@@ -411,11 +412,12 @@ fn listed_shim(shim: Listed) -> ListedShim {
 
 fn run_shim(invocation: &Invocation) -> Result<Response, Failure> {
     let tool = invocation.string("tool").unwrap_or_default();
-    let args = invocation.strings("arguments");
+    let args = invocation.raw_strings("arguments");
+    let words: Vec<String> = args.iter().map(|arg| arg.to_string_lossy().into_owned()).collect();
     let in_virtual_environment =
         ["VIRTUAL_ENV", "CONDA_PREFIX"].iter().any(|key| shims::process_variable(key).is_some());
     if let Verdict::Refuse(refusal) =
-        decide(&Call { tool: &tool, args: &args, in_virtual_environment })
+        decide(&Call { tool: &tool, args: &words, in_virtual_environment })
     {
         return Err(refusal_failure(&refusal));
     }

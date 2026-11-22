@@ -2256,7 +2256,7 @@ Result schema:
 
 What every shim calls: refuse a global install or run the real tool.
 
-Called by each shim as `pkg shims run <tool> -- <arguments>`. When the arguments are a global install or removal that `pkg` does, fails with INVALID_ARGUMENT (exit status 2), naming the `pkg` command to run instead. Otherwise runs the first executable called <tool> on PATH that is not a shim, with the same arguments and its exit status, and writes nothing of its own. When there is none, says so and exits 127. The `mise` shim runs the real mise without the shim directory on PATH, except for `exec`, `x`, `run`, `r`, `watch` and `w`.
+Called by each shim as `pkg shims run <tool> -- <arguments>`. When the arguments are a global install or removal that `pkg` does, fails with INVALID_ARGUMENT (exit status 2), naming the `pkg` command to run instead. Otherwise runs the first executable called <tool> on PATH that is not a shim, with the same arguments, byte for byte, and its exit status, and writes nothing of its own. Everything after `--` is the tool's, `--output` included. When there is none, says so and exits 127. The `mise` shim runs the real mise without the shim directory on PATH, except for `exec`, `x`, `run`, `r`, `watch` and `w`.
 
 - **Effect:** runs the real package manager
 - **Requires:** nothing beyond `pkg`

@@ -70,6 +70,10 @@ fn parse<'a>(tool: &Tool, args: &'a [String]) -> Parsed<'a> {
             Some((option, value)) => (option, Some(value)),
             None => (argument, None),
         };
+        // `--global=false` turns the option off, as npm reads it.
+        if inline == Some("false") && !tool.name_options.contains(&option) {
+            continue;
+        }
         parsed.options.push(option);
         if tool.name_options.contains(&option) {
             parsed.named.extend(inline.or_else(|| rest.next()));
@@ -363,6 +367,12 @@ mod tests {
             "install -g --registry=https://registry.example.com prettier",
             "pkg install npm:prettier",
         );
+    }
+
+    #[test]
+    fn an_option_turned_off_with_an_equals_sign_is_not_given() {
+        passes("npm", "install --global=false prettier");
+        refuses("npm", "install --global=true prettier", "pkg install npm:prettier");
     }
 
     #[test]

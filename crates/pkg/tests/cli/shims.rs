@@ -6,8 +6,10 @@
 //! tests can answer.
 
 use std::ffi::OsStr;
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
@@ -338,4 +340,87 @@ fn pkg_runs_the_mise_behind_the_shims_and_gives_it_a_path_without_them() {
     assert!(!hit.exists(), "pkg ran mise through its shim");
     let mise_path = std::fs::read_to_string(&seen).expect("the fake mise recorded its PATH");
     assert!(!mise_path.contains(&shims.display().to_string()), "mise saw the shims: {mise_path}");
+}
+
+/// Runs `command` and fails the test when it has not finished within `seconds`: a shim that
+/// loops would otherwise hang the suite.
+fn finish_within(mut command: std::process::Command, seconds: u64) -> Outcome {
+    let mut child = command
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("the shim starts");
+    let deadline = Instant::now() + Duration::from_secs(seconds);
+    while child.try_wait().expect("a status").is_none() {
+        if Instant::now() > deadline {
+            let _ = child.kill();
+            panic!("the shim had not finished after {seconds} seconds");
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    let output = child.wait_with_output().expect("the output");
+    Outcome {
+        status: output.status.code().unwrap_or(-1),
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+    }
+}
+
+#[test]
+fn shims_in_two_directories_without_pkg_end_in_127_instead_of_calling_each_other() {
+    let (fixture, _real, _path) = shimmed();
+    let first = shim_directory(&fixture);
+    let second = fixture.path("more-shims");
+    std::fs::create_dir_all(&second).expect("a second directory");
+    for entry in std::fs::read_dir(&first).expect("the shims") {
+        let entry = entry.expect("an entry").path();
+        std::fs::copy(&entry, second.join(entry.file_name().expect("a name"))).expect("a copy");
+    }
+    let path = joined(&[&first, &second]);
+    let shim = first.join("cargo");
+    let command = fixture.command_for(&shim, &["--version"], &[("PATH", Some(OsStr::new(&path)))]);
+    let outcome = finish_within(command, 15);
+    assert_eq!(outcome.status, 127, "{outcome:?}");
+    assert!(outcome.stderr.contains("not installed"), "{}", outcome.stderr);
+}
+
+#[test]
+fn arguments_that_are_not_utf8_reach_the_real_tool_byte_for_byte() {
+    let (fixture, real, path) = shimmed();
+    write_tool(&real, "npm", "printf '%s' \"$2\" | od -An -tx1");
+    let shim = shim_directory(&fixture).join("npm");
+    let path = format!("{path}:{SYSTEM_PATH}");
+    let mut command = fixture.command_for(&shim, &["run"], &[("PATH", Some(OsStr::new(&path)))]);
+    command.arg(OsStr::from_bytes(b"\xff\xfe"));
+    let outcome = fixture.finish(&mut command);
+    assert_eq!(outcome.status, 0, "{outcome:?}");
+    assert_eq!(outcome.stdout.split_whitespace().collect::<Vec<_>>(), ["ff", "fe"], "{outcome:?}");
+}
+
+#[test]
+fn the_managers_own_output_option_does_not_change_how_a_refusal_is_written() {
+    let (fixture, _real, path) = shimmed();
+    let outcome = run_shim(&fixture, "mise", &["use", "-g", "--output=json", "ripgrep"], &path);
+    assert_eq!(outcome.status, 2, "{outcome:?}");
+    assert!(outcome.stderr.starts_with("error: mise did not run"), "{}", outcome.stderr);
+    assert!(outcome.stderr.contains("pkg install ripgrep"), "{}", outcome.stderr);
+}
+
+#[test]
+fn listing_does_not_call_a_file_the_shim_directory_holds_a_shim_unless_it_is_one() {
+    let fixture = Fixture::new();
+    install_shims(&fixture);
+    let directory = shim_directory(&fixture);
+    write_tool(&directory, "uv", "exit 0");
+
+    let listed = run_pkg(&fixture, &["shims", "list", "--output", "json"], &joined(&[&directory]));
+    let listed = listed.success();
+    let uv = listed["shims"]
+        .as_array()
+        .expect("shims")
+        .iter()
+        .find(|shim| shim["name"] == "uv")
+        .expect("uv");
+    assert_eq!(uv["installed"], false, "{uv}");
+    assert_eq!(uv["resolvesTo"]["kind"], "other", "{uv}");
 }

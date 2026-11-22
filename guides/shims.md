@@ -29,4 +29,5 @@ An agent that has never seen pkg runs `brew install --cask iina`. Nothing is ins
 - `pip install` is refused only outside a virtual environment, and `npm install` only with `-g`; project installs are never refused.
 - On a Mac without Homebrew, `command -v brew` finds the shim and `brew --version` exits 127 with a message that Homebrew is not installed.
 - On Windows, a shim whose `pkg` is no longer on `PATH` exits 127. Take the directory off `PATH` or run `pkg shims remove`.
+- On Windows the user `PATH` comes after the system `PATH`, so a tool installed for all users, such as Node.js in `C:\Program Files`, is found before its shim. `pkg shims list` shows those names as resolving to another program; they need the shim directory added to the system `PATH` by an administrator.
 - `pkg shims install` writes nothing and fails with `PRECONDITION_FAILED` when a file that is not a shim already has a shim's name in the directory.

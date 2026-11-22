@@ -1,5 +1,7 @@
 //! A parsed command line, as a command's `run` function sees it.
 
+use std::ffi::OsString;
+
 use clap::ArgMatches;
 
 use crate::failure::Failure;
@@ -34,6 +36,14 @@ impl<'a> Invocation<'a> {
     pub fn strings(&self, name: &str) -> Vec<String> {
         self.matches
             .get_many::<String>(name)
+            .map(|values| values.cloned().collect())
+            .unwrap_or_default()
+    }
+
+    /// A [`ValueKind::Raw`](crate::registry::ValueKind::Raw) argument's values, byte for byte.
+    pub fn raw_strings(&self, name: &str) -> Vec<OsString> {
+        self.matches
+            .get_many::<OsString>(name)
             .map(|values| values.cloned().collect())
             .unwrap_or_default()
     }

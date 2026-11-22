@@ -19,11 +19,12 @@ const MISE_GLOBAL_VALUES: [&str; 8] =
 
 /// Whether the real `tool` runs without the shim directory on `PATH`: mise does, so the package
 /// managers it runs by name are the real ones, except when it runs the caller's own command.
-fn hides_shims(tool: &str, args: &[String]) -> bool {
+fn hides_shims(tool: &str, args: &[OsString]) -> bool {
     if tool != "mise" {
         return false;
     }
-    let mut rest = args.iter().map(String::as_str);
+    let words: Vec<String> = args.iter().map(|arg| arg.to_string_lossy().into_owned()).collect();
+    let mut rest = words.iter().map(String::as_str);
     while let Some(argument) = rest.next() {
         if MISE_GLOBAL_VALUES.contains(&argument) {
             rest.next();
@@ -43,7 +44,7 @@ fn hides_shims(tool: &str, args: &[String]) -> bool {
 /// When the tool is found but cannot be started.
 pub(crate) fn run(
     tool: &str,
-    args: &[String],
+    args: &[OsString],
     shim_directory: Option<&Path>,
     search_path: Option<OsString>,
     pathext: Option<OsString>,
@@ -103,8 +104,8 @@ fn launch(command: &mut Command, real: &Path) -> Result<Infallible, Failure> {
 mod tests {
     use super::*;
 
-    fn arguments(words: &str) -> Vec<String> {
-        words.split_whitespace().map(str::to_string).collect()
+    fn arguments(words: &str) -> Vec<OsString> {
+        words.split_whitespace().map(OsString::from).collect()
     }
 
     #[test]

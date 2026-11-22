@@ -65,9 +65,14 @@ fn leaf_matches(matches: &ArgMatches) -> (Vec<String>, &ArgMatches) {
     (path, current)
 }
 
-/// `--output` as written, read before parsing so a parse error can honor it.
+/// `--output` as written, read before parsing so a parse error can honor it. Words after `--`
+/// belong to a program a shim passes them to, not to pkg.
 fn requested_output(args: &[OsString]) -> OutputFormat {
-    let words: Vec<String> = args.iter().map(|arg| arg.to_string_lossy().into_owned()).collect();
+    let words: Vec<String> = args
+        .iter()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .take_while(|word| word != "--")
+        .collect();
     for (index, word) in words.iter().enumerate() {
         let value = if word == "--output" {
             words.get(index + 1).map(String::as_str)
