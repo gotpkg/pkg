@@ -24,7 +24,10 @@ pub(crate) fn from_process() -> Result<Settings, Failure> {
     let mut settings = resolve(|key| {
         snapshot.get(std::ffi::OsStr::new(key)).filter(|value| !value.is_empty()).cloned()
     })?;
+    let mise_chosen =
+        snapshot.get(std::ffi::OsStr::new(MISE_VARIABLE)).is_some_and(|value| !value.is_empty());
     settings.child_env = snapshot;
+    crate::shims::keep_pkg_away_from_shims(&mut settings, mise_chosen);
     Ok(settings)
 }
 

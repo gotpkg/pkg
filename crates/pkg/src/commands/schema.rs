@@ -130,7 +130,7 @@ fn render_description(description: &CommandDescription) -> String {
         ));
     }
     let effect = match &description.effect.what {
-        Some(what) => format!("modifies {what}"),
+        Some(what) => format!("{} {what}", description.effect.kind),
         None => "reads".into(),
     };
     text.push_str(&format!(

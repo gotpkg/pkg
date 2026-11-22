@@ -13,6 +13,8 @@ mod reference;
 mod registry;
 #[cfg(unix)]
 mod remove;
+#[cfg(unix)]
+mod shims;
 mod support;
 #[cfg(unix)]
 mod upkeep;

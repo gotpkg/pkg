@@ -15,6 +15,7 @@ pub mod prune;
 pub mod remove;
 pub mod schema;
 pub mod search;
+pub mod shims;
 pub mod sync;
 pub mod tap;
 pub mod upgrade;
@@ -32,6 +33,7 @@ pub static GROUPS: &[&[CommandSpec]] = &[
     prune::COMMANDS,
     locate::COMMANDS,
     tap::COMMANDS,
+    shims::COMMANDS,
     cli::COMMANDS,
     schema::COMMANDS,
     docs::COMMANDS,

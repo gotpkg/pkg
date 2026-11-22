@@ -44,11 +44,13 @@ pub struct CommandSpec {
     pub run: fn(&Invocation) -> Result<Response, Failure>,
 }
 
-/// Whether an operation reads or modifies state, and what it modifies.
+/// Whether an operation reads state, modifies it, or runs another program, and what.
 #[derive(Clone, Copy)]
 pub enum Effect {
     Reads,
     Modifies(&'static str),
+    /// Hands the process to another program, whose own effects are not pkg's.
+    Runs(&'static str),
 }
 
 /// What an operation needs at run time beyond `pkg` itself.
@@ -176,6 +178,11 @@ pub const RESOURCES: &[(&str, &str, Audience)] = &[
     ("prune", "Uninstall Homebrew packages no config declares", Audience::People),
     ("where", "Print where a formula or tool is installed", Audience::People),
     ("tap", "List, add, and remove Homebrew tap URLs", Audience::People),
+    (
+        "shims",
+        "Write shims that point other package managers' global installs at pkg",
+        Audience::People,
+    ),
     ("cli", "Find the command for a task", Audience::Agents),
     ("schema", "Inspect a command's full specification", Audience::Agents),
     ("docs", "Search and read pkg's documentation", Audience::Agents),
@@ -212,6 +219,7 @@ impl CommandSpec {
         match self.effect {
             Effect::Reads => "reads".to_string(),
             Effect::Modifies(what) => format!("modifies {what}"),
+            Effect::Runs(what) => format!("runs {what}"),
         }
     }
 
@@ -244,6 +252,9 @@ impl CommandSpec {
                 Effect::Reads => EffectDescription { kind: "reads".into(), what: None },
                 Effect::Modifies(what) => {
                     EffectDescription { kind: "modifies".into(), what: Some(what.to_string()) }
+                }
+                Effect::Runs(what) => {
+                    EffectDescription { kind: "runs".into(), what: Some(what.to_string()) }
                 }
             },
             requires: self

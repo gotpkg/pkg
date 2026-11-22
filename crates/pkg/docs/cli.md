@@ -1400,6 +1400,363 @@ Result schema:
 }
 ```
 
+### `shims`
+
+Write shims that point other package managers' global installs at pkg.
+
+#### `pkg shims install`
+
+Write shims that point other package managers' global installs at pkg.
+
+Writes one small executable per package manager mise can drive into the shim directory (`$XDG_DATA_HOME/pkg/shims`, `~/.local/share/pkg/shims` by default, `%LOCALAPPDATA%\pkg\shims` on Windows), each marked `pkg-shim`: `npm`, `pip`, `cargo`, `mise` and the other tool managers everywhere, and `brew`, `apt`, `winget` and the rest on the systems mise runs them on. With the directory first on PATH, a global install through one runs nothing and names the `pkg` command that does it; everything else runs the real tool. Replaces only files that carry the marker; when another file has a shim's name it writes nothing and fails with PRECONDITION_FAILED, naming the files. Never edits a startup file: when the directory is not on PATH it reports the line that puts it there. --dry-run shows what would be written.
+
+- **Effect:** modifies the shim directory
+- **Requires:** nothing beyond `pkg`
+- **Dry run:** yes
+- **Idempotent:** yes
+- **Errors:** `PRECONDITION_FAILED`, `INTERNAL`
+
+| Argument | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--dry-run` | boolean | no | — | Show what would change without installing, removing, or writing anything |
+
+Examples:
+
+```sh
+# Preview the shims
+pkg shims install --dry-run
+# Write the shims
+pkg shims install
+```
+
+Result schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "$ref": "#/$defs/ReceiptStatus"
+    },
+    "action": {
+      "type": "string",
+      "description": "`installed` or `removed`."
+    },
+    "directory": {
+      "type": "string"
+    },
+    "shims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ShimChange"
+      }
+    },
+    "onPath": {
+      "type": "boolean",
+      "description": "Whether the shim directory is on the current PATH."
+    },
+    "pathLine": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The line that puts the directory first on PATH, when it is not there. Never set by `remove`."
+    }
+  },
+  "required": [
+    "status",
+    "action",
+    "directory",
+    "shims",
+    "onPath"
+  ],
+  "description": "What `shims install` and `shims remove` did, or would do with `--dry-run`.",
+  "title": "ShimsReceipt",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ReceiptStatus": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "completed",
+          "description": "The change is made."
+        },
+        {
+          "type": "string",
+          "const": "dry-run",
+          "description": "Nothing changed; the receipt shows what running without --dry-run would do."
+        }
+      ],
+      "description": "Whether a modifying command made its change."
+    },
+    "ShimChange": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "change": {
+          "type": "string",
+          "description": "`created`, `updated`, `unchanged` or `removed`."
+        }
+      },
+      "required": [
+        "name",
+        "file",
+        "change"
+      ]
+    }
+  }
+}
+```
+
+#### `pkg shims remove`
+
+Delete the shims.
+
+Deletes every file in the shim directory that carries the `pkg-shim` marker, then the directory when nothing else is in it. Leaves other files alone. Does not touch the line that puts the directory on PATH. --dry-run lists what would be deleted.
+
+- **Effect:** modifies the shim directory
+- **Requires:** nothing beyond `pkg`
+- **Dry run:** yes
+- **Idempotent:** yes
+- **Errors:** `PRECONDITION_FAILED`, `INTERNAL`
+
+| Argument | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--dry-run` | boolean | no | — | Show what would change without installing, removing, or writing anything |
+
+Examples:
+
+```sh
+# Preview deleting the shims
+pkg shims remove --dry-run
+# Delete the shims
+pkg shims remove
+```
+
+Result schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "$ref": "#/$defs/ReceiptStatus"
+    },
+    "action": {
+      "type": "string",
+      "description": "`installed` or `removed`."
+    },
+    "directory": {
+      "type": "string"
+    },
+    "shims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ShimChange"
+      }
+    },
+    "onPath": {
+      "type": "boolean",
+      "description": "Whether the shim directory is on the current PATH."
+    },
+    "pathLine": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The line that puts the directory first on PATH, when it is not there. Never set by `remove`."
+    }
+  },
+  "required": [
+    "status",
+    "action",
+    "directory",
+    "shims",
+    "onPath"
+  ],
+  "description": "What `shims install` and `shims remove` did, or would do with `--dry-run`.",
+  "title": "ShimsReceipt",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ReceiptStatus": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "completed",
+          "description": "The change is made."
+        },
+        {
+          "type": "string",
+          "const": "dry-run",
+          "description": "Nothing changed; the receipt shows what running without --dry-run would do."
+        }
+      ],
+      "description": "Whether a modifying command made its change."
+    },
+    "ShimChange": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "change": {
+          "type": "string",
+          "description": "`created`, `updated`, `unchanged` or `removed`."
+        }
+      },
+      "required": [
+        "name",
+        "file",
+        "change"
+      ]
+    }
+  }
+}
+```
+
+#### `pkg shims list`
+
+Show the shims, whether the directory is on PATH, and what each name runs.
+
+For each shim of this system: whether it is installed and what its name resolves to on the current PATH: the shim, another executable that comes first (its path), or nothing. Reports whether the shim directory is on PATH and, when it is not, the line that puts it first, for the shell named by $SHELL (bash, zsh or fish) or for PowerShell on Windows. Never changes anything.
+
+- **Effect:** reads only
+- **Requires:** nothing beyond `pkg`
+- **Dry run:** no
+- **Idempotent:** yes
+- **Errors:** `PRECONDITION_FAILED`, `INTERNAL`
+
+Examples:
+
+```sh
+# List the shims
+pkg shims list
+```
+
+Result schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "directory": {
+      "type": "string"
+    },
+    "onPath": {
+      "type": "boolean"
+    },
+    "pathLine": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The line that puts the directory first on PATH, when it is not there."
+    },
+    "shims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ListedShim"
+      }
+    }
+  },
+  "required": [
+    "directory",
+    "onPath",
+    "shims"
+  ],
+  "description": "The shims of this system and what each runs.",
+  "title": "ShimsList",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ListedShim": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "installed": {
+          "type": "boolean"
+        },
+        "resolvesTo": {
+          "$ref": "#/$defs/ResolvesTo"
+        }
+      },
+      "required": [
+        "name",
+        "file",
+        "installed",
+        "resolvesTo"
+      ]
+    },
+    "ResolvesTo": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "`shim`, `other` (another executable comes first) or `none`."
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The other executable's path."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  }
+}
+```
+
+#### `pkg shims run`
+
+What every shim calls: refuse a global install or run the real tool.
+
+Called by each shim as `pkg shims run <tool> -- <arguments>`. When the arguments are a global install or removal that `pkg` does, fails with INVALID_ARGUMENT (exit status 2), naming the `pkg` command to run instead. Otherwise runs the first executable called <tool> on PATH that is not a shim, with the same arguments and its exit status, and writes nothing of its own. When there is none, says so and exits 127. The `mise` shim runs the real mise without the shim directory on PATH, except for `exec`, `x`, `run`, `r`, `watch` and `w`.
+
+- **Effect:** runs the real package manager
+- **Requires:** nothing beyond `pkg`
+- **Dry run:** no
+- **Idempotent:** no
+- **Errors:** `INVALID_ARGUMENT`, `INTERNAL`
+
+| Argument | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `<tool>` | string | yes | — | The shim's name: `npm`, `brew`, `apt`, ... |
+| `<arguments>` | string, repeatable | no | — | The tool's arguments, after `--` |
+
+Examples:
+
+```sh
+# What a shim does with a global npm install
+pkg shims run npm -- install -g prettier
+```
+
+Result schema:
+
+```json
+{
+  "type": "object",
+  "description": "`shims run` writes no result of its own: it refuses, or becomes the real tool.",
+  "title": "NoResult",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
+```
+
 ### `cli`
 
 Find the command for a task.

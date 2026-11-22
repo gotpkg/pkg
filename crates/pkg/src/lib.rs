@@ -17,6 +17,7 @@ pub mod parser;
 pub mod reference;
 pub mod registry;
 pub mod response;
+mod shims;
 
 /// The executable's name, as commands and suggestions spell it.
 pub const NAME: &str = env!("CARGO_PKG_NAME");

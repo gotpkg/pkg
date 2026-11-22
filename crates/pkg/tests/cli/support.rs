@@ -5,6 +5,7 @@
 //! local HTTP server that serves fixed documents by path.
 
 use std::collections::{BTreeMap, HashMap};
+use std::ffi::OsStr;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -344,10 +345,10 @@ impl Fixture {
             .insert(path.to_string(), (status, "{}".into()));
     }
 
-    pub(crate) fn run(&self, args: &[&str]) -> Outcome {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_pkg"));
+    /// A command for `program` in the fixture's environment: `PATH`, `HOME`, and pkg's settings.
+    pub(crate) fn command(&self, program: impl AsRef<OsStr>) -> Command {
+        let mut command = Command::new(program);
         command
-            .args(args)
             .current_dir(self.dir.path())
             .env_clear()
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
@@ -360,12 +361,21 @@ impl Fixture {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        let output = command.output().expect("pkg runs");
+        command
+    }
+
+    /// Runs `command` to completion.
+    pub(crate) fn finish(&self, command: &mut Command) -> Outcome {
+        let output = command.output().expect("the program runs");
         Outcome {
             status: output.status.code().unwrap_or(-1),
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
             stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         }
+    }
+
+    pub(crate) fn run(&self, args: &[&str]) -> Outcome {
+        self.finish(self.command(env!("CARGO_BIN_EXE_pkg")).args(args))
     }
 
     /// `run` with `--output json`.
@@ -429,6 +439,12 @@ impl Answer {
 
     pub(crate) fn status(self, status: i32) -> Answer {
         std::fs::write(self.directory.join("status"), status.to_string()).expect("status");
+        self
+    }
+
+    /// Runs `script` (a shell script) whenever this answer is given.
+    pub(crate) fn runs(self, script: &str) -> Answer {
+        std::fs::write(self.directory.join("run"), script).expect("run");
         self
     }
 
