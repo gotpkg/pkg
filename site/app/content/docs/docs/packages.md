@@ -120,6 +120,16 @@ pkg where jq           # a tool's install directory
 
 Keg-only formulae need their `opt` directory on your `PATH` by hand, and `pkg where` prints it. Casks, App Store apps, and other managers' packages have no such directory.
 
+## Follow the progress
+
+In a terminal, `pkg install`, `remove`, `update`, `sync`, and `prune` show a live display while they work, dry runs included. It names the step pkg is on and how long it has taken, the package being worked on and its place in the request (`2 of 3`), and every item mise is working on, dependencies included, with the last thing mise said about it, such as `download` or `link`. Bars show how much is done wherever the total is known: formulae against the plan mise gave for the package, tools against the number mise is installing, and a tool download's bytes and rate. `remove` and `prune` list the packages mise is about to uninstall.
+
+Every figure is the last one mise reported, and pkg never estimates the time left. mise reports no byte counts for Homebrew downloads when pkg runs it, so formulae and casks show their phase only. To know how many formulae a package brings, `pkg install` asks mise for its plan just before installing it, which takes a fraction of a second.
+
+When the command ends, the display disappears. One line per finished formula, cask, or tool stays on stderr, with every warning, error, and line pkg does not recognize, and then pkg's result. If a step fails, pkg first writes the progress lines it held back during that step.
+
+For plain lines instead, redirect stderr (`pkg install brew:wget 2>&1 | cat`) or set `CI`. The display is also off with `--output json` and when `TERM` is `dumb`. The repository's [package contract](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/packages.md#progress-in-a-terminal) has the full rules.
+
 ## Preview with dry run
 
 `--dry-run` works on every command that changes something: `install`, `remove`, `update`, `sync`, `prune`, `tap add`, `tap remove`, `setup`, and `bootstrap`. A dry run makes the same checks and decisions as the real run, including refusals, and installs, uninstalls, and writes nothing. With `--output json`, its receipt has `status` set to `dry-run`. A bootstrap preview has [limits of its own](/docs/setup#preview-a-bootstrap), because a configuration can run commands.

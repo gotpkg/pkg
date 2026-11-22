@@ -16,8 +16,10 @@ generated from the command registry by `mise run cli:reference`; do not edit it 
 Every command follows one contract:
 
 - **Results** are text for people by default. `--output json` writes the same result as one JSON \
-document on stdout, compact when piped and indented on a terminal. mise's progress, warnings, \
-and errors go to stderr.
+document on stdout, compact when piped and indented on a terminal. Progress, warnings, and \
+errors go to stderr: with text output on a terminal, `install`, `update`, `sync`, `remove`, and \
+`prune` show their progress there as a live display, and otherwise mise's progress lines go to \
+stderr as they arrive.
 - **Collections** return `items`, `hasMore`, and `nextCursor`; pass `nextCursor` back as \
 `--cursor` until `hasMore` is false.
 - **Modifying commands** accept `--dry-run`, which makes the same checks and decisions as the \

@@ -65,11 +65,28 @@
 //! # Progress
 //!
 //! Each operation borrows a progress callback for that call only. `Progress::Output` identifies
-//! stdout or stderr and borrows the received text; `Progress::Warning` borrows a warning. Calls
-//! are serialized on the operation's calling thread, preserve each stream's order, and end
+//! stdout or stderr and borrows the text mise wrote, in mise's own wording, which the library
+//! does not interpret and any mise release can change; `Progress::Warning` borrows a warning.
+//!
+//! `install`, `update`, `sync`, `remove`, and `prune` also report their own work, on every call,
+//! dry runs included; no other operation does. `Progress::Step` says which stretch of the work
+//! begins (`Step` lists each operation's steps). A step lasts until the next one begins or the
+//! method returns, so every event delivered in between belongs to it. A step about one package
+//! carries the package, its position, and the number of packages; a step that uninstalls carries
+//! the manager. `Progress::Plan` lists the items mise is about to install or uninstall in the
+//! current step, right after it begins: `remove` and `prune` report the plan of each prune they
+//! run, and `install` reports each bootstrap package's plan only when
+//! `InstallRequest::report_plans` asks for it. That request costs one read-only mise query per
+//! bootstrap package; a query that fails or yields no item is ignored and reports nothing. A
+//! plan serves the caller's display: the operation decides nothing from it, and results do not
+//! include it.
+//!
+//! Calls are serialized on the operation's calling thread, preserve each stream's order, and end
 //! before the method returns. There is no ordering promise between separate streams. Internal
 //! pipe readers use a bounded handoff; the library does not keep a second progress history.
-//! Callbacks must return promptly, must not reenter the same client, and must not panic.
+//! Callbacks must return promptly, must not reenter the same client, and must not panic. A
+//! callback that ignores steps and plans loses nothing: results, warnings, and errors never
+//! depend on them.
 //!
 //! The API supplies no cancellation or rollback-on-drop guarantee. A failed mutation may have
 //! completed earlier work, reported in its error. It never exits the host process or prompts.
@@ -126,7 +143,9 @@ pub use onboarding::shims::{PathAction, PathChange};
 pub use onboarding::startup_files::StartupFiles;
 pub use outdated::{OutdatedPackage, OutdatedReport, Skipped};
 pub use package::is_package;
-pub use progress::{Outcome, OutputStream, Progress};
+pub use progress::{
+    Outcome, OutputStream, PackageStep, PlannedAction, PlannedItem, Progress, Step,
+};
 pub use prune::PruneReceipt;
 pub use remove::{LeftInstalled, RemoveReceipt, Removed};
 pub use requests::{

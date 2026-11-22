@@ -8,7 +8,7 @@ use crate::mise::{MISE, Mise, PACKAGE_MANAGER_REASON};
 use crate::outdated::{self, Skipped};
 use crate::package::Package;
 use crate::requests::validate_packages;
-use crate::{Client, Error, ErrorDetails, Outcome, Progress, Recovery, UpdateRequest};
+use crate::{Client, Error, ErrorDetails, Outcome, Progress, Recovery, Step, UpdateRequest};
 
 /// The outcome of `pkg update`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
@@ -54,6 +54,7 @@ impl Client {
             skipped: Vec::new(),
         };
         if request.packages.is_empty() && !request.mode.is_dry_run() {
+            progress(Progress::Step(Step::UpdateMise));
             match update_mise(&Mise::new(&self.settings), progress)? {
                 MiseUpdate::Updated(updated) => receipt.updated.push(updated),
                 MiseUpdate::Skipped(skipped) => receipt.skipped.push(skipped),
@@ -61,6 +62,7 @@ impl Client {
             }
         }
 
+        progress(Progress::Step(Step::ReadInstalled));
         let machine = Machine::load(&self.settings)?;
         let packages = machine.packages(&request.packages);
         for package in &packages {
@@ -153,15 +155,18 @@ fn update_packages(
         .map(|package| package.key.as_str())
         .collect();
     if packages.is_empty() || !named.is_empty() {
+        progress(Progress::Step(Step::UpdatePackages));
         let mut args = vec!["bootstrap", "packages", "upgrade", "--yes"];
         args.extend(&named);
         mise.run(&args, progress)?;
     }
     if packages.is_empty() || !tools.is_empty() {
+        progress(Progress::Step(Step::UpdateTools));
         let mut args = vec!["upgrade", "--global"];
         args.extend(&tools);
         mise.run(&args, progress)?;
     }
+    progress(Progress::Step(Step::ReadResult));
     let after = versions(machine)?;
     Ok(after
         .into_iter()

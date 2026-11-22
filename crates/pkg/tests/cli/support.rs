@@ -436,8 +436,23 @@ impl Fixture {
     }
 
     /// `run` with `env` applied on top of the fixture's environment; `None` unsets a variable.
-    /// `PATH` holds only the system directories, so no mise or pkg of the host's is found.
     pub(crate) fn run_with(&self, args: &[&str], env: &[(&str, Option<&OsStr>)]) -> Outcome {
+        let output = self
+            .command(args, env)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .expect("pkg runs");
+        Outcome {
+            status: output.status.code().unwrap_or(-1),
+            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        }
+    }
+
+    /// pkg with `args`, in the fixture's environment with `env` on top; `None` unsets a variable.
+    /// `PATH` holds only the system directories, so no mise or pkg of the host's is found.
+    pub(crate) fn command(&self, args: &[&str], env: &[(&str, Option<&OsStr>)]) -> Command {
         let mut command = Command::new(env!("CARGO_BIN_EXE_pkg"));
         command
             .args(args)
@@ -451,21 +466,14 @@ impl Fixture {
             .env("PKG_APP_STORE_API", &self.catalog.url)
             .env("XDG_CACHE_HOME", self.path("cache"))
             .env("MISE_SYSTEM_BREW_PREFIX", self.path("brew"))
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stdin(Stdio::null());
         for (key, value) in env {
             match value {
                 Some(value) => command.env(key, value),
                 None => command.env_remove(key),
             };
         }
-        let output = command.output().expect("pkg runs");
-        Outcome {
-            status: output.status.code().unwrap_or(-1),
-            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-        }
+        command
     }
 
     /// Marks the fake mise as one a package manager installed, which mise's packaging contract
@@ -552,6 +560,14 @@ impl Answer {
         let script =
             format!("printf '%s\\n' '\"{package}\" = \"latest\"' >> '{}'\n", config.display());
         std::fs::write(self.directory.join("run"), script).expect("run");
+        self
+    }
+
+    /// Waits half a second before answering, long enough for a display to draw.
+    pub(crate) fn slowly(self) -> Answer {
+        let run = self.directory.join("run");
+        let script = std::fs::read_to_string(&run).unwrap_or_default();
+        std::fs::write(&run, format!("sleep 0.5\n{script}")).expect("run");
         self
     }
 }

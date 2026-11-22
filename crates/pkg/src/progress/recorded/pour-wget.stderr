@@ -1,0 +1,67 @@
+mise ~/.config/mise/config.toml: added brew:wget
+mise brew:ca-certificates download ca-certificates-2026-11-05.tar.gz
+mise brew:json-c     download json-c-0.19.tar.gz
+mise brew:libunistring download libunistring-1.5.tar.gz
+mise brew:gettext    download gettext-1.0.tar.gz
+mise brew:libidn2    download libidn2-2.3.8.tar.gz
+mise brew:libpsl     download libpsl-0.23.3.tar.gz
+mise brew:openssl@4  download openssl@4-4.1.0.tar.gz
+mise brew:wget       download wget-1.25.0_2.tar.gz
+mise brew:ca-certificates checksum
+mise brew:ca-certificates extract
+mise brew:ca-certificates extract ca-certificates-2026-11-05.tar.gz
+mise brew:ca-certificates relocate
+mise brew:ca-certificates link
+mise brew:ca-certificates post-install
+mise brew:ca-certificates ✓ 2026-11-05
+mise brew:json-c     checksum
+mise brew:json-c     extract
+mise brew:json-c     extract json-c-0.19.tar.gz
+mise brew:libpsl     checksum
+mise brew:libpsl     extract
+mise brew:libpsl     extract libpsl-0.23.3.tar.gz
+mise brew:libidn2    checksum
+mise brew:libidn2    extract
+mise brew:libidn2    extract libidn2-2.3.8.tar.gz
+mise brew:libpsl     relocate
+mise brew:json-c     relocate
+mise brew:libpsl     codesign
+mise brew:json-c     codesign
+mise brew:libidn2    relocate
+mise brew:json-c     link
+mise brew:json-c   ✓ 0.19
+mise brew:libidn2    codesign
+mise brew:wget       checksum
+mise brew:wget       extract
+mise brew:wget       extract wget-1.25.0_2.tar.gz
+mise brew:wget       relocate
+mise brew:wget       codesign
+mise brew:libunistring checksum
+mise brew:libunistring extract
+mise brew:libunistring extract libunistring-1.5.tar.gz
+mise brew:libunistring relocate
+mise brew:libunistring codesign
+mise brew:libunistring link
+mise brew:libunistring ✓ 1.5
+mise brew:gettext    checksum
+mise brew:gettext    extract
+mise brew:gettext    extract gettext-1.0.tar.gz
+mise brew:openssl@4  checksum
+mise brew:openssl@4  extract
+mise brew:openssl@4  extract openssl@4-4.1.0.tar.gz
+mise brew:gettext    relocate
+mise brew:openssl@4  relocate
+mise brew:gettext    codesign
+mise brew:openssl@4  codesign
+mise brew:gettext    link
+mise brew:gettext  ✓ 1.0
+mise brew:libidn2    link
+mise brew:libidn2  ✓ 2.3.8
+mise brew:libpsl     link
+mise brew:libpsl   ✓ 0.23.3
+mise brew:openssl@4  link
+mise brew:openssl@4  post-install
+mise brew:openssl@4 ✓ 4.1.0
+mise brew:wget       link
+mise brew:wget     ✓ 1.25.0_2
+mise brew: installed wget

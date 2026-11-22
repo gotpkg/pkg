@@ -3,9 +3,10 @@
 use pkg_core::{ReceiptStatus, UpdateReceipt, UpdateRequest};
 use schemars::schema_for;
 
-use super::common::{execute, table};
+use super::common::{execute_change, table};
 use crate::failure::{ErrorCode, Failure};
 use crate::invocation::Invocation;
+use crate::progress::shows_display;
 use crate::registry::{
     ArgumentKind, ArgumentSpec, CommandSpec, DRY_RUN, Effect, Example, Requirement, ValueKind,
 };
@@ -24,7 +25,8 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
         nothing else changes. Packages that are declared but not installed are left to \
         `pkg sync`. The receipt lists each package whose installed version changed, mise first. \
         --dry-run lists what would be updated, as `pkg outdated` does, and changes nothing. \
-        mise's progress goes to stderr.",
+        With text output on a terminal, pkg shows its progress as a live display on stderr; \
+        otherwise mise's progress lines go to stderr as they arrive.",
     arguments: &[
         ArgumentSpec {
             name: "packages",
@@ -92,5 +94,6 @@ impl RenderOutput for UpdateReceipt {
 fn update(invocation: &Invocation) -> Result<Response, Failure> {
     let request =
         UpdateRequest { packages: invocation.strings("packages"), mode: invocation.mode() };
-    execute(invocation, |client, progress| client.update(request, progress))
+    let live = shows_display(invocation.output);
+    execute_change(invocation, live, |client, progress| client.update(request, progress))
 }
