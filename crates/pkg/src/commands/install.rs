@@ -4,9 +4,10 @@ use pkg_core::{InstallAction, InstallReceipt, InstallRequest, ReceiptStatus};
 use schemars::schema_for;
 use serde_json::{Value, json};
 
-use super::common::{PACKAGES, execute, for_people};
+use super::common::{PACKAGES, execute_change, for_people};
 use crate::failure::{ErrorCode, Failure};
 use crate::invocation::Invocation;
+use crate::progress::shows_display;
 use crate::registry::{CommandSpec, DRY_RUN, Effect, Example, Requirement};
 use crate::response::{RenderOutput, Response};
 
@@ -24,7 +25,9 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
         some config already declares is installed where it is declared, and one that is already \
         installed is left alone, so installing twice is safe. Packages install one at a time in \
         the order given; when mise fails, pkg takes that package's new declaration back out and \
-        stops, and the error lists what was installed before it. mise's progress goes to stderr.",
+        stops, and the error lists what was installed before it. With text output on a terminal, \
+        pkg shows its progress as a live display on stderr; otherwise mise's progress lines go to \
+        stderr as they arrive.",
     arguments: &[PACKAGES, DRY_RUN],
     effect: Effect::Modifies("installed software and your global mise config"),
     requires: &[Requirement::Mise],
@@ -114,9 +117,13 @@ impl RenderOutput for InstallReceipt {
 }
 
 fn install(invocation: &Invocation) -> Result<Response, Failure> {
-    let request =
-        InstallRequest { packages: invocation.strings("packages"), mode: invocation.mode() };
-    execute(invocation, |client, progress| client.install(request, progress))
+    let live = shows_display(invocation.output);
+    let request = InstallRequest {
+        packages: invocation.strings("packages"),
+        mode: invocation.mode(),
+        report_plans: live,
+    };
+    execute_change(invocation, live, |client, progress| client.install(request, progress))
 }
 
 #[cfg(test)]

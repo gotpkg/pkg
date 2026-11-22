@@ -1,0 +1,9 @@
+mise brew: 2 package(s) already installed
+mise brew:tree       download tree-2.3.2.tar.gz
+mise brew:tree       checksum
+mise brew:tree       extract
+mise brew:tree       extract tree-2.3.2.tar.gz
+mise brew:tree       relocate
+mise brew:tree       link
+mise brew:tree     ✓ 2.3.2
+mise brew: installed tree

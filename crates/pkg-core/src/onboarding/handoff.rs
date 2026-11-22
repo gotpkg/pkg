@@ -152,8 +152,14 @@ pub(crate) fn hand_off(
     }
 
     let mut client = Client::new(settings.clone())?;
-    let installed =
-        client.install(InstallRequest { packages: vec![PKG_TOOL.into()], mode }, progress)?;
+    // Setup and bootstrap report no steps, so the steps of the install inside them stay hidden.
+    let mut output_only = |event: Progress<'_>| {
+        if matches!(event, Progress::Output { .. } | Progress::Warning(_)) {
+            progress(event);
+        }
+    };
+    let request = InstallRequest { packages: vec![PKG_TOOL.into()], mode, report_plans: false };
+    let installed = client.install(request, &mut output_only)?;
     if let Some(item) = installed.result.packages.first() {
         handoff.config = Some(item.config.clone());
         if matches!(item.action, InstallAction::Added | InstallAction::Declared) {

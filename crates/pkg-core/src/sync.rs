@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::common::{Machine, ReceiptStatus};
-use crate::{Client, Error, Outcome, Progress, SyncRequest};
+use crate::{Client, Error, Outcome, Progress, Step, SyncRequest};
 
 /// The outcome of `pkg sync`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
@@ -31,6 +31,7 @@ impl Client {
         request: SyncRequest,
         progress: &mut dyn FnMut(Progress<'_>),
     ) -> Result<Outcome<SyncReceipt>, Error> {
+        progress(Progress::Step(Step::ReadInstalled));
         let machine = Machine::load(&self.settings)?;
         let mise = &machine.environment.mise;
         let (packages, tools) = missing(&machine)?;
@@ -43,11 +44,14 @@ impl Client {
             }));
         }
         if !packages.is_empty() {
+            progress(Progress::Step(Step::InstallMissingPackages));
             mise.run(&["bootstrap", "packages", "apply", "--yes"], progress)?;
         }
         if !tools.is_empty() {
+            progress(Progress::Step(Step::InstallMissingTools));
             mise.run(&["install"], progress)?;
         }
+        progress(Progress::Step(Step::ReadResult));
         let (packages, tools) = missing(&machine)?;
         let still: Vec<String> = packages.into_iter().chain(tools).collect();
         let installed = before.into_iter().filter(|key| !still.contains(key)).collect();

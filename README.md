@@ -130,6 +130,7 @@ crates/pkg/
   src/registry.rs       the command contract every interface is generated from
   src/commands/         each command: install, remove, list, search, info, outdated, update,
                         sync, prune, where, tap, and the discovery commands
+  src/progress/         the live display for package changes on a terminal
   docs/                 Markdown built into the binary for `docs search`
   tests/cli/            tests that run the binary
 crates/pkg-core/

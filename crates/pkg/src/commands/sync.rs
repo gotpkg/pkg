@@ -4,9 +4,10 @@
 use pkg_core::{ReceiptStatus, SyncReceipt, SyncRequest};
 use schemars::schema_for;
 
-use super::common::{MISE_ERRORS, execute, join_words};
+use super::common::{MISE_ERRORS, execute_change, join_words};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
+use crate::progress::shows_display;
 use crate::registry::{CommandSpec, DRY_RUN, Effect, Example, Requirement};
 use crate::response::{RenderOutput, Response};
 
@@ -21,8 +22,9 @@ pub static COMMANDS: &[CommandSpec] = &[CommandSpec {
         `mise install` installs every missing global tool. Use it after pulling config changes \
         made on another machine; unlike `mise bootstrap` it leaves dotfiles, services, and \
         settings alone. Packages whose manager this machine lacks, such as `apt:` on macOS, are \
-        skipped. --dry-run lists what is missing and changes nothing. mise's progress goes to \
-        stderr.",
+        skipped. --dry-run lists what is missing and changes nothing. With text output on a \
+        terminal, pkg shows its progress as a live display on stderr; otherwise mise's progress \
+        lines go to stderr as they arrive.",
     arguments: &[DRY_RUN],
     effect: Effect::Modifies("installed software"),
     requires: &[Requirement::Mise],
@@ -64,5 +66,6 @@ impl RenderOutput for SyncReceipt {
 
 fn sync(invocation: &Invocation) -> Result<Response, Failure> {
     let request = SyncRequest { mode: invocation.mode() };
-    execute(invocation, |client, progress| client.sync(request, progress))
+    let live = shows_display(invocation.output);
+    execute_change(invocation, live, |client, progress| client.sync(request, progress))
 }
