@@ -2,7 +2,7 @@
 id: proposal.0005
 title: Package Manager Shims
 authors: [Mark]
-status: awaiting-implementation
+status: active-review
 pull-request: https://github.com/gotpkg/pkg/pull/6
 issues: []
 supersedes: []
