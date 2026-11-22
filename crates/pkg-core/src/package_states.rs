@@ -28,7 +28,7 @@ impl Machine<'_> {
     pub(crate) fn package_states(&self) -> Result<Vec<PackageState>, Error> {
         let mise = &self.environment.mise;
         let declared = self.declarations.package_managers();
-        let Some(caskroom) = Caskroom::of(self.environment.child_env) else {
+        let Some(caskroom) = Caskroom::of(self.environment.child_env, self.environment.home) else {
             return mise.package_states(None);
         };
         if !declared.contains(CASKS) {

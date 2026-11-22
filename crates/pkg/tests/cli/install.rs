@@ -58,6 +58,30 @@ fn state_is_read_only_after_installing_a_package_nothing_declares_yet() {
 }
 
 #[test]
+fn a_package_an_unprefixed_key_declares_is_still_read_before_installing() {
+    let fixture = Fixture::seeded();
+    let config = fixture.dotfile("config.macos.toml");
+    std::fs::write(&config, format!("{MAC_CONFIG}\"tree\" = \"latest\"\n")).unwrap();
+    fixture.mise(&["bootstrap", "packages", "status", "--json"]).json(&status(&[(
+        "brew",
+        "tree",
+        Some("2.2.1"),
+    )]));
+    fixture.mise(&["bootstrap", "packages", "use", "--dry-run", "-g", "brew:tree"]).stdout("");
+    let receipt = fixture.json(&["install", "brew:tree", "--dry-run"]).success();
+    assert_eq!(receipt["packages"][0]["version"], "2.2.1", "{receipt}");
+}
+
+#[test]
+fn an_installed_cask_is_left_alone_on_the_caskrooms_word() {
+    let fixture = Fixture::seeded();
+    let receipt = fixture.json(&["install", "brew-cask:firefox"]).success();
+    assert_eq!(receipt["packages"][0]["action"], "unchanged");
+    assert_eq!(receipt["packages"][0]["version"], "160.0");
+    assert!(!fixture.calls().iter().any(|call| call.contains("apply")), "{:?}", fixture.calls());
+}
+
+#[test]
 fn an_installed_package_is_left_alone() {
     let fixture = Fixture::seeded();
     let receipt = fixture.json(&["install", "brew:wget", "jq"]).success();

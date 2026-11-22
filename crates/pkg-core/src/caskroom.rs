@@ -17,8 +17,9 @@ pub(crate) struct Caskroom {
 impl Caskroom {
     /// The Caskroom under mise's Homebrew prefix: `MISE_SYSTEM_BREW_PREFIX` from `environment`
     /// when it is set and nonempty, else `/opt/homebrew` on macOS and `/home/linuxbrew/.linuxbrew`
-    /// on Linux. `None` on any other host, where mise installs no casks.
-    pub(crate) fn of(environment: &BTreeMap<OsString, OsString>) -> Option<Caskroom> {
+    /// on Linux. mise runs in `home`, so a relative prefix is found from there, as mise finds it.
+    /// `None` on any other host, where mise installs no casks.
+    pub(crate) fn of(environment: &BTreeMap<OsString, OsString>, home: &Path) -> Option<Caskroom> {
         let default = if cfg!(target_os = "macos") {
             "/opt/homebrew"
         } else if cfg!(target_os = "linux") {
@@ -29,7 +30,7 @@ impl Caskroom {
         let prefix = environment
             .get(OsStr::new("MISE_SYSTEM_BREW_PREFIX"))
             .filter(|prefix| !prefix.is_empty())
-            .map_or_else(|| PathBuf::from(default), PathBuf::from);
+            .map_or_else(|| PathBuf::from(default), |prefix| home.join(prefix));
         Some(Caskroom { directory: prefix.join("Caskroom") })
     }
 
@@ -201,9 +202,10 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn the_prefix_comes_from_the_child_environment() {
+        let home = Path::new("/home/mark");
         let environment: BTreeMap<OsString, OsString> =
             [("MISE_SYSTEM_BREW_PREFIX".into(), "/tmp/brew".into())].into();
-        let caskroom = Caskroom::of(&environment).unwrap();
+        let caskroom = Caskroom::of(&environment, home).unwrap();
         assert_eq!(caskroom.directory, Path::new("/tmp/brew/Caskroom"));
         let empty: BTreeMap<OsString, OsString> =
             [("MISE_SYSTEM_BREW_PREFIX".into(), "".into())].into();
@@ -212,6 +214,15 @@ mod tests {
         } else {
             "/home/linuxbrew/.linuxbrew/Caskroom"
         };
-        assert_eq!(Caskroom::of(&empty).unwrap().directory, Path::new(default));
+        assert_eq!(Caskroom::of(&empty, home).unwrap().directory, Path::new(default));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_relative_prefix_is_where_mise_finds_it_from_the_home_directory() {
+        let environment: BTreeMap<OsString, OsString> =
+            [("MISE_SYSTEM_BREW_PREFIX".into(), "brew".into())].into();
+        let caskroom = Caskroom::of(&environment, Path::new("/home/mark")).unwrap();
+        assert_eq!(caskroom.directory, Path::new("/home/mark/brew/Caskroom"));
     }
 }

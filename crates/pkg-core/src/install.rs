@@ -84,11 +84,14 @@ impl Client {
         let machine = Machine::load(&self.settings)?;
         let packages = machine.packages(&request.packages);
         let tools = packages.iter().any(Package::is_tool);
-        // A bootstrap package no config declares yet cannot be in mise's answer, so state is read
-        // before installing only for a request that names a declared one.
-        let declared = packages
-            .iter()
-            .any(|package| !package.is_tool() && machine.declared_in(package).is_some());
+        // mise's answer covers only declared packages: by their own key, or through an unprefixed
+        // key it resolves to one. Without either, nothing in it could describe a requested
+        // package, so state is read only after installing.
+        let declared = packages.iter().any(|package| {
+            !package.is_tool()
+                && (machine.declared_in(package).is_some()
+                    || machine.declarations.has_unprefixed_packages())
+        });
         let before = States::load(&machine, declared, tools)?;
         let mut work = Vec::new();
         for package in &packages {

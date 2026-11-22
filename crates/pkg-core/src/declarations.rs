@@ -103,6 +103,12 @@ impl Declarations {
             .collect()
     }
 
+    /// Whether any file has a `[bootstrap.packages]` key without a manager, which mise resolves
+    /// to a manager of its choosing.
+    pub(crate) fn has_unprefixed_packages(&self) -> bool {
+        self.files.iter().flat_map(|file| &file.packages).any(|key| !key.contains(':'))
+    }
+
     pub(crate) fn taps(&self) -> Vec<Tap> {
         self.files
             .iter()

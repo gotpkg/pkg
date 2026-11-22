@@ -211,6 +211,7 @@ fn info_joins_the_catalog_and_what_mise_has_installed() {
     assert_matches_output_schema(&["info"], &wget);
     let firefox = fixture.json(&["info", "brew-cask:firefox"]).success();
     assert_eq!(firefox["apps"], serde_json::json!(["Firefox.app"]));
+    assert_eq!(firefox["installed"], "160.0", "from the Caskroom");
     let app = fixture.json(&["info", "mas:937984704"]).success();
     assert_eq!(app["name"], "Amphetamine");
     assert_eq!(app["description"], "Keep your Mac awake.");
