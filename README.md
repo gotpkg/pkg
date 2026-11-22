@@ -28,6 +28,7 @@ pkg outdated                          # what has a newer version
 pkg upgrade                           # upgrade everything
 pkg remove brew:wget                  # uninstall and take it out of your config
 pkg sync                              # install whatever the config declares that is missing
+pkg shims install                     # make a global `brew install`, `npm install -g` or `apt install` name the pkg command
 ```
 
 | You see                    | You type                       |
@@ -42,6 +43,8 @@ pkg sync                              # install whatever the config declares tha
 Any package manager mise bootstrap knows (`brew`, `brew-cask`, `mas`, `apt`, `flatpak`, `winget`, ...) goes in `[bootstrap.packages]`; a tool backend prefix (`npm`, `cargo`, `github`, `aqua`, ...) or no prefix at all makes a tool in `[tools]`. New entries go to the files mise's `write_targets.packages` and `write_targets.tools` settings name; `pkg context show` prints them, with links into your dotfiles resolved. Every command that changes something accepts `--dry-run`.
 
 `pkg remove` uninstalls Homebrew packages through `mise bootstrap packages prune`, which removes everything no config declares. When other undeclared packages are installed, `pkg remove` refuses and lists them rather than taking them too; run `pkg prune --dry-run` to see them.
+
+`pkg shims install` writes small executables named for other package managers. With their directory first on `PATH`, a global install through one stops and tells the agent or person which `pkg` command does it, so nothing is installed that your config does not record. See [Shims for other package managers](crates/pkg/docs/packages.md#shims-for-other-package-managers) and the [guide](guides/shims.md).
 
 ### For scripts and agents
 
