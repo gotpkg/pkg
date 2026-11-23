@@ -1,6 +1,6 @@
 ---
 title: A Vision for pkg
-updated: 2026-11-21
+updated: 2026-11-22
 ---
 
 # A Vision for pkg
@@ -36,7 +36,7 @@ When principles conflict, safety of the config and of installed software comes b
 
 ## Beyond the minimum
 
-- Routing the shell's `brew install` and `brew uninstall` through pkg, so an instruction pasted unchanged works; today a zsh wrapper in the dotfiles does this separately.
+- Routing the shell's `brew install` and `brew uninstall` through pkg, so an instruction pasted unchanged works; today a zsh wrapper in the dotfiles does this separately. `pkg shims` already stops a global install through `brew`, `apt`, `npm`, `pip` and the other managers mise can drive and names the pkg command that does it, which tells an agent what to run but does not run it.
 - Searching third-party Homebrew taps, which Homebrew's API does not cover.
 - Cleaning up superseded Homebrew kegs, which mise does not remove after an upgrade.
 
@@ -54,3 +54,4 @@ When principles conflict, safety of the config and of installed software comes b
 | 2026-11-17 | Added the reusable Rust package API.                                          | [proposal.0001](proposals/0001-reusable-package-library.md) |
 | 2026-11-18 | Added first-machine setup and bootstrap; `pkg update` replaced `pkg upgrade`. | [proposal.0002](proposals/0002-first-machine-bootstrap.md)  |
 | 2026-11-21 | pkg reads whether a Homebrew cask is installed from the Caskroom.             | [proposal.0007](proposals/0007-local-package-state.md)      |
+| 2026-11-22 | Added shims that point other package managers' global installs at pkg.        | [proposal.0005](proposals/0005-package-manager-shims.md)    |
