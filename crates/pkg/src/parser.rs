@@ -108,6 +108,7 @@ fn clap_arg(spec: &ArgumentSpec) -> Arg {
         ValueKind::Choice(values) => {
             arg.value_parser(PossibleValuesParser::new(values.iter().copied()))
         }
+        ValueKind::Raw => arg.value_parser(clap::value_parser!(std::ffi::OsString)),
         ValueKind::String => arg,
     };
     if spec.kind != ArgumentKind::Flag {

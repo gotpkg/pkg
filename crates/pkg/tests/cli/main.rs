@@ -17,6 +17,8 @@ mod registry;
 mod remove;
 #[cfg(unix)]
 mod setup;
+#[cfg(unix)]
+mod shims;
 mod support;
 #[cfg(unix)]
 mod terminal;

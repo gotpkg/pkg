@@ -23,7 +23,8 @@ pub(crate) const DEFAULT_APP_STORE_API: &str = "https://itunes.apple.com";
 pub(crate) const DEFAULT_MISE_INSTALLER: &str = pkg_core::DEFAULT_MISE_INSTALLER;
 
 pub(crate) fn from_process() -> Result<Settings, Failure> {
-    let snapshot: BTreeMap<OsString, OsString> = std::env::vars_os().collect();
+    let mut snapshot: BTreeMap<OsString, OsString> = std::env::vars_os().collect();
+    crate::shims::take_shims_off_path(&mut snapshot);
     let mut settings = resolve(|key| {
         snapshot.get(std::ffi::OsStr::new(key)).filter(|value| !value.is_empty()).cloned()
     })?;

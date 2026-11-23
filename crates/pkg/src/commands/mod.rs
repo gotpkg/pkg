@@ -17,6 +17,7 @@ pub mod remove;
 pub mod schema;
 pub mod search;
 pub mod setup;
+pub mod shims;
 pub mod sync;
 pub mod tap;
 pub mod update;
@@ -36,6 +37,7 @@ pub static GROUPS: &[&[CommandSpec]] = &[
     tap::COMMANDS,
     setup::COMMANDS,
     bootstrap::COMMANDS,
+    shims::COMMANDS,
     cli::COMMANDS,
     schema::COMMANDS,
     docs::COMMANDS,

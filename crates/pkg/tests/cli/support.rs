@@ -437,12 +437,16 @@ impl Fixture {
 
     /// `run` with `env` applied on top of the fixture's environment; `None` unsets a variable.
     pub(crate) fn run_with(&self, args: &[&str], env: &[(&str, Option<&OsStr>)]) -> Outcome {
-        let output = self
-            .command(args, env)
+        self.finish(&mut self.command(args, env))
+    }
+
+    /// Runs `command` to completion, capturing both streams.
+    pub(crate) fn finish(&self, command: &mut Command) -> Outcome {
+        let output = command
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-            .expect("pkg runs");
+            .expect("the program runs");
         Outcome {
             status: output.status.code().unwrap_or(-1),
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
@@ -453,7 +457,17 @@ impl Fixture {
     /// pkg with `args`, in the fixture's environment with `env` on top; `None` unsets a variable.
     /// `PATH` holds only the system directories, so no mise or pkg of the host's is found.
     pub(crate) fn command(&self, args: &[&str], env: &[(&str, Option<&OsStr>)]) -> Command {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_pkg"));
+        self.command_for(env!("CARGO_BIN_EXE_pkg"), args, env)
+    }
+
+    /// `program` in the fixture's environment, as [`Fixture::command`] sets it up for pkg.
+    pub(crate) fn command_for(
+        &self,
+        program: impl AsRef<OsStr>,
+        args: &[&str],
+        env: &[(&str, Option<&OsStr>)],
+    ) -> Command {
+        let mut command = Command::new(program);
         command
             .args(args)
             .current_dir(self.dir.path())

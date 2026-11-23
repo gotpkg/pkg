@@ -89,7 +89,7 @@ fn command_section(command: &CommandDescription) -> String {
         command.command, command.summary, command.description
     );
     let effect = match &command.effect.what {
-        Some(what) => format!("modifies {what}"),
+        Some(what) => format!("{} {what}", command.effect.kind),
         None => "reads only".to_string(),
     };
     let requires = if command.requires.is_empty() {

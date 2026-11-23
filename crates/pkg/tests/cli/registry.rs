@@ -199,7 +199,11 @@ fn every_alias_names_its_command() {
 #[cfg(unix)]
 #[test]
 fn every_example_runs_and_its_output_matches_its_schema() {
-    for command in registry::all() {
+    // A command that becomes another program is exercised in tests/cli/shims.rs: its output is
+    // that program's, not a result matching a schema.
+    for command in
+        registry::all().into_iter().filter(|command| !matches!(command.effect, Effect::Runs(_)))
+    {
         for example in command.examples {
             let shown = registry::example_command_line(example);
             let text = Fixture::seeded().run(example.args);
