@@ -119,6 +119,8 @@ impl Board {
             Report::Snapshot { done, total } | Report::Summary { done, total } => {
                 self.count_tools(done, total);
             }
+            Report::Resolving => self.rows.clear(),
+            Report::Resolved { item } => self.rows.retain(|row| row.item != item),
             Report::Row { item, phase, transfer } => self.show(item, phase, transfer),
             Report::Phase { item, phase } => {
                 self.notice(&item);
@@ -400,6 +402,21 @@ mod tests {
         let view = board.view();
         assert_eq!(view.headline, "Installing missing packages");
         assert_eq!(view.lines, [line("", None, "1 finished")]);
+    }
+
+    #[test]
+    fn looking_versions_up_counts_no_tools() {
+        let mut board = Board::default();
+        board.begin(Step::UpdateTools);
+        let recording = include_str!("recorded/upgrade-tools.stderr");
+        let lookups: String = recording.lines().take(9).map(|line| format!("{line}\n")).collect();
+        feed(&mut board, &lookups);
+        let view = board.view();
+        assert_eq!(view.headline, "Updating tools");
+        assert!(view.lines.is_empty(), "{:?}", view.lines);
+
+        feed(&mut board, recording);
+        assert_eq!(board.view().lines, [line("", Some((1, 1)), "1/1 tool")]);
     }
 
     #[test]

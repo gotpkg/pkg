@@ -126,7 +126,7 @@ In a terminal, `pkg install`, `remove`, `update`, `sync`, and `prune` show a liv
 
 Every figure is the last one mise reported, and pkg never estimates the time left. mise reports no byte counts for Homebrew downloads when pkg runs it, so formulae and casks show their phase only. To know how many formulae a package brings, `pkg install` asks mise for its plan just before installing it, which takes a fraction of a second.
 
-When the command ends, the display disappears. One line per finished formula, cask, or tool stays on stderr, with every warning, error, and line pkg does not recognize, and then pkg's result. If a step fails, pkg first writes the progress lines it held back during that step.
+When the command ends, the display disappears. One line per finished formula, cask, or tool stays on stderr, with every warning, error, and line pkg does not recognize, and then pkg's result. mise's version lookups, such as the line per tool in your config that mise prints before `pkg update` installs anything, leave nothing behind unless one fails. If a step fails, pkg first writes the progress lines it held back during that step.
 
 For plain lines instead, redirect stderr (`pkg install brew:wget 2>&1 | cat`) or set `CI`. The display is also off with `--output json` and when `TERM` is `dumb`. The repository's [package contract](https://github.com/gotpkg/pkg/blob/main/crates/pkg/docs/packages.md#progress-in-a-terminal) has the full rules.
 

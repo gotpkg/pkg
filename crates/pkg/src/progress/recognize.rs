@@ -14,21 +14,26 @@
 //!   summary, a bar, the count, a `·` and a past-tense verb (`████████████████ 2/2 · installed
 //!   2 tools in 15.7s`); and a bootstrap package's phase, its `manager:name` label padded with
 //!   spaces and one of the words `download <file>`, `checksum`, `extract` (alone or with the
-//!   file), `relocate`, `codesign`, `link`, or `post-install` (`brew:wget       checksum`).
+//!   file), `relocate`, `codesign`, `link`, or `post-install` (`brew:wget       checksum`). In a
+//!   session that only looks versions up (`by @jdx – resolving 67 tools`, which `mise upgrade`
+//!   prints for every tool in the config before it installs anything), a tool's `✓` line is
+//!   transient too.
 //! - **Completion**: it records that an item finished, so it updates the display and stays on
 //!   stderr unchanged. These are a tool's `✓`, `⇢`, or `✗` line, the icon, the label, two
 //!   spaces, and the elapsed time (`✓ bun@1.4.5     11.4s  bun-darwin-aarch64.zip`,
 //!   `⇢ node@24.22.3  6ms · already installed`, `✗ node@0.0.999  746ms · failed: …`), and a
-//!   bootstrap package's label, `✓`, and its version (`brew:wget     ✓ 1.25.0_2`).
+//!   bootstrap package's label, `✓`, and its version (`brew:wget     ✓ 1.25.0_2`). In a session
+//!   that looks versions up, only a failed lookup's `✗` line is.
 //! - **Other**: warnings, errors, the output of programs mise runs, and every line that does not
 //!   match exactly one shape above. It stays on stderr unchanged.
 //!
 //! Shapes are matched after color codes and the leading `mise ` are set aside; snapshot rows have
-//! no `mise `. The only state kept is whether the previous line was a snapshot or one of its rows,
-//! so an indented line elsewhere, such as the advice under a warning, or one after a snapshot
-//! that has no row's shape, is Other. The files in `recorded/` are mise 2026.11.9's output,
-//! recorded piped in a disposable home and Homebrew prefix; when the supported mise changes,
-//! record them again.
+//! no `mise `. Two things are kept between lines. One is whether the previous line was a snapshot
+//! or one of its rows, so an indented line elsewhere, such as the advice under a warning, or one
+//! after a snapshot that has no row's shape, is Other. The other is whether a session that looks
+//! versions up has begun and not yet printed its summary. The files in `recorded/` are mise
+//! 2026.11.9's output, recorded piped in a disposable home and Homebrew prefix; when the
+//! supported mise changes, record them again.
 
 /// What a line says, for the display.
 #[derive(Debug, PartialEq, Eq)]
@@ -41,6 +46,11 @@ pub(super) enum Report {
     Row { item: String, phase: String, transfer: Option<String> },
     /// A tool session's closing summary.
     Summary { done: usize, total: usize },
+    /// A session that looks versions up begins, takes a snapshot, or ends. Nothing it does is
+    /// counted; a snapshot's rows follow.
+    Resolving,
+    /// A tool's version lookup finished.
+    Resolved { item: String },
     /// A bootstrap package's phase, such as `checksum` or `download wget-1.25.0_2.tar.gz`.
     Phase { item: String, phase: String },
     /// An item finished, with its version when the line states it apart from the label.
@@ -58,6 +68,8 @@ pub(super) enum Kind {
 #[derive(Default)]
 pub(super) struct Recognizer {
     in_snapshot: bool,
+    /// Whether the session under way only looks versions up.
+    resolving: bool,
 }
 
 impl Recognizer {
@@ -77,24 +89,49 @@ impl Recognizer {
         let words: Vec<&str> = text.split_whitespace().collect();
         if let Some(report) = snapshot(&words) {
             self.in_snapshot = true;
+            return Kind::Transient(Some(if self.resolving { Report::Resolving } else { report }));
+        }
+        if let Some(report) = session(&words) {
+            self.resolving = report == Report::Resolving;
             return Kind::Transient(Some(report));
         }
-        if let Some(report) = session(&words).or_else(|| summary(&words)).or_else(|| phase(&words))
-        {
+        if let Some(report) = summary(&words) {
+            self.resolving = false;
             return Kind::Transient(Some(report));
         }
-        tool_done(&words).or_else(|| package_done(&words)).map_or(Kind::Other, Kind::Completion)
+        if let Some(report) = phase(&words) {
+            return Kind::Transient(Some(report));
+        }
+        if let Some((icon, label)) = tool_done(&words) {
+            return self.tool_finished(icon, label.to_string());
+        }
+        package_done(&words).map_or(Kind::Other, Kind::Completion)
+    }
+
+    /// A tool's `✓`, `⇢`, or `✗` line. A version lookup is worth keeping only when it failed.
+    fn tool_finished(&self, icon: &str, item: String) -> Kind {
+        match (self.resolving, icon) {
+            (false, _) => Kind::Completion(Report::Done { item, version: None }),
+            (true, "✗") => Kind::Completion(Report::Resolved { item }),
+            (true, _) => Kind::Transient(Some(Report::Resolved { item })),
+        }
     }
 }
 
-/// `by @jdx – installing 2 tools`.
+/// `by @jdx – installing 2 tools`, or `resolving` and `removing`; `1 tool`.
 fn session(words: &[&str]) -> Option<Report> {
     let ["by", "@jdx", "\u{2013}", verb, count, noun] = words else {
         return None;
     };
     let total = count.parse().ok()?;
-    (matches!(*verb, "installing" | "resolving" | "removing") && matches!(*noun, "tool" | "tools"))
-        .then_some(Report::Session { total })
+    if !matches!(*noun, "tool" | "tools") {
+        return None;
+    }
+    match *verb {
+        "resolving" => Some(Report::Resolving),
+        "installing" | "removing" => Some(Report::Session { total }),
+        _ => None,
+    }
 }
 
 /// `██░░░░░░░░░░░░░░ 0/2 · 3.1s`.
@@ -106,14 +143,20 @@ fn snapshot(words: &[&str]) -> Option<Report> {
     (is_bar(bar) && is_elapsed(elapsed)).then_some(Report::Snapshot { done, total })
 }
 
-/// `████████████████ 2/2 · installed 2 tools in 15.7s`.
+/// `████████████████ 2/2 · installed 2 tools in 15.7s`, or `resolved` and `removed`.
 fn summary(words: &[&str]) -> Option<Report> {
     let [bar, count, "·", verb, ..] = words else {
         return None;
     };
     let (done, total) = tally(count)?;
-    (is_bar(bar) && matches!(*verb, "installed" | "resolved" | "removed"))
-        .then_some(Report::Summary { done, total })
+    if !is_bar(bar) {
+        return None;
+    }
+    match *verb {
+        "resolved" => Some(Report::Resolving),
+        "installed" | "removed" => Some(Report::Summary { done, total }),
+        _ => None,
+    }
 }
 
 /// A snapshot row: `  node@24.22.3  downloading  3.1s  17.5/53.1 MB · 6.5 MB/s` (the transfer
@@ -158,13 +201,12 @@ fn phase(words: &[&str]) -> Option<Report> {
         .then(|| Report::Phase { item: (*label).to_string(), phase: words[1..].join(" ") })
 }
 
-/// `✓ bun@1.4.5     11.4s  bun-darwin-aarch64.zip`, `⇢ …`, `✗ …`.
-fn tool_done(words: &[&str]) -> Option<Report> {
+/// `✓ bun@1.4.5     11.4s  bun-darwin-aarch64.zip`, `⇢ …`, `✗ …`: the icon and the label.
+fn tool_done<'a>(words: &[&'a str]) -> Option<(&'a str, &'a str)> {
     let [icon, label, elapsed, ..] = words else {
         return None;
     };
-    (matches!(*icon, "✓" | "⇢" | "✗") && is_elapsed(elapsed))
-        .then(|| Report::Done { item: (*label).to_string(), version: None })
+    (matches!(*icon, "✓" | "⇢" | "✗") && is_elapsed(elapsed)).then_some((*icon, *label))
 }
 
 /// `brew:wget     ✓ 1.25.0_2`.
@@ -299,25 +341,41 @@ mod tests {
     }
 
     #[test]
-    fn an_update_keeps_what_each_session_resolved_and_installed() {
+    fn an_update_keeps_what_it_installed_and_not_what_it_resolved() {
         let (kept, transient) = sorted(include_str!("recorded/upgrade-tools.stderr"));
         assert_eq!(
             kept,
             [
-                "mise ✓ bun      0ms",
-                "mise ✓ jq       1ms",
-                "mise ✓ ripgrep  1ms",
-                "mise ✓ node     2ms",
-                "mise ✓ aqua:jqlang/jq@1.7.1  1ms",
                 "mise ✓ jq@1.8.2  1.3s  jq-macos-arm64",
                 "mise checking tracked configs resolving tracked configs",
                 "mise checking tracked configs ✓ done",
             ]
         );
-        assert_eq!(transient, 6);
+        assert_eq!(transient, 11);
         let (kept, transient) = sorted(include_str!("recorded/upgrade-packages.stderr"));
         assert_eq!(kept.len(), 2);
         assert_eq!(transient, 0);
+    }
+
+    #[test]
+    fn a_failed_version_lookup_stays_on_stderr() {
+        let recording = [
+            "mise by @jdx – resolving 2 tools",
+            "mise ✓ jq    1ms",
+            "mise ✗ nope  3ms · failed: no versions found for nope",
+            "mise ████████████████ 2/2 · resolved 1 tool · 1 failed in 3ms",
+            "mise ✓ jq@1.8.2  1.3s  jq-macos-arm64",
+        ]
+        .join("\n");
+        let (kept, transient) = sorted(&recording);
+        assert_eq!(
+            kept,
+            [
+                "mise ✗ nope  3ms · failed: no versions found for nope",
+                "mise ✓ jq@1.8.2  1.3s  jq-macos-arm64",
+            ]
+        );
+        assert_eq!(transient, 3);
     }
 
     #[test]
