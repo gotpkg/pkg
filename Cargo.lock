@@ -792,7 +792,7 @@ checksum = "c938015719552d665fd0553b90d96cd7ff58e83e4c061ca99e6bb78865a72752"
 
 [[package]]
 name = "pkg"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "clap",
  "indicatif",
@@ -807,7 +807,7 @@ dependencies = [
 
 [[package]]
 name = "pkg-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "libc",
  "schemars",
