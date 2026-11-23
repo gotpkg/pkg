@@ -2,7 +2,7 @@
 id: proposal.0005
 title: Package Manager Shims
 authors: [Mark]
-status: active-review
+status: implemented
 pull-request: https://github.com/gotpkg/pkg/pull/6
 issues: []
 supersedes: []
@@ -178,3 +178,5 @@ None: `policies/` and `decisions/` hold only their README files. [VISION.md](../
 ## Open questions
 
 None. The human answered the three questions of the first draft on 2026-11-22: shims refuse and name the pkg command; `pkg shims` prints the `PATH` line and never edits a startup file; and the set grows to every manager mise can provide, including `pip`, `pipx`, `uv`, `go`, `gem`, `dotnet`, `dnf`, `pacman`, `yay`, `paru`, `apk`, `port`, `flatpak`, `snap`, `winget`, `scoop`, `choco` and `mas`. `zypper` and `nix` were added because mise provides them, and Windows support follows from `winget`, `scoop` and `choco`.
+
+The human approved the completed implementation on 2026-11-22 and asked to merge it and clean up. The accepted implementation and final records are committed in the feature pull request before merge. Delivery is merge-only; no release is authorized, so the change file waits for the next release pull request. The deferred Windows `PATH` ordering limit is Beads `pkg-5fn`.
